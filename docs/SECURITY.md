@@ -44,6 +44,20 @@ Deployment remains blocked until all of the following are complete:
 Client components and browser bundles must never import server environment or
 database modules.
 
+## Codex development boundary
+
+- Normal implementation work occurs on a focused feature branch in a local
+  disposable worktree, never directly on protected `main`.
+- `.worktreeinclude` contains only the ignored `.env.local` path. It may copy
+  that file into local Codex-managed worktrees but never exposes or tracks its
+  value. Do not use it for cloud or remote worktrees.
+- The Neon management integration is for authorized administration and schema
+  inspection; it is not the application's runtime connection.
+- Codex must never force-push, bypass failed validation or CI, deploy, or modify
+  production resources without explicit authorization.
+- Remove completed local worktrees so ignored credentials and build artifacts
+  do not persist in unnecessary checkouts.
+
 ## Database access
 
 - PostgreSQL is accessed through the isolated src/db adapter.

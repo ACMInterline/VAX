@@ -1,0 +1,2 @@
+# Copy the ignored local runtime environment into local Codex-managed worktrees.
+.env.local

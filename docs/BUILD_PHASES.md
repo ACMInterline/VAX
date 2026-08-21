@@ -17,11 +17,14 @@ Phase 0A established the local application and migration foundation. Phase 0B
 provisioned an isolated Neon `development` branch, configured local-only
 connectivity, and applied the reviewed initial migration there. Phase 0C
 establishes the initial GitHub `main` baseline, feature-branch workflow, and
-credential-free CI validation. Production migration and deployment design
-remain deferred to separately authorized work.
+credential-free CI validation. Phase 0D establishes the disposable Codex
+worktree, pull-request, validation, connection, and database-change workflow.
+Production migration and deployment design remain deferred to separately
+authorized work.
 
 Gate: clean install, lint, typecheck, tests, production build, reviewed initial
-migration, green CI, synchronized GitHub `main`, and no committed secrets.
+migration, one-command local validation, green protected-main CI, synchronized
+GitHub `main`, documented worktree lifecycle, and no committed secrets.
 
 ## Phase 1 — Public website foundation
 

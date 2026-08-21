@@ -12,6 +12,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Inspect the existing implementation before changing it. Preserve working
   behavior and avoid unrelated refactors.
+- `main` is the protected stable branch. Normal implementation work uses an
+  isolated worktree and a focused `codex/<phase>-<description>` branch created
+  from current `main`. Never force-push.
 - Read the relevant files in docs/ before changing architecture, domain
   behavior, security boundaries, data models, or visual direction.
 - Work incrementally and keep this application a modular monolith.
@@ -22,24 +25,27 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   .env.example limited to variable names and empty values.
 - Never access or modify production data unless the user explicitly instructs
   it.
-- Never perform a destructive database change without an explicit, reviewable
-  migration. Use migrations for every schema change.
+- Use reviewed Drizzle migrations for every schema change. Inspect generated
+  SQL, apply it only to the Neon `development` branch when authorized, and
+  never alter Neon Auth-managed schemas unless a task explicitly requires it.
+- Production migrations, destructive database work, and deployment always
+  require separate explicit authorization.
 - Add or update tests for important behavior and failure paths.
 - Product UI must include appropriate loading, empty, and error states; be
   responsive and mobile-usable; and follow accessible UI practices.
 - Record critical future business operations in audit logs.
-- Do not commit, push, deploy, or change external services unless explicitly
-  requested.
+- For requested implementation work, Codex should handle scoped commits,
+  normal pushes, pull requests, CI inspection, and merge only after required
+  checks pass. Do not publish Git changes for read-only tasks or when forbidden.
+- Minimize routine terminal, Git, test, and development-database work for the
+  user; ask only for decisions or authority that materially change scope.
 
 ## Completion standard
 
-Run the applicable repository checks before declaring work complete:
+Run `npm run validate` before declaring implementation work complete. It runs
+lint, typecheck, tests, build, migration-history validation, dependency audit,
+and `git diff --check`. Use `npm ci` first for clean-install, dependency, or
+lockfile validation.
 
-1. npm run lint
-2. npm run typecheck
-3. npm run test
-4. npm run build
-5. git diff --check
-
-Inspect git status and the final diff. Report failures honestly; do not claim
-completion while a required check is failing.
+Inspect git status, the final diff, and commit candidates for secrets. Report
+failures honestly; never suppress or bypass failing checks or CI.
