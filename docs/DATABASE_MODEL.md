@@ -1,0 +1,197 @@
+# Database Model
+
+## Current implementation
+
+Phase 0A implements exactly one infrastructure table: system_metadata.
+
+| Column | PostgreSQL type | Rules | Purpose |
+| --- | --- | --- | --- |
+| id | integer identity | Primary key, generated always | Stable internal identifier |
+| key | varchar(255) | Required, unique | Metadata lookup key |
+| value | jsonb | Required | Small structured infrastructure value |
+| created_at | timestamptz | Required, defaults to now | Creation time |
+| updated_at | timestamptz | Required, defaults to now | Last application-managed update time |
+
+The schema is defined in src/db/schema.ts. The corresponding SQL and Drizzle
+metadata live in drizzle/. The updated_at value is maintained by Drizzle on
+ORM-driven updates; the database does not contain a provider-specific trigger.
+
+No future business table listed below exists yet.
+
+Phase 0B applies this initial schema only to the VAX Neon `development` branch
+and its `neondb` database. Drizzle also maintains its normal migration ledger.
+The production branch remains unmigrated, and no business records have been
+inserted.
+
+## Long-term relationship
+
+The central durable hierarchy is:
+
+> Customer → Property → Room → Cleaning Item → Cleaning History
+
+Expected cardinalities:
+
+- one customer may own or manage many properties;
+- one property contains many rooms;
+- one room contains many durable cleaning items;
+- one cleaning item may appear in many booking and job events;
+- one cleaning item accumulates many cleaning-history entries.
+
+A booking item refers to a cleaning item. It does not own or replace that item.
+This distinction enables a Digital Cleaning Passport across repeat visits.
+
+## Planned domains
+
+The following catalog records the intended model vocabulary. Columns,
+constraints, identifiers, lifecycle states, retention, and deletion behavior
+must be designed in the owning phase before migration.
+
+### Identity
+
+| Planned table | Responsibility |
+| --- | --- |
+| users | Application identities independent of a specific auth provider |
+| roles | Named permission groupings |
+| user_roles | Many-to-many role assignments with lifecycle metadata |
+
+### CRM
+
+| Planned table | Responsibility |
+| --- | --- |
+| customers | Durable residential or business customer record |
+| customer_contacts | Contact people and channels associated with a customer |
+| customer_preferences | Consent, service, language, and communication preferences |
+
+### Properties
+
+| Planned table | Responsibility |
+| --- | --- |
+| properties | Service locations associated with customers |
+| rooms | Durable spaces within a property |
+| cleaning_items | Durable carpets, rugs, upholstery, mattresses, and other serviceable items |
+
+### Service catalogue
+
+| Planned table | Responsibility |
+| --- | --- |
+| service_categories | High-level catalogue grouping |
+| services | Bookable or quotable service definitions |
+| surface_materials | Materials relevant to inspection and treatment |
+| treatment_levels | Standardized effort or treatment classifications |
+| cleaning_products | Approved products and handling information |
+| stain_types | Standard stain taxonomy |
+
+### Booking
+
+| Planned table | Responsibility |
+| --- | --- |
+| bookings | Customer request and reserved service context |
+| booking_items | Requested service scope linked to durable cleaning items |
+| booking_time_slots | Candidate, held, or confirmed booking windows |
+| booking_notes | Timestamped contextual notes without overwriting history |
+
+### Operations
+
+| Planned table | Responsibility |
+| --- | --- |
+| teams | Dispatchable operating groups |
+| employees | Staff and technician employment profiles |
+| jobs | Executable operational work created from accepted scope |
+| job_assignments | Employee or team assignment history |
+| job_status_history | Append-oriented job lifecycle events |
+
+### Inspection
+
+| Planned table | Responsibility |
+| --- | --- |
+| inspections | Inspection event and responsible technician |
+| inspection_items | Cleaning items included in an inspection |
+| surface_assessments | Material, condition, and treatment-risk findings |
+| identified_stains | Stain observations and confidence |
+| existing_damage | Pre-service damage and customer acknowledgement |
+
+### Treatment
+
+| Planned table | Responsibility |
+| --- | --- |
+| job_treatments | Treatment performed for a job item |
+| products_used | Product, quantity, and treatment usage records |
+| technician_notes | Timestamped operational notes |
+
+### Media
+
+| Planned table | Responsibility |
+| --- | --- |
+| attachments | Metadata and object-storage references |
+| job_photos | Job-specific photo metadata and classification |
+
+Binary data must not be stored in PostgreSQL. These tables will reference
+objects held by a separate storage provider.
+
+### Commercial
+
+| Planned table | Responsibility |
+| --- | --- |
+| price_rules | Versioned pricing inputs and applicability |
+| quotes | Proposed commercial scope and validity |
+| quote_items | Itemized quoted work |
+| discounts | Explicit discount definitions and approvals |
+| payments | Payment intent and settlement records |
+| invoices | Invoice identity, totals, status, and document reference |
+
+### Customer experience
+
+| Planned table | Responsibility |
+| --- | --- |
+| reviews | Customer feedback and publication state |
+| claims | Complaint or damage-claim lifecycle |
+| messages | Conversation records across supported channels |
+| notifications | Delivery intent and outcome |
+
+### Maintenance
+
+| Planned table | Responsibility |
+| --- | --- |
+| cleaning_history | Completed cleaning events tied to durable items |
+| care_recommendations | Item-specific aftercare guidance |
+| reminders | Scheduled maintenance and follow-up prompts |
+
+### Business control
+
+| Planned table | Responsibility |
+| --- | --- |
+| equipment | Durable company equipment |
+| equipment_maintenance | Inspection, service, and repair history |
+| inventory | Consumable stock and movement basis |
+| audit_logs | Security and critical business-operation audit records |
+| activity_logs | Lower-risk operational activity stream |
+
+## Future modeling rules
+
+- Prefer explicit foreign keys and constraints over application-only
+  assumptions.
+- Separate mutable current state from append-oriented history when both are
+  required.
+- Preserve the quoted and performed facts needed for later explanation.
+- Use explicit money currency and integer minor units or another reviewed exact
+  numeric strategy; never floating-point amounts.
+- Model scheduling with instants, service time zones, and unambiguous duration.
+- Design tenant or organizational ownership before storing business data.
+- Define archival, retention, and legal deletion behavior per domain.
+- Keep external provider identifiers as adapter data, not primary domain
+  identity.
+- Add indexes from demonstrated query and constraint needs.
+- Introduce enum-like lifecycle values through backward-compatible migrations.
+
+## Migration discipline
+
+Every schema change requires:
+
+1. a typed schema change;
+2. a generated migration;
+3. inspection of generated SQL and metadata;
+4. compatibility and rollback analysis;
+5. tests at the lowest level that proves the affected behavior; and
+6. explicit authorization before applying to production.
+
+Destructive edits must never be hidden inside an unrelated migration.
