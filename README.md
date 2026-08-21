@@ -80,7 +80,7 @@ Neither response exposes connection details or errors.
 | npm run db:generate | Generate SQL migrations from the Drizzle schema |
 | npm run db:check | Validate the committed migration history |
 | npm run db:migrate | Apply committed migrations using DATABASE_URL |
-| npm run validate | Run lint, typecheck, tests, and production build |
+| npm run validate | Run the full local completion gate, including migration and dependency checks |
 
 ## Git workflow and CI
 
@@ -93,6 +93,9 @@ Neither response exposes connection details or errors.
   the ordinary local database target.
 - Production database changes and deployment require separate explicit
   authorization.
+
+The complete Codex branch, worktree, connection, validation, and database
+delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md).
 
 ## Repository map
 
@@ -128,4 +131,6 @@ database contains only Drizzle migration bookkeeping, `system_metadata`, and
 Neon-managed authentication infrastructure; it contains no VAX business data.
 The Neon `production` branch has not been migrated or otherwise changed by the
 application setup. Phase 0C establishes the initial GitHub `main` baseline and
-credential-free CI validation. Nothing has been deployed.
+credential-free CI validation. Phase 0D establishes the autonomous Codex
+worktree, pull-request, validation, and connection boundaries. Nothing has been
+deployed.
