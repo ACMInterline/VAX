@@ -21,3 +21,4 @@ export const systemMetadata = pgTable("system_metadata", {
 
 export * from "./schema/service-catalogue";
 export * from "./schema/commercial-engine";
+export * from "./schema/availability-engine";

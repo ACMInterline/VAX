@@ -159,13 +159,41 @@ and/or duration rather than fabricating an answer.
 
 The `/internal/pricing-lab` route contains bundled provisional values for local
 testing. It is not linked publicly, is absent from the sitemap, is disallowed
-by robots rules and emits no-index/no-follow metadata. Those controls are not
-authentication. The route must be removed or protected by future server-side
-authorization before any deployment, and draft books must never be selected by
-a customer-facing use case.
+by robots rules and emits no-index/no-follow metadata. The shared internal
+layout also returns not-found outside the Next.js development server. Those
+controls do not provide authenticated internal access; any future deployed lab
+needs an explicit authorization design, and draft books must never be selected
+by a customer-facing use case.
 
 Only the reviewed additive migration and commercial seed may run against Neon
 `development`. Production and `neon_auth` remain outside Phase 2A authority.
+
+## Phase 2B availability safeguards
+
+Phase 2B persists only team/equipment, working-window, appointment-window,
+service-area and travel configuration. It creates no customer, property,
+request, occupancy, reservation, booking, employee-account or payment record.
+All sample jobs and breaks are ephemeral development fixtures.
+
+The pure engine validates dates, minutes, coordinate pairs, team capability,
+equipment state, complete working-window fit and occupancy overlap. It never
+assumes zero time for an unconfirmed neighbouring route. Malformed or failed
+injected travel estimates fail closed to manual review. Phase 2A manual or
+decline/referral results, outside-Sofia work, inactive/unapproved zones,
+parking uncertainty, large jobs and two-team requests cannot become automatic
+slots.
+
+`/internal/availability-lab` bundles internal team codes, draft price/duration,
+travel and utilisation values. Like the pricing lab it has no mutation or
+database access, is absent from public navigation and emits no-index/no-follow.
+The shared server layout makes both labs development-only by returning not-found
+from production builds. This is not a substitute for authentication if an
+internal tool is deliberately deployed later, and no customer-facing calendar
+is present.
+
+Only the reviewed additive Phase 2B migration and deterministic seed may run on
+Neon `development`. Production and Neon Auth-managed schemas remain outside the
+phase authorization. No map credential or live provider is introduced.
 
 ## Future identity and authorization
 

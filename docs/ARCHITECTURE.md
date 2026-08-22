@@ -40,6 +40,7 @@ introduced.
 | src/content/public-site | Typed localized content, route records and claim controls | Database state or framework behavior |
 | src/modules/service-catalogue | Provider-neutral canonical catalogue types, codes, labels and capability definitions | Database clients, framework behavior or monetary pricing |
 | src/modules/commercial-engine | Pure versioned pricing, VAT, duration, snapshot and contribution policies | Next.js, Drizzle, Neon, persistence or public marketing copy |
+| src/modules/availability-engine | Pure service-area, travel, capacity, slot and utilisation policies | Framework, database, live map provider, customer persistence or dispatch UI |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
 | src/lib | Small stable cross-cutting utilities | Unbounded shared business logic |
@@ -127,9 +128,36 @@ lab; versioned database records are the future commercial value authority.
 
 `/internal/pricing-lab` uses a Server Component page for no-index metadata and a
 small Client Component for local interactivity. It has no server mutation,
-database import or public navigation link. Its route-level and robots controls
-reduce accidental discovery but are not authorization, so the route must not be
-included in an unauthorized deployment.
+database import or public navigation link. The shared internal layout returns
+not-found outside the Next.js development server. Route-level and robots
+controls remain defense in depth, and any deliberately deployed internal tool
+still requires authentication and authorization.
+
+## Availability engine boundary
+
+Phase 2B keeps service-area, location, travel, capacity, slot and utilisation
+logic in `src/modules/availability-engine`. PRICE, DURATION, TRAVEL and
+AVAILABILITY remain separate computations. The engine consumes plain typed
+configuration and ephemeral occupancy and has no framework, database or maps
+SDK dependency.
+
+The travel port can later be implemented by a geocoding/routing provider. The
+current synchronous estimator uses a versioned deterministic fallback matrix,
+returns no fabricated distance and identifies every result as a development
+assumption. Provider selection and credentials remain deferred.
+
+The Phase 2A duration total already includes setup, inspection, cleaning,
+cleanup and handover. Availability adds only neighbouring travel, one
+independent buffer per transition and explicit caller-provided parking time.
+No scheduling block or reservation is persisted. The future occupancy contract
+defines the immutable scheduling provenance a later booking adapter must supply.
+
+`/internal/availability-lab` follows the same Server/Client split and exposure
+rules as the pricing lab. It is a local browser calculator with no mutation,
+database import or public link. The shared internal Server Component layout
+returns not-found unless Next.js is running in development, while no-index and
+public-boundary checks remain defense in depth. Draft team codes, routes and
+utilisation must not cross into public components.
 
 ## Database boundary
 
@@ -148,10 +176,10 @@ change without changing domain rules.
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
 workflow. Code-controlled catalogue rows are upserted deterministically after
-migration. Versioned commercial books and rules use insert-only seed behavior
-so existing versions are not rewritten. The seed contains no customers,
-quotes, bookings, jobs, payments, invoices, actual product claims or production
-records.
+migration. Versioned commercial books/rules and versioned availability
+profiles/rules use insert-only seed behavior so existing versions are not
+rewritten. The seed contains no customers, quotes, bookings, jobs, payments,
+invoices, actual product claims or production records.
 
 ## Environment separation
 

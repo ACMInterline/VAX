@@ -88,17 +88,34 @@ Gate: reviewed additive development migration, exact boundary and tax tests,
 manual-assessment and claim safeguards, database-independent public build,
 local internal-lab verification, and no production or Neon Auth change.
 
-### Phase 2B — Commercial calibration and location rules
+### Phase 2B — Service area, travel, availability and team capacity
+
+Implemented as a non-transactional scheduling foundation: operational
+service-area metadata, typed locations, provider-independent travel estimates,
+a deterministic draft Sofia matrix, two neutral team/equipment fixtures,
+versioned 06:00–22:00 working hours and request windows, exact 30-minute
+candidate generation, neighbouring-job travel/buffers, manual-review rules,
+utilisation and team-hour helpers, future occupancy/snapshot contracts, and a
+non-persistent internal availability lab.
+
+No customer booking, calendar transaction, employee identity, public slot,
+production migration, Neon Auth change or deployment is part of Phase 2B.
+
+Gate: reviewed additive development migration, travel/boundary/capacity tests,
+no Phase 2A duration double-counting, database-independent public build,
+internal-lab verification, no public draft leakage, and production unchanged.
+
+### Phase 2C — Commercial and operational calibration
 
 Use owner/accountant decisions and measured field observations to approve or
-replace the provisional values. Define Sofia zone boundaries, travel and
-parking policy, timing rules, B2B volume semantics, actual duration inputs,
-effective-date/supersession behavior and the controlled activation workflow for
-the first non-draft book. Keep public publication separately gated.
+replace provisional price, duration, zone, travel, parking, working-hour and
+capacity values. Define B2B volume semantics, activation/supersession and an
+audited controlled workflow for the first non-draft versions. Keep public
+publication separately gated.
 
-Gate: approved commercial and tax data, representative duration evidence,
-validated location rules, deterministic new-version tests, controlled approval
-and audit design, and explicit decision on whether any prices may become public.
+Gate: approved commercial/tax and operational data, representative field
+evidence, validated location rules, deterministic new-version tests, controlled
+approval/audit design, and an explicit public-publication decision.
 
 ## Phase 3 — Identity/authentication/RBAC
 
@@ -135,9 +152,9 @@ failure recovery, and end-to-end booking tests.
 
 ## Phase 7 — Calendar, availability and dispatch
 
-Implement working hours, service duration, travel buffers, capacity, team
-availability, calendar views, dispatch queues, assignments, and conflict
-handling.
+Build the durable calendar and dispatch workflow on the Phase 2B calculation
+foundation: persisted occupancy, holds, calendar views, dispatch queues,
+assignments, audited overrides and concurrent conflict handling.
 
 Gate: Sofia time-zone and daylight-saving tests, concurrency rules, override
 audit logs, and dispatcher workflow validation.

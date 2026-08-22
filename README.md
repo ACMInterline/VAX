@@ -1,9 +1,10 @@
 # Service Platform Foundation
 
 Production-oriented service-platform foundation with an isolated development
-database, a bilingual public website, a canonical service catalogue and a
-versioned development commercial engine for a future carpet and upholstery
-cleaning service serving Sofia, Bulgaria.
+database, a bilingual public website, a canonical service catalogue, a
+versioned development commercial engine and a non-transactional scheduling
+capacity foundation for a future carpet and upholstery cleaning service serving
+Sofia, Bulgaria.
 
 The current repository contains:
 
@@ -11,8 +12,8 @@ The current repository contains:
 - strict TypeScript, Tailwind CSS, ESLint, and Vitest configuration;
 - an isolated PostgreSQL persistence adapter using Drizzle ORM and the Neon
   serverless driver;
-- one infrastructure table plus canonical service-catalogue, pricing, duration
-  and commercial-rule tables;
+- one infrastructure table plus canonical service-catalogue, pricing, duration,
+  service-area, team/equipment, working-hour and travel-rule tables;
 - generated, reviewable SQL migrations;
 - a safe application and database health endpoint;
 - a responsive, Bulgarian-first public service website with complete English
@@ -21,12 +22,13 @@ The current repository contains:
   codes that creates no records;
 - deterministic catalogue seeding plus insert-only provisional development
   price-book and duration versions, with no public prices or product claims;
-- a non-indexed, local-only `/internal/pricing-lab` calculation harness; and
+- non-indexed local-only pricing and availability calculation harnesses; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Booking connectivity, CRM, authentication, payments, invoices, availability,
-dispatch, object storage, final branding and deployment are not implemented.
+Booking connectivity, persistent occupancy/calendar, CRM, authentication,
+payments, invoices, dispatch, object storage, final branding and deployment are
+not implemented.
 
 ## Requirements
 
@@ -71,8 +73,13 @@ http://localhost:3000/api/health.
 
 The development-only calculation harness is available locally at
 http://localhost:3000/internal/pricing-lab. It is not a customer quotation
-surface, is not linked publicly and must not be deployed without a future
-access-control decision.
+surface, is not linked publicly and the shared internal layout returns not-found
+outside the development server.
+
+The non-persistent team-capacity harness is available at
+http://localhost:3000/internal/availability-lab. It shows provisional travel and
+slot calculations only; it creates no booking, makes no customer promise and is
+also unavailable from a production build.
 
 Without a configured, reachable database, the application still builds and the
 health endpoint intentionally returns HTTP 503 with:
@@ -167,5 +174,8 @@ taxonomies, capability relationships and price-free product/add-on foundations
 defined in [docs/SERVICE_CATALOGUE.md](docs/SERVICE_CATALOGUE.md), applied only
 to Neon development. Phase 2A adds the unpublished provisional EUR pricing,
 VAT, duration, travel, timing and explainability foundation defined in
-[docs/PRICING_ENGINE.md](docs/PRICING_ENGINE.md). No booking persistence,
-production migration or deployment is included.
+[docs/PRICING_ENGINE.md](docs/PRICING_ENGINE.md). Phase 2B adds the draft
+service-area, travel-time, working-hours, two-team equipment/capacity, slot and
+utilisation foundation defined in
+[docs/AVAILABILITY_ENGINE.md](docs/AVAILABILITY_ENGINE.md). No booking
+persistence, production migration or deployment is included.

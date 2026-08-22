@@ -2,6 +2,7 @@ import path from "node:path";
 import { migrate } from "drizzle-orm/neon-http/migrator";
 import { getDatabase } from "./client";
 import { loadMigrationEnvironment } from "./migration-environment";
+import { seedAvailabilityEngine } from "./seed-availability-engine";
 import { seedCommercialEngine } from "./seed-commercial-engine";
 import { seedCanonicalServiceCatalogue } from "./seed-service-catalogue";
 
@@ -15,6 +16,7 @@ async function runMigrations(): Promise<void> {
   });
   await seedCanonicalServiceCatalogue(database);
   await seedCommercialEngine(database);
+  await seedAvailabilityEngine(database);
 }
 
 runMigrations()

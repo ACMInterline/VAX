@@ -80,6 +80,24 @@ booking, customer, durable cleaning item, job, payment or invoice table is
 introduced. Future accepted quotes and bookings must persist an immutable
 snapshot of the exact price-book version, rules, inputs, lines and tax result.
 
+Phase 2B extends scheduling reference/configuration on development only:
+
+| Structure | Responsibility |
+| --- | --- |
+| extended `travel_zones` | Service eligibility, optional minimum/base-travel semantics, confirmation and future geography |
+| `working_hour_policies`, `working_hour_rules` | Versioned local operating windows and optional team overrides |
+| `operations_teams`, `team_capabilities` | Dispatchable team identity, crew size and capability foundation without employee identities |
+| `equipment_resources`, `team_equipment_assignments` | Lightweight equipment availability and team assignment |
+| `appointment_window_definitions` | Versioned customer request-window vocabulary, separate from exact slots |
+| `travel_time_profiles`, `travel_time_matrix_rules` | Versioned provider-independent travel fallback configuration |
+
+Working-hour and travel profiles and appointment-window versions use
+insert-only seed behavior. The initial rows are inactive provisional drafts.
+There is intentionally no scheduling-block, occupancy, reservation or booking
+table. Breaks, sample jobs and future occupancy are typed ephemeral contracts in
+the pure availability module. A future accepted booking must preserve immutable
+price, duration, travel, working-hours, equipment and scheduling provenance.
+
 ## Long-term relationship
 
 The central durable hierarchy is:
@@ -150,9 +168,11 @@ must be designed in the owning phase before migration.
 
 ### Operations
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| teams | Dispatchable operating groups |
+| operations_teams | Implemented team-capacity reference without employee identity |
+| team_capabilities | Implemented capability foundation |
+| equipment_resources, team_equipment_assignments | Implemented lightweight capacity foundation; maintenance history remains planned |
 | employees | Staff and technician employment profiles |
 | jobs | Executable operational work created from accepted scope |
 | job_assignments | Employee or team assignment history |
