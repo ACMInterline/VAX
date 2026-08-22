@@ -153,6 +153,19 @@ validation, abuse controls, privacy decisions, durable data design,
 authorization where applicable, file-storage controls and operational
 acknowledgement behavior.
 
+## Phase 2 catalogue alignment
+
+Each localized public service record now carries the stable canonical service
+code defined in `src/modules/service-catalogue/catalogue.ts`. Public marketing
+titles and route slugs remain presentation concerns and may change without
+changing that identity.
+
+Request-form surface choices use canonical cleaning-item codes and their
+localized catalogue labels. The condition selector uses the canonical neutral
+five-level condition scale. This is taxonomy alignment only: the form remains
+browser-only and imports no database, environment or server module. The public
+build and static pages remain independent of Neon credentials.
+
 ## Accessibility and responsive baseline
 
 The public shell provides semantic landmarks, a skip link, keyboard-operable

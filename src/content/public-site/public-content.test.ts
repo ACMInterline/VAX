@@ -12,6 +12,11 @@ import {
   requiredPublicRoutes,
   serviceSlugs,
 } from "./routes";
+import {
+  getCanonicalServiceByPublicSlug,
+  getCatalogueLabel,
+  treatmentLevels,
+} from "@/modules/service-catalogue/catalogue";
 
 const expectedRoutes = [
   "/",
@@ -76,6 +81,9 @@ describe("public-site localization architecture", () => {
         expect(service?.process.length).toBeGreaterThanOrEqual(4);
         expect(service?.limitations.length).toBeGreaterThanOrEqual(3);
         expect(service?.related.length).toBeGreaterThanOrEqual(2);
+        expect(service?.catalogueCode).toBe(
+          getCanonicalServiceByPublicSlug(slug)?.code,
+        );
       }
     }
   });
@@ -111,6 +119,19 @@ describe("public-site localization architecture", () => {
     expect(content.faqs.map((faq) => faq.question)).toContain(
       "Подходяща ли е услугата за домакинства, които обръщат специално внимание на прах и алергени?",
     );
+  });
+
+  it("aligns localized treatment presentation with canonical identities", () => {
+    for (const locale of publicLanguageConfig.supportedLocales) {
+      const publicTreatmentLevels = getPublicContent(locale).treatmentLevels;
+
+      expect(publicTreatmentLevels.map((level) => level.catalogueCode)).toEqual(
+        treatmentLevels.map((level) => level.code),
+      );
+      expect(publicTreatmentLevels.map((level) => level.name)).toEqual(
+        treatmentLevels.map((level) => getCatalogueLabel(level, locale)),
+      );
+    }
   });
 });
 

@@ -1,14 +1,14 @@
 import type { PublicLocale } from "@/config/public-site";
+import type {
+  PublicServiceSlug,
+  ServiceCode,
+  TreatmentLevelCode,
+} from "@/modules/service-catalogue/catalogue";
 
-export type ServiceSlug =
-  | "carpet-cleaning"
-  | "rug-cleaning"
-  | "sofa-upholstery-cleaning"
-  | "mattress-cleaning"
-  | "office-carpet-cleaning"
-  | "delicate-fabric-care";
+export type ServiceSlug = PublicServiceSlug;
 
 export type ServiceContent = {
+  catalogueCode: ServiceCode;
   slug: ServiceSlug;
   title: string;
   shortTitle: string;
@@ -24,6 +24,7 @@ export type ServiceContent = {
 };
 
 export type TreatmentLevel = {
+  catalogueCode: TreatmentLevelCode;
   number: string;
   name: string;
   description: string;
@@ -306,7 +307,6 @@ export type RequestFormCopy = {
     propertyPlaceholder: string;
     propertyOptions: Readonly<Record<string, string>>;
     servicesHint: string;
-    serviceOptions: Readonly<Record<string, string>>;
     estimatedQuantity: string;
     quantityPlaceholder: string;
     quantityHint: string;
@@ -315,7 +315,6 @@ export type RequestFormCopy = {
     areaHint: string;
     condition: string;
     conditionPlaceholder: string;
-    conditionOptions: Readonly<Record<string, string>>;
     stains: string;
     stainsPlaceholder: string;
     stainOptions: Readonly<Record<string, string>>;

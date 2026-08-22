@@ -127,6 +127,21 @@ This phase changes no booking, persistence, authentication, payment, upload,
 CRM or business database behavior. Bulgarian copy remains subject to final
 owner review before launch.
 
+## Phase 2 canonical service catalogue
+
+Phase 2 establishes code-controlled service categories, service identities,
+durable cleaning-item types, measurement modes, fibre and construction
+taxonomies, condition and issue classifications, inspection risk flags,
+treatment and mechanical-action vocabularies, method approaches, product and
+add-on foundations, and capability relationships.
+
+The public request prototype uses canonical item and condition codes but stays
+browser-only. The static public site imports provider-neutral definitions and
+does not query Neon. The development database receives reference data only: no
+customers, cleaning-item instances, requests, quotes, bookings, jobs, prices,
+payments or actual cleaning-product claims. Pricing and duration calculations
+remain Phase 2A owner decisions.
+
 ## Phase 0A acceptance criteria
 
 - The root page clearly identifies an operational technical foundation.

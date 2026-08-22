@@ -8,6 +8,13 @@
       "when": 1787349939220,
       "tag": "0000_initialize_system_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787371117962,
+      "tag": "0001_add_service_catalogue",
+      "breakpoints": true
     }
   ]
 }

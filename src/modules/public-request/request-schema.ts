@@ -1,17 +1,12 @@
 import { z } from "zod";
 import type { PublicLocale } from "@/config/public-site";
 import { getPublicContent } from "@/content/public-site";
+import {
+  publicConditionLevelCodes,
+  publicRequestItemTypeCodes,
+} from "@/modules/service-catalogue/catalogue";
 
-export const requestServiceValues = [
-  "carpet",
-  "rug",
-  "sofa",
-  "armchair",
-  "dining-chair",
-  "mattress",
-  "office-carpet",
-  "other-upholstery",
-] as const;
+export const requestServiceValues = publicRequestItemTypeCodes;
 
 export const propertyTypeValues = [
   "apartment",
@@ -25,12 +20,7 @@ export const propertyTypeValues = [
   "other",
 ] as const;
 
-export const conditionValues = [
-  "routine",
-  "visible-soil",
-  "heavy-soil",
-  "unsure",
-] as const;
+export const conditionValues = publicConditionLevelCodes;
 
 export const stainValues = ["yes", "no", "unsure"] as const;
 

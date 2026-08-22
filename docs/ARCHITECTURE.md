@@ -38,6 +38,7 @@ introduced.
 | src/components/public | Reusable public layout and presentation | Business persistence or provider access |
 | src/config | Replaceable public identity and non-secret site facts | Credentials or final copy ownership |
 | src/content/public-site | Typed localized content, route records and claim controls | Database state or framework behavior |
+| src/modules/service-catalogue | Provider-neutral canonical catalogue types, codes, labels and capability definitions | Database clients, framework behavior or monetary pricing |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
 | src/lib | Small stable cross-cutting utilities | Unbounded shared business logic |
@@ -94,6 +95,22 @@ manufacturer-evidence-dependent, legally dependent and prohibited statements.
 That classification remains static content governance in Phase 1A rather than
 a database capability.
 
+## Service catalogue boundary
+
+Phase 2 uses `src/modules/service-catalogue/catalogue.ts` as the provider-neutral
+source for stable service, item, measurement, material, condition, issue, risk,
+treatment and capability codes. Public static consumers may import this module;
+it imports neither Drizzle nor Neon. `src/db/schema/service-catalogue.ts` owns
+the relational persistence shape, and the database seeder adapts canonical
+definitions to those tables.
+
+This deliberate duplication boundary is representation, not authority: domain
+definitions own meaning, Drizzle owns columns and constraints, and the seeder
+maps between them. Public marketing wording may differ from canonical display
+labels, but every public service record carries its stable catalogue code.
+Actual product records and later operational duration values are future
+controlled admin data, not static public content.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -110,7 +127,9 @@ change without changing domain rules.
 
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
-workflow.
+workflow. Code-controlled catalogue rows are upserted deterministically after
+the migration and contain no customers, transactions, prices or manufacturer
+claims.
 
 ## Environment separation
 

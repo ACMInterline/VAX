@@ -82,6 +82,7 @@ export const bulgarianPublicContent = {
   },
   services: [
     {
+      catalogueCode: "CARPET_CARE",
       slug: "carpet-cleaning",
       title: "Почистване на мокети на място",
       shortTitle: "Почистване на мокети",
@@ -119,6 +120,7 @@ export const bulgarianPublicContent = {
       related: ["rug-cleaning", "office-carpet-cleaning"],
     },
     {
+      catalogueCode: "RUG_RUNNER_CARE",
       slug: "rug-cleaning",
       title: "Почистване на килими и пътеки на място",
       shortTitle: "Килими и пътеки",
@@ -156,6 +158,7 @@ export const bulgarianPublicContent = {
       related: ["carpet-cleaning", "delicate-fabric-care"],
     },
     {
+      catalogueCode: "UPHOLSTERY_CARE",
       slug: "sofa-upholstery-cleaning",
       title: "Почистване на дивани и мека мебел",
       shortTitle: "Дивани и мека мебел",
@@ -193,6 +196,7 @@ export const bulgarianPublicContent = {
       related: ["delicate-fabric-care", "mattress-cleaning"],
     },
     {
+      catalogueCode: "MATTRESS_CARE",
       slug: "mattress-cleaning",
       title: "Професионално почистване на матраци",
       shortTitle: "Почистване на матраци",
@@ -230,6 +234,7 @@ export const bulgarianPublicContent = {
       related: ["sofa-upholstery-cleaning", "delicate-fabric-care"],
     },
     {
+      catalogueCode: "COMMERCIAL_TEXTILE_CARE",
       slug: "office-carpet-cleaning",
       title: "Почистване на мокети в офиси и бизнес обекти",
       shortTitle: "Мокети в офиси",
@@ -267,6 +272,7 @@ export const bulgarianPublicContent = {
       related: ["carpet-cleaning", "sofa-upholstery-cleaning"],
     },
     {
+      catalogueCode: "DELICATE_TEXTILE_ASSESSMENT",
       slug: "delicate-fabric-care",
       title: "Грижа за деликатни текстилни повърхности",
       shortTitle: "Деликатни материи",
@@ -306,6 +312,7 @@ export const bulgarianPublicContent = {
   ],
   treatmentLevels: [
     {
+      catalogueCode: "GENTLE_CARE",
       number: "01",
       name: "Щадяща грижа",
       description:
@@ -313,6 +320,7 @@ export const bulgarianPublicContent = {
       intendedFor: "Чувствителни материи и лека поддръжка",
     },
     {
+      catalogueCode: "REFRESH",
       number: "02",
       name: "Освежаване",
       description:
@@ -320,6 +328,7 @@ export const bulgarianPublicContent = {
       intendedFor: "Периодична поддръжка и освежаване",
     },
     {
+      catalogueCode: "DEEP_CLEAN",
       number: "03",
       name: "Дълбоко почистване",
       description:
@@ -327,6 +336,7 @@ export const bulgarianPublicContent = {
       intendedFor: "Натрупано и по-видимо замърсяване",
     },
     {
+      catalogueCode: "INTENSIVE",
       number: "04",
       name: "Интензивна обработка",
       description:
@@ -334,6 +344,7 @@ export const bulgarianPublicContent = {
       intendedFor: "Силно замърсени подходящи повърхности",
     },
     {
+      catalogueCode: "SPECIALIST_ASSESSMENT",
       number: "05",
       name: "Специализирана оценка",
       description:

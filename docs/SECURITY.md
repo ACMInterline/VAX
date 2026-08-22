@@ -130,6 +130,20 @@ The language selector uses deterministic public URLs and stores no locale
 preference. Both locale versions preserve the same non-persistent request-form
 boundary and must not import server environment or database code.
 
+## Phase 2 catalogue safeguards
+
+Phase 2 adds only canonical reference and capability data. The seeder contains
+no customers, bookings, prices, credentials or actual cleaning-product rows.
+Issue handling distinguishes assessment, specialist and decline/referral
+boundaries; it does not claim medical or biohazard capability. Antibacterial,
+allergen, manufacturer and product-origin capabilities remain evidence-gated
+and are not seeded.
+
+Only the Neon `development` branch may receive the reviewed Phase 2 migration.
+The migration must remain additive, must not touch `neon_auth`, and must be
+followed by a schema and row-count inspection. Production remains outside this
+authorization.
+
 ## Future identity and authorization
 
 - Keep the authentication provider replaceable.

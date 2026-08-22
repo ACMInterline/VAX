@@ -1,8 +1,8 @@
 # Service Platform Foundation
 
 Production-oriented service-platform foundation with an isolated development
-database and a Phase 1 public website for a future carpet and upholstery
-cleaning service serving Sofia, Bulgaria.
+database, a bilingual public website and a canonical service catalogue for a
+future carpet and upholstery cleaning service serving Sofia, Bulgaria.
 
 The current repository contains:
 
@@ -10,12 +10,16 @@ The current repository contains:
 - strict TypeScript, Tailwind CSS, ESLint, and Vitest configuration;
 - an isolated PostgreSQL persistence adapter using Drizzle ORM and the Neon
   serverless driver;
-- one infrastructure table, system_metadata;
+- one infrastructure table plus canonical service-catalogue reference and
+  capability tables;
 - generated, reviewable SQL migrations;
-- a safe application and database health endpoint; and
+- a safe application and database health endpoint;
 - a responsive, Bulgarian-first public service website with complete English
   routes and evidence-controlled marketing claims;
-- a browser-only request prototype that creates no records; and
+- a browser-only request prototype aligned to canonical item and condition
+  codes that creates no records;
+- deterministic code-controlled catalogue seeding with no monetary prices or
+  actual cleaning-product claims; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
@@ -87,7 +91,7 @@ Neither response exposes connection details or errors.
 | npm run test:watch | Run Vitest in watch mode |
 | npm run db:generate | Generate SQL migrations from the Drizzle schema |
 | npm run db:check | Validate the committed migration history |
-| npm run db:migrate | Apply committed migrations using DATABASE_URL |
+| npm run db:migrate | Apply committed migrations and canonical reference seeds using DATABASE_URL |
 | npm run validate | Run the full local completion gate, including migration and dependency checks |
 
 ## Git workflow and CI
@@ -113,7 +117,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/components/public | Reusable public-site layout and presentation |
 | src/config | Replaceable public identity and runtime-neutral site facts |
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
-| src/modules | Application-facing modules and use-case orchestration |
+| src/modules | Provider-neutral domain vocabulary and application-facing modules |
 | src/db | PostgreSQL schema, connection adapter, health probe, and migrator |
 | src/lib | Small cross-cutting utilities such as environment validation |
 | drizzle | Generated SQL migrations and Drizzle migration metadata |
@@ -124,12 +128,13 @@ behavior.
 
 ## Database workflow
 
-1. Change src/db/schema.ts.
+1. Change the relevant schema module exported by src/db/schema.ts.
 2. Run npm run db:generate with a descriptive migration name when appropriate.
 3. Inspect both the SQL and Drizzle metadata.
 4. Review backward compatibility and rollback implications.
 5. Confirm DATABASE_URL identifies the intended non-production branch.
-6. Apply with npm run db:migrate only against that explicitly selected database.
+6. Apply migrations and deterministic canonical seeds with npm run db:migrate
+   only against that explicitly selected database.
 
 Never use schema push as a substitute for reviewed migrations.
 Production migrations require separate explicit authorization.
@@ -149,5 +154,7 @@ SEO, accessibility and responsive baselines, and a non-persistent request
 prototype. Phase 1A makes Bulgarian primary at unprefixed routes, keeps matching
 English routes under `/en`, and adds the content authority defined in
 [docs/CONTENT_AUTHORITY.md](docs/CONTENT_AUTHORITY.md). See
-[docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). No Phase 1 or 1A database schema or
-record changes are required, and nothing has been deployed.
+[docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). Phase 2 adds the canonical catalogue,
+taxonomies, capability relationships and price-free product/add-on foundations
+defined in [docs/SERVICE_CATALOGUE.md](docs/SERVICE_CATALOGUE.md), applied only
+to Neon development. No booking persistence or deployment is included.

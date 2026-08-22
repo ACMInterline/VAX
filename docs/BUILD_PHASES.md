@@ -51,14 +51,36 @@ Gate: approved content and routes in both locales, responsive and accessible
 browser checks, claim-evidence review, performance budget, and explicit
 form-backend behavior.
 
-## Phase 2 — Service catalogue and pricing foundation
+## Phase 2 — Canonical service catalogue foundation
 
-Implement versioned service categories, services, materials, treatment levels,
-and explainable pricing primitives. Separate catalogue facts from marketing
-presentation and quoted outcomes.
+Implemented as code-controlled Bulgarian/English service categories, service
+identities, durable cleaning-item types, permitted measurement modes, separate
+fibre and construction taxonomies, neutral condition levels, issues and risk
+flags, five treatment levels, mechanical-action levels, treatment approaches,
+product and add-on foundations, capability relationships and nullable duration
+inputs. The public site and browser-only request form align with the same
+canonical definitions without requiring a database connection.
 
-Gate: reviewed pricing semantics, currency and tax decisions, deterministic
-calculation tests, and controlled publishing behavior.
+No monetary pricing, booking persistence, actual cleaning-product claim,
+customer or transaction table is part of Phase 2. Reference rows are
+deterministic and code-controlled; actual products and approved operational
+values remain future controlled admin data.
+
+Gate: stable unique codes, complete BG/EN labels, valid default measurement
+relationships, reviewed additive development migration, deterministic seed,
+claim-boundary tests, database-independent public build, and no production or
+Neon Auth change.
+
+### Phase 2A — Duration and pricing semantics
+
+Use owner-approved operating observations to define duration calculations and
+versioned, explainable pricing. Decide currency, VAT/tax display, rounding,
+effective dates, minimum call-out, travel zones, B2B volume, appointment timing
+and quote provenance before introducing monetary rows or public prices.
+
+Gate: approved operating data, reviewed exact-money and tax semantics,
+deterministic calculation tests, historical price provenance and controlled
+publishing behavior.
 
 ## Phase 3 — Identity/authentication/RBAC
 
