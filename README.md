@@ -1,8 +1,9 @@
 # Service Platform Foundation
 
 Production-oriented service-platform foundation with an isolated development
-database, a bilingual public website and a canonical service catalogue for a
-future carpet and upholstery cleaning service serving Sofia, Bulgaria.
+database, a bilingual public website, a canonical service catalogue and a
+versioned development commercial engine for a future carpet and upholstery
+cleaning service serving Sofia, Bulgaria.
 
 The current repository contains:
 
@@ -10,21 +11,22 @@ The current repository contains:
 - strict TypeScript, Tailwind CSS, ESLint, and Vitest configuration;
 - an isolated PostgreSQL persistence adapter using Drizzle ORM and the Neon
   serverless driver;
-- one infrastructure table plus canonical service-catalogue reference and
-  capability tables;
+- one infrastructure table plus canonical service-catalogue, pricing, duration
+  and commercial-rule tables;
 - generated, reviewable SQL migrations;
 - a safe application and database health endpoint;
 - a responsive, Bulgarian-first public service website with complete English
   routes and evidence-controlled marketing claims;
 - a browser-only request prototype aligned to canonical item and condition
   codes that creates no records;
-- deterministic code-controlled catalogue seeding with no monetary prices or
-  actual cleaning-product claims; and
+- deterministic catalogue seeding plus insert-only provisional development
+  price-book and duration versions, with no public prices or product claims;
+- a non-indexed, local-only `/internal/pricing-lab` calculation harness; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Booking connectivity, CRM, authentication, payments, operations workflows,
-object storage, final branding and deployment are not implemented.
+Booking connectivity, CRM, authentication, payments, invoices, availability,
+dispatch, object storage, final branding and deployment are not implemented.
 
 ## Requirements
 
@@ -66,6 +68,11 @@ Start the application:
 
 Then open http://localhost:3000. The health contract is available at
 http://localhost:3000/api/health.
+
+The development-only calculation harness is available locally at
+http://localhost:3000/internal/pricing-lab. It is not a customer quotation
+surface, is not linked publicly and must not be deployed without a future
+access-control decision.
 
 Without a configured, reachable database, the application still builds and the
 health endpoint intentionally returns HTTP 503 with:
@@ -142,9 +149,10 @@ Production migrations require separate explicit authorization.
 ## Current status
 
 Phase 0B connects local development to the VAX Neon `development` branch and
-applies the initial migration to its `neondb` database. That development
-database contains only Drizzle migration bookkeeping, `system_metadata`, and
-Neon-managed authentication infrastructure; it contains no VAX business data.
+applies the initial migration to its `neondb` database. That branch contains
+Drizzle migration bookkeeping, `system_metadata`, canonical catalogue data and
+development-only versioned commercial configuration; it contains no customer,
+quote, booking, job, payment or invoice records.
 The Neon `production` branch has not been migrated or otherwise changed by the
 application setup. Phase 0C establishes the initial GitHub `main` baseline and
 credential-free CI validation. Phase 0D establishes the autonomous Codex
@@ -157,4 +165,7 @@ English routes under `/en`, and adds the content authority defined in
 [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). Phase 2 adds the canonical catalogue,
 taxonomies, capability relationships and price-free product/add-on foundations
 defined in [docs/SERVICE_CATALOGUE.md](docs/SERVICE_CATALOGUE.md), applied only
-to Neon development. No booking persistence or deployment is included.
+to Neon development. Phase 2A adds the unpublished provisional EUR pricing,
+VAT, duration, travel, timing and explainability foundation defined in
+[docs/PRICING_ENGINE.md](docs/PRICING_ENGINE.md). No booking persistence,
+production migration or deployment is included.

@@ -15,6 +15,13 @@
       "when": 1787371117962,
       "tag": "0001_add_service_catalogue",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787374874295,
+      "tag": "0002_add_commercial_engine",
+      "breakpoints": true
     }
   ]
 }

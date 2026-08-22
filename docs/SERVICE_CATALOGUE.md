@@ -207,15 +207,19 @@ arbitrary numbers or multipliers are seeded. Reuse guidance uses
 `ITEM_SPECIFIC_GUIDANCE`, meaning that material, construction, method and site
 conditions determine the eventual advice.
 
-## Pricing readiness without pricing
+## Phase 2A commercial extension
 
-No monetary amount, currency, rate, tax rule, discount or call-out value exists
-in this phase. Future pricing may consider item type, measurement, quantity,
-area, condition, treatment, material sensitivity, issue handling, add-ons,
-travel zone, minimum call-out, B2B volume and appointment timing. Phase 2A must
-approve exact money representation, currency, VAT/tax semantics, versioning,
-rounding, effective dates, quote provenance and owner-supplied operating data
-before adding prices.
+Phase 2 remains the code-controlled semantic authority and still stores no
+price on a service or cleaning-item reference row. Phase 2A adds separate,
+versioned commercial tables and a pure calculation engine described in
+`docs/PRICING_ENGINE.md`. Draft prices refer to stable catalogue codes but do
+not turn treatment levels into price tiers or make public pages depend on the
+database.
+
+Initial EUR rates, VAT configuration, duration assumptions, travel/timing
+foundations and minimum visit remain provisional development values. They are
+inactive, not approved for publication and must be replaced through a new
+version after owner/accountant and field-data review.
 
 ## Reference-data governance
 
@@ -243,14 +247,14 @@ same Bulgarian/English catalogue. The form still has no action, Server Action,
 route handler, fetch, upload, email adapter or database import. It creates no
 request, quote, booking, cleaning item or persistent data.
 
-## Owner decisions required for Phase 2A
+## Owner decisions carried into Phase 2B
 
 - approved service scope and any category/code changes;
 - which sofa and commercial measurements will drive prices;
 - real setup, per-unit, minimum-duration and complexity inputs;
 - Sofia travel zones and call-out policy;
 - B2B volume and appointment-timing rules;
-- BGN/EUR commercial currency strategy and exact rounding;
+- customer-facing EUR strategy, any separate BGN presentation and exact rounding;
 - VAT/tax registration and display requirements after professional review;
 - price versioning, effective dates, publishing and quote provenance;
 - approved products, safety documents and evidence references;

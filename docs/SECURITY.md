@@ -144,6 +144,29 @@ The migration must remain additive, must not touch `neon_auth`, and must be
 followed by a schema and row-count inspection. Production remains outside this
 authorization.
 
+## Phase 2A commercial safeguards
+
+Phase 2A commercial rows are development-only, inactive drafts and explicitly
+not approved for publication. Prices use exact integer minor units and tax
+rates use basis points. Version-owned price books and rules are seeded with
+insert-only conflict handling so reruns do not silently rewrite history.
+
+The pure calculation engine validates quantities, measurement boundaries, VAT
+configuration and manual-assessment conditions. Biological contamination is
+decline/referral-only; no antibacterial, allergen, sanitisation or medical
+capability is created. Unknown or unsupported scope suppresses the final price
+and/or duration rather than fabricating an answer.
+
+The `/internal/pricing-lab` route contains bundled provisional values for local
+testing. It is not linked publicly, is absent from the sitemap, is disallowed
+by robots rules and emits no-index/no-follow metadata. Those controls are not
+authentication. The route must be removed or protected by future server-side
+authorization before any deployment, and draft books must never be selected by
+a customer-facing use case.
+
+Only the reviewed additive migration and commercial seed may run against Neon
+`development`. Production and `neon_auth` remain outside Phase 2A authority.
+
 ## Future identity and authorization
 
 - Keep the authentication provider replaceable.
