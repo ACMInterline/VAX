@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { AuthLocale } from "@/auth/validation";
 import {
   authContent,
+  getAuthLocaleSwitchHref,
   localizedAuthPath,
   type AuthPageKind,
 } from "@/content/auth";
@@ -46,7 +47,7 @@ export function AuthPage({
           ? content.verify
           : content[kind];
   const alternateLocale = locale === "bg" ? "en" : "bg";
-  const route = `/${kind}`;
+  const localeSwitchHref = getAuthLocaleSwitchHref(locale, kind, resetToken);
 
   return (
     <section className="auth-page">
@@ -57,15 +58,17 @@ export function AuthPage({
               <Link href={locale === "en" ? "/en" : "/"} className="text-link">
                 {content.common.backHome}
               </Link>
-              <Link
-                href={localizedAuthPath(alternateLocale, route)}
-                hrefLang={alternateLocale}
-                lang={alternateLocale}
-                className="auth-locale-link"
-              >
-                <span aria-hidden="true">{content.common.switchLocaleCode}</span>
-                <span className="sr-only">{content.common.switchLocale}</span>
-              </Link>
+              {localeSwitchHref ? (
+                <Link
+                  href={localeSwitchHref}
+                  hrefLang={alternateLocale}
+                  lang={alternateLocale}
+                  className="auth-locale-link"
+                >
+                  <span aria-hidden="true">{content.common.switchLocaleCode}</span>
+                  <span className="sr-only">{content.common.switchLocale}</span>
+                </Link>
+              ) : null}
             </div>
             <p className="eyebrow">{page.eyebrow}</p>
             <h1>{page.title}</h1>

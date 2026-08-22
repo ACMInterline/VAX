@@ -1,6 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import {
+  withVerificationNextStep,
+  type AuthActionState,
+} from "@/auth/action-state";
 import { getAuthenticationProvider } from "@/auth/neon-provider";
 import { getAuthRuntimeConfiguration } from "@/auth/config";
 import { requestCustomerRegistration } from "@/auth/customer-registration";
@@ -24,11 +28,7 @@ import {
 } from "@/modules/identity-access/repository";
 import { getConfiguredPublicUrl } from "@/lib/public-metadata";
 
-export type AuthActionState = {
-  status: "IDLE" | "ERROR" | "SUCCESS";
-  message?: string;
-  fieldErrors?: Record<string, string[]>;
-};
+export type { AuthActionState } from "@/auth/action-state";
 
 const copy = {
   bg: {
@@ -167,7 +167,10 @@ export async function loginAction(
       safeMetadata: { reasonCode: "EMAIL_UNVERIFIED" },
     });
     await provider.signOut().catch(() => undefined);
-    return { status: "ERROR", message: copy[locale].verifyRequired };
+    return withVerificationNextStep(
+      { status: "ERROR", message: copy[locale].verifyRequired },
+      true,
+    );
   }
 
   try {
@@ -218,6 +221,8 @@ export async function signupAction(
   }
 
   const provider = getAuthenticationProvider();
+  const requireVerifiedEmail =
+    getAuthRuntimeConfiguration().requireVerifiedEmail;
   await requestCustomerRegistration({
     provider,
     registration: {
@@ -225,9 +230,12 @@ export async function signupAction(
       email: result.data.email,
       password: result.data.password,
     },
-    requireVerifiedEmail: getAuthRuntimeConfiguration().requireVerifiedEmail,
+    requireVerifiedEmail,
   });
-  return { status: "SUCCESS", message: copy[locale].signupRequested };
+  return withVerificationNextStep(
+    { status: "SUCCESS", message: copy[locale].signupRequested },
+    requireVerifiedEmail,
+  );
 }
 
 export async function forgotPasswordAction(

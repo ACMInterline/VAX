@@ -34,8 +34,7 @@ export function getAuthRuntimeConfiguration(
     baseUrl: parsedUrl.toString().replace(/\/$/, ""),
     cookieSecret,
     requireVerifiedEmail:
-      environment.AUTH_REQUIRE_VERIFIED_EMAIL === "true" ||
-      (environment.NODE_ENV === "production" &&
-        environment.AUTH_REQUIRE_VERIFIED_EMAIL !== "false"),
+      environment.NODE_ENV === "production" ||
+      environment.AUTH_REQUIRE_VERIFIED_EMAIL === "true",
   };
 }

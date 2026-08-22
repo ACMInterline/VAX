@@ -19,6 +19,7 @@ export const authContent = {
       backHome: "Към началната страница",
       switchLocale: "English",
       switchLocaleCode: "EN",
+      verifyEmailAction: "Към потвърждение на имейл",
       required: "Задължително поле",
     },
     login: {
@@ -75,6 +76,7 @@ export const authContent = {
       backHome: "Back to the public site",
       switchLocale: "Български",
       switchLocaleCode: "BG",
+      verifyEmailAction: "Go to email verification",
       required: "Required field",
     },
     login: {
@@ -124,4 +126,16 @@ export const authContent = {
 
 export function localizedAuthPath(locale: AuthLocale, path: string): string {
   return locale === "en" ? `/en${path}` : path;
+}
+
+export function getAuthLocaleSwitchHref(
+  locale: AuthLocale,
+  kind: AuthPageKind,
+  resetToken?: string,
+): string | null {
+  if (kind === "reset-password" && resetToken) {
+    return null;
+  }
+  const alternateLocale = locale === "bg" ? "en" : "bg";
+  return localizedAuthPath(alternateLocale, `/${kind}`);
 }

@@ -22,6 +22,28 @@ describe("authentication runtime configuration", () => {
     ).toBe(true);
   });
 
+  it("keeps email verification mandatory when production explicitly supplies false", () => {
+    expect(
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: "https://auth.example.invalid",
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        AUTH_REQUIRE_VERIFIED_EMAIL: "false",
+        NODE_ENV: "production",
+      }).requireVerifiedEmail,
+    ).toBe(true);
+  });
+
+  it("allows an explicit development verification override", () => {
+    expect(
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: "https://auth.example.invalid",
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        AUTH_REQUIRE_VERIFIED_EMAIL: "true",
+        NODE_ENV: "development",
+      }).requireVerifiedEmail,
+    ).toBe(true);
+  });
+
   it("rejects unsafe configuration without echoing a supplied value", () => {
     const supplied = "sensitive-but-too-short";
     expect(() =>

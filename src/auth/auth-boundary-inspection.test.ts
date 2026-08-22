@@ -6,7 +6,13 @@ const root = process.cwd();
 
 describe("authentication route and schema boundaries", () => {
   it("provides every required Bulgarian and English authentication route", async () => {
-    const paths = ["login", "signup", "forgot-password", "reset-password"];
+    const paths = [
+      "login",
+      "signup",
+      "forgot-password",
+      "reset-password",
+      "verify-email",
+    ];
     for (const route of paths) {
       await expect(
         readFile(path.join(root, "src/app/(public)", route, "page.tsx"), "utf8"),
@@ -20,6 +26,16 @@ describe("authentication route and schema boundaries", () => {
       "utf8",
     );
     expect(metadataSource).toContain("index: false");
+  });
+
+  it("derives the protected document language from the application profile", async () => {
+    const layoutSource = await readFile(
+      path.join(root, "src/app/(application)/app/layout.tsx"),
+      "utf8",
+    );
+    expect(layoutSource).toContain("requireApplicationPrincipal");
+    expect(layoutSource).toContain("principal.profile.preferredLocale");
+    expect(layoutSource).not.toContain('<html lang="bg">');
   });
 
   it("keeps the generated migration additive and outside provider-managed schemas", async () => {
@@ -67,6 +83,21 @@ describe("authentication route and schema boundaries", () => {
     expect(signupSource).not.toContain("provisionCustomerProfile");
     expect(signupSource).toContain('status: "SUCCESS"');
     expect(signupSource).toContain("signupRequested");
+    expect(signupSource).toContain("withVerificationNextStep");
+  });
+
+  it("links an unverified login state to the verification flow", async () => {
+    const actionSource = await readFile(
+      path.join(root, "src/app/auth-actions.ts"),
+      "utf8",
+    );
+    const loginSource = actionSource
+      .split("export async function loginAction")[1]
+      ?.split("export async function signupAction")[0];
+
+    expect(loginSource).toBeDefined();
+    expect(loginSource).toContain("EMAIL_UNVERIFIED");
+    expect(loginSource).toContain("withVerificationNextStep");
   });
 
   it("requires the exact development mutation guard on privileged database scripts", async () => {

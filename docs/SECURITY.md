@@ -9,11 +9,13 @@ production data governance remain gated.
 
 ## Time-bound framework advisory
 
-As of 22 August 2026, Next.js has announced an upcoming 26 August security
-release for the 16.3 line that includes a critical fix. This repository uses
-the current stable 16.3.2 package and must not be deployed until it has been
-upgraded to the patched stable release and the full validation suite has been
-rerun. Update or remove this note after that upgrade.
+Next.js has announced an upcoming 26 August 2026 security release for the 16.3
+line that includes a critical fix. Local installed, locked and cached package
+metadata was rechecked on 23 August 2026 and contains only 16.3.0 through
+16.3.2. This repository therefore remains on 16.3.2 without dependency churn
+and must not be deployed until the patched stable release is locally available,
+adopted and followed by the full validation suite. Update or remove this note
+after that upgrade.
 
 Reference: [Upcoming Next.js August Security Release](https://nextjs.org/blog/upcoming-nextjs-security-release-august-2026)
 
@@ -223,6 +225,8 @@ phase authorization. No map credential or live provider is introduced.
 - Login and recovery errors avoid account-existence disclosure and provider
   detail leakage. Passwords, OTPs, reset/session tokens and raw provider errors
   are neither logged nor stored by VAX.
+- Production email verification is mandatory in application policy; a false
+  environment override is honored only outside production.
 - Local auth attempt limiting is process-local. Production auth fails closed
   until a distributed/provider-backed limiter is selected.
 - Auth and `/app` routes are private/no-store and noindex, with deny framing,

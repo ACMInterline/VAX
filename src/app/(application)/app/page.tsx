@@ -1,28 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import {
-  AuthenticationBoundaryError,
-  requireAuthenticatedUser,
-} from "@/auth/authorization-service";
 import { logoutAction } from "@/app/auth-actions";
 import { visibleNavigationItems } from "@/modules/identity-access/navigation";
 import { canonicalRoles } from "@/modules/identity-access/policy";
+import { requireApplicationPrincipal } from "./application-principal";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApplicationLandingPage() {
-  let principal;
-  try {
-    principal = await requireAuthenticatedUser();
-  } catch (error) {
-    if (error instanceof AuthenticationBoundaryError) {
-      if (error.code === "EMAIL_VERIFICATION_REQUIRED") {
-        redirect("/verify-email");
-      }
-      redirect("/login?account=unavailable");
-    }
-    throw error;
-  }
+  const principal = await requireApplicationPrincipal();
 
   const locale = principal.profile.preferredLocale;
   const isEnglish = locale === "en";
