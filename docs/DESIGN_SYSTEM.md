@@ -69,7 +69,11 @@ must not silently replace those placeholders.
 - clear quote or booking path without constant sales pressure;
 - strong mobile reading order;
 - proof, process, care, and expectation-setting content;
-- localized content for the intended audience once copy is approved.
+- Bulgarian-first customer language with complete English equivalents;
+- a text-labelled BG/EN selector that remains usable by keyboard and on narrow
+  screens; and
+- layouts that tolerate longer Bulgarian words and headings without shrinking
+  touch targets or creating horizontal page scroll.
 
 ### Customer portal
 
@@ -111,6 +115,7 @@ must not silently replace those placeholders.
 - Status communication that does not depend on color alone
 - Respect for reduced-motion and reduced-transparency preferences
 - Logical reading and focus order
+- Accurate document language and localized programmatic labels
 
 Target WCAG 2.2 AA for customer-facing and staff-facing workflows.
 

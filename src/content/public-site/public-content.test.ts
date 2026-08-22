@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { publicLanguageConfig } from "@/config/public-site";
 import { getPublicContent, getService } from ".";
-import { forbiddenPublishedClaimPatterns } from "./claims";
-import { requiredPublicRoutes, serviceSlugs } from "./routes";
+import {
+  forbiddenPublishedClaimPatterns,
+  marketingClaimRegistry,
+  unpublishedEvidencePatterns,
+} from "./claims";
+import {
+  getLanguageSwitchHref,
+  localizedPublicRoutes,
+  requiredPublicRoutes,
+  serviceSlugs,
+} from "./routes";
 
 const expectedRoutes = [
   "/",
@@ -21,49 +31,139 @@ const expectedRoutes = [
   "/request",
 ] as const;
 
-describe("public-site content architecture", () => {
-  it("publishes the complete Phase 1 route map without thin extra routes", () => {
+describe("public-site localization architecture", () => {
+  it("makes Bulgarian primary and retains English as the secondary locale", () => {
+    expect(publicLanguageConfig.primaryLocale).toBe("bg");
+    expect(publicLanguageConfig.secondaryLocale).toBe("en");
+    expect(getPublicContent().locale).toBe("bg");
+    expect(getPublicContent("en").locale).toBe("en");
+  });
+
+  it("publishes equivalent Bulgarian and English route coverage", () => {
     expect(requiredPublicRoutes).toEqual(expectedRoutes);
+    expect(localizedPublicRoutes).toHaveLength(expectedRoutes.length * 2);
+
+    const bulgarianRoutes = localizedPublicRoutes
+      .filter((route) => route.locale === "bg")
+      .map((route) => route.path);
+    const englishRoutes = localizedPublicRoutes
+      .filter((route) => route.locale === "en")
+      .map((route) => route.path);
+
+    expect(bulgarianRoutes).toEqual(expectedRoutes);
+    expect(englishRoutes).toEqual(
+      expectedRoutes.map((path) => (path === "/" ? "/en" : `/en${path}`)),
+    );
   });
 
-  it("backs every service route with substantial structured content", () => {
-    for (const slug of serviceSlugs) {
-      const service = getService(slug);
+  it("preserves the corresponding page when switching languages", () => {
+    expect(getLanguageSwitchHref("en", "/services/rug-cleaning")).toBe(
+      "/en/services/rug-cleaning",
+    );
+    expect(getLanguageSwitchHref("bg", "/en/services/rug-cleaning")).toBe(
+      "/services/rug-cleaning",
+    );
+    expect(getLanguageSwitchHref("bg", "/en")).toBe("/");
+    expect(getLanguageSwitchHref("en", "/unknown")).toBe("/en");
+  });
 
-      expect(service).toBeDefined();
-      expect(service?.process.length).toBeGreaterThanOrEqual(4);
-      expect(service?.limitations.length).toBeGreaterThanOrEqual(3);
-      expect(service?.related.length).toBeGreaterThanOrEqual(2);
+  it("backs every service route with substantial content in both locales", () => {
+    for (const locale of publicLanguageConfig.supportedLocales) {
+      for (const slug of serviceSlugs) {
+        const service = getService(locale, slug);
+
+        expect(service).toBeDefined();
+        expect(service?.process.length).toBeGreaterThanOrEqual(4);
+        expect(service?.limitations.length).toBeGreaterThanOrEqual(3);
+        expect(service?.related.length).toBeGreaterThanOrEqual(2);
+      }
     }
   });
 
-  it("keeps every configured navigation destination inside the route map", () => {
-    const navigation = getPublicContent().navigation;
-    const destinations = [
-      ...navigation.primary.map((link) => link.href),
-      ...navigation.serviceLinks.map((link) => link.href),
-    ];
+  it("keeps every navigation destination inside the base route map", () => {
+    for (const locale of publicLanguageConfig.supportedLocales) {
+      const navigation = getPublicContent(locale).navigation;
+      const destinations = [
+        ...navigation.primary.map((link) => link.href),
+        ...navigation.serviceLinks.map((link) => link.href),
+      ];
 
-    for (const destination of destinations) {
-      expect(requiredPublicRoutes).toContain(destination);
+      for (const destination of destinations) {
+        expect(requiredPublicRoutes).toContain(destination);
+      }
     }
+  });
+
+  it("provides the required Bulgarian treatment model and FAQ coverage", () => {
+    const content = getPublicContent("bg");
+
+    expect(content.treatmentLevels.map((level) => level.name)).toEqual([
+      "Щадяща грижа",
+      "Освежаване",
+      "Дълбоко почистване",
+      "Интензивна обработка",
+      "Специализирана оценка",
+    ]);
+    expect(content.faqs).toHaveLength(12);
+    expect(content.faqs.map((faq) => faq.question)).toContain(
+      "Вземате ли килимите за пране?",
+    );
+    expect(content.faqs.map((faq) => faq.question)).toContain(
+      "Подходяща ли е услугата за домакинства, които обръщат специално внимание на прах и алергени?",
+    );
+  });
+});
+
+describe("public claim authority", () => {
+  const publishedCopy = JSON.stringify({
+    bg: getPublicContent("bg"),
+    en: getPublicContent("en"),
+  });
+
+  it("supports every reviewed claim-authority status", () => {
+    expect(
+      [...new Set(marketingClaimRegistry.map((claim) => claim.status))].sort(),
+    ).toEqual(
+      [
+        "verified",
+        "qualified",
+        "manufacturer_evidence_required",
+        "legal_verification_required",
+        "prohibited",
+      ].sort(),
+    );
   });
 
   it("does not publish unsupported medical or absolute cleaning claims", () => {
-    const publishedCopy = JSON.stringify(getPublicContent());
-
     for (const forbiddenPattern of forbiddenPublishedClaimPatterns) {
       expect(publishedCopy).not.toMatch(forbiddenPattern);
     }
   });
 
+  it("withholds manufacturer, acoustic and product-performance evidence claims", () => {
+    for (const evidencePattern of unpublishedEvidencePatterns) {
+      expect(publishedCopy).not.toMatch(evidencePattern);
+    }
+
+    for (const claim of marketingClaimRegistry) {
+      if (
+        claim.status === "manufacturer_evidence_required" ||
+        claim.status === "legal_verification_required" ||
+        claim.status === "prohibited"
+      ) {
+        expect(claim.publicationWording).toBeNull();
+      }
+    }
+  });
+
   it("does not invent commercial proof", () => {
-    const publishedCopy = JSON.stringify(getPublicContent());
     const fabricatedProofPatterns = [
       /\b5[- ]star\b/i,
       /\baward[- ]winning\b/i,
       /\bthousands of customers\b/i,
       /\bcertified by\b/i,
+      /хиляди клиенти/iu,
+      /награждаван/iu,
     ];
 
     for (const pattern of fabricatedProofPatterns) {

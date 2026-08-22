@@ -1,12 +1,14 @@
 # Public Website
 
-## Phase 1 scope
+## Phase 1 and Phase 1A scope
 
 Phase 1 establishes the customer-facing marketing foundation for professional
 on-site carpet, rug, upholstery and mattress care in Sofia. It is a static
 service-discovery experience plus a browser-only request prototype. It does not
 create a quote, booking, customer, property, file, database record or external
-message.
+message. Phase 1A makes Bulgarian the primary commercial language, retains
+English as a complete secondary locale, and adds evidence-controlled content
+authority without changing that application boundary.
 
 The repository remains internally named VAX. The public identity is the neutral
 temporary name **FabricCare Sofia** and does not use the identity, assets or
@@ -14,23 +16,23 @@ claims of the VAX appliance manufacturer.
 
 ## Route map
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Complete public overview and primary conversion path |
-| `/services` | Service discovery and treatment-level explanation |
-| `/services/carpet-cleaning` | Residential and commercial carpet care |
-| `/services/rug-cleaning` | On-site rug care where appropriate |
-| `/services/sofa-upholstery-cleaning` | Sofa, chair and upholstery care |
-| `/services/mattress-cleaning` | Non-medical mattress maintenance |
-| `/services/office-carpet-cleaning` | Office and suitable business premises |
-| `/services/delicate-fabric-care` | Assessment-first sensitive-material route |
-| `/how-it-works` | Description, assessment, treatment and aftercare sequence |
-| `/why-professional-cleaning` | Material judgement and preservation rationale |
-| `/service-area` | Sofia coverage without invented zone pricing |
-| `/about` | Service principles and temporary identity context |
-| `/faq` | Carefully qualified practical answers |
-| `/contact` | Configured placeholders and intended operating context |
-| `/request` | Frontend-only, non-persistent request prototype |
+| Bulgarian (primary) | English (secondary) | Purpose |
+| --- | --- | --- |
+| `/` | `/en` | Complete public overview and primary conversion path |
+| `/services` | `/en/services` | Service discovery and treatment-level explanation |
+| `/services/carpet-cleaning` | `/en/services/carpet-cleaning` | Residential and commercial carpet care |
+| `/services/rug-cleaning` | `/en/services/rug-cleaning` | On-site rug care where appropriate |
+| `/services/sofa-upholstery-cleaning` | `/en/services/sofa-upholstery-cleaning` | Sofa, chair and upholstery care |
+| `/services/mattress-cleaning` | `/en/services/mattress-cleaning` | Non-medical mattress maintenance |
+| `/services/office-carpet-cleaning` | `/en/services/office-carpet-cleaning` | Office and suitable business premises |
+| `/services/delicate-fabric-care` | `/en/services/delicate-fabric-care` | Assessment-first sensitive-material route |
+| `/how-it-works` | `/en/how-it-works` | Description, assessment, treatment and aftercare sequence |
+| `/why-professional-cleaning` | `/en/why-professional-cleaning` | Material judgement and preservation rationale |
+| `/service-area` | `/en/service-area` | Sofia coverage without invented zone pricing |
+| `/about` | `/en/about` | Service principles and temporary identity context |
+| `/faq` | `/en/faq` | Carefully qualified practical answers |
+| `/contact` | `/en/contact` | Configured placeholders and intended operating context |
+| `/request` | `/en/request` | Frontend-only, non-persistent request prototype |
 
 The six service details share one typed dynamic route and are statically
 generated from reviewed content. This avoids duplicate page implementations
@@ -40,14 +42,15 @@ and discourages thin SEO pages.
 
 - `src/config/public-site.ts` owns the temporary name, tagline, Sofia area,
   contact placeholders, intended hours and primary call to action.
-- `src/content/public-site/` owns typed English content, service records, FAQ,
-  treatment levels, route inventory and claim controls.
+- `src/content/public-site/` owns typed Bulgarian and English content, service
+  records, FAQs, treatment levels, locale routing and claim controls.
 - `src/components/public/` owns reusable public layout and presentation.
 - `src/modules/public-request/` owns the provider-independent Zod request model
   and the browser-only form.
 - `src/lib/public-metadata.ts` owns URL validation, metadata construction and
   structured-data eligibility.
-- `src/app/(public)/` adapts these modules to Next.js routes.
+- `src/app/(public)/` adapts the unprefixed Bulgarian routes.
+- `src/app/(public-en)/en/` adapts their English `/en` equivalents.
 
 Public pages are Server Components by default. Only the mobile navigation and
 request form are Client Components. Neither imports database or server
@@ -72,9 +75,13 @@ outcome. Capacity, return-to-use timing, quiet-operation language, stain
 results, hygiene and service hours include the conditions that can change the
 result.
 
-`src/content/public-site/claims.ts` records prohibited absolute claims and
-topics requiring evidence review. Automated tests scan the publishable content
-for absolute medical and cleaning claims. In particular:
+`src/content/public-site/claims.ts` is the typed claim registry. It classifies
+each important concept as `verified`, `qualified`,
+`manufacturer_evidence_required`, `legal_verification_required`, or
+`prohibited`. `docs/CONTENT_AUTHORITY.md` records approved wording, required
+evidence and editorial notes. Automated tests scan publishable content in both
+locales for absolute medical, cleaning and manufacturer-dependent claims. In
+particular:
 
 - do not promise personal medical outcomes;
 - do not promise complete stain removal;
@@ -86,22 +93,33 @@ for absolute medical and cleaning claims. In particular:
 - use the preservation principle: best reasonable cleaning result with minimum
   unnecessary stress on the material.
 
-## Localization plan
+## Localization architecture
 
-The rendered Phase 1 content is reviewed English. The locale resolver and typed
-content contract are prepared for Bulgarian and English without duplicating
-route components. Bulgarian is the planned primary commercial language.
+Bulgarian is the primary commercial locale on stable, unprefixed URLs. English
+uses the matching `/en` URL. Both languages satisfy the same exact TypeScript
+content contract and render through the same page and presentation components;
+the route files are thin Next.js adapters only.
 
-The next localization step is to add a reviewed Bulgarian content object that
-satisfies the same contract, then introduce locale-aware routing, canonical and
-`hreflang` behavior in one focused change. Final marketing copy must be reviewed
-by a Bulgarian speaker; automatic translation is not a publishing workflow.
+The BG/EN selector maps to the corresponding route and falls back to the target
+locale home only for an unknown path. It is a normal link, works without client
+storage, remains keyboard accessible and does not use browser-language
+redirects. Separate locale root layouts ensure that the document has an
+accurate `lang="bg"` or `lang="en"` attribute. Moving between the two root
+layouts performs a full document navigation by design.
+
+The Bulgarian copy is launch-preparation copy, not owner approval. It still
+requires final review by a Bulgarian-speaking business owner together with the
+facts listed in `docs/CONTENT_AUTHORITY.md`.
 
 ## SEO architecture
 
 - Every page has a specific title and description.
+- Every route exposes Bulgarian and English canonical alternatives plus an
+  `x-default` pointing to Bulgarian when a verified public origin is present.
 - The root title template, Open Graph defaults and generated visual are shared.
-- The complete route inventory drives `sitemap.xml`.
+- Open Graph locale and alternate-locale values match the rendered language.
+- The complete 30-URL bilingual route inventory drives `sitemap.xml`, including
+  language alternates.
 - `robots.txt` disallows crawling until a valid `PUBLIC_SITE_URL` is configured.
 - Canonical URLs are emitted only when `PUBLIC_SITE_URL` is a valid HTTPS origin
   or loopback URL. The local sitemap uses `http://localhost:3000` only as a
@@ -123,9 +141,11 @@ indication, preferred timing and notes. The image control is disabled and
 clearly marked as future functionality.
 
 Submission uses `preventDefault`, converts the current browser `FormData` to a
-plain object and validates it with Zod. Invalid fields receive associated error
-messages. Valid input produces a status message stating that nothing was sent
-or stored. The form has no `action`, Server Action, route handler, fetch call,
+plain object and validates it with a locale-aware Zod schema. Bulgarian and
+English labels, options, validation errors and acknowledgements have equivalent
+behavior. Invalid fields receive associated error messages. Valid input
+produces a status message stating that nothing was sent or stored. The form has
+no `action`, Server Action, route handler, fetch call, email integration,
 storage adapter or database import.
 
 Future connectivity belongs to the booking/request phase and requires server
@@ -136,14 +156,17 @@ acknowledgement behavior.
 ## Accessibility and responsive baseline
 
 The public shell provides semantic landmarks, a skip link, keyboard-operable
-navigation, visible focus, native FAQ disclosure controls, labelled fields,
-associated errors, live result messaging and reduced-motion and
-reduced-transparency handling. Layout and touch targets start at 320 CSS pixels
-and reflow at content-led breakpoints.
+navigation, an accessible text language selector, localized navigation labels,
+visible focus, native FAQ disclosure controls, labelled fields, associated
+errors, live result messaging and reduced-motion and reduced-transparency
+handling. Layout and touch targets start at 320 CSS pixels and reflow at
+content-led breakpoints. Bulgarian and English documents declare their own
+language.
 
-Phase 1 browser checks cover 320, 375, 430, 768, 1024 and desktop widths. A
-future production gate should add automated cross-browser accessibility and
-performance budgets against the deployed origin.
+Phase 1A browser checks cover both locales and representative 320, 375, 430,
+768, 1024 and desktop widths. A future production gate should add automated
+cross-browser accessibility and performance budgets against the deployed
+origin.
 
 ## Deferred dependencies
 

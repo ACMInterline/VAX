@@ -1,17 +1,18 @@
-const trustPoints = [
-  ["01", "Assessment before treatment"],
-  ["02", "Material-conscious decisions"],
-  ["03", "On-site where appropriate"],
-  ["04", "Clear return-to-use guidance"],
-] as const;
+import type { PublicLocale } from "@/config/public-site";
+import { getPublicContent } from "@/content/public-site";
 
-export function TrustStrip() {
+export function TrustStrip({ locale }: { locale: PublicLocale }) {
+  const content = getPublicContent(locale);
+
   return (
-    <aside className="trust-strip" aria-label="Service principles">
+    <aside
+      className="trust-strip"
+      aria-label={content.common.accessibility.servicePrinciples}
+    >
       <div className="site-container trust-strip__grid">
-        {trustPoints.map(([number, label]) => (
-          <div key={number}>
-            <span>{number}</span>
+        {content.pages.home.trustPoints.map((label, index) => (
+          <div key={label}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
             <p>{label}</p>
           </div>
         ))}

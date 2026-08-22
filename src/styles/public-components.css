@@ -776,7 +776,8 @@
   }
 
   .page-hero h1 {
-    font-size: clamp(3rem, 16vw, 4.6rem);
+    overflow-wrap: break-word;
+    font-size: clamp(2.5rem, 12vw, 4.6rem);
   }
 
   .page-hero__actions,
@@ -791,7 +792,7 @@
   .service-grid,
   .service-grid--two,
   .process-steps {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .process-steps li:last-child {
@@ -807,7 +808,7 @@
   }
 
   .treatment-levels article > div:last-child {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .treatment-levels article span {
@@ -815,7 +816,7 @@
   }
 
   .trust-strip__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .trust-strip__grid > div + div,
@@ -825,7 +826,7 @@
   }
 
   .check-list--columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

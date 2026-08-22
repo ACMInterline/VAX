@@ -13,7 +13,8 @@ The current repository contains:
 - one infrastructure table, system_metadata;
 - generated, reviewable SQL migrations;
 - a safe application and database health endpoint; and
-- a responsive, claim-controlled public service website;
+- a responsive, Bulgarian-first public service website with complete English
+  routes and evidence-controlled marketing claims;
 - a browser-only request prototype that creates no records; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
@@ -145,5 +146,8 @@ credential-free CI validation. Phase 0D establishes the autonomous Codex
 worktree, pull-request, validation, and connection boundaries. Phase 1 adds the
 complete public route foundation, temporary configurable identity, technical
 SEO, accessibility and responsive baselines, and a non-persistent request
-prototype. See [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). No Phase 1 database
-schema or record changes are required, and nothing has been deployed.
+prototype. Phase 1A makes Bulgarian primary at unprefixed routes, keeps matching
+English routes under `/en`, and adds the content authority defined in
+[docs/CONTENT_AUTHORITY.md](docs/CONTENT_AUTHORITY.md). See
+[docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). No Phase 1 or 1A database schema or
+record changes are required, and nothing has been deployed.

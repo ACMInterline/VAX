@@ -1,4 +1,4 @@
-import type { PublicSiteContent } from "./types";
+import type { PublicContentCore } from "./types";
 
 export const englishPublicContent = {
   locale: "en",
@@ -44,7 +44,7 @@ export const englishPublicContent = {
     howItWorks: {
       title: "How professional fabric cleaning works",
       description:
-        "From initial description and material assessment to careful treatment, practical aftercare and rapid return to use.",
+        "From initial description and material assessment to careful treatment, practical aftercare and return-to-use guidance.",
     },
     whyProfessional: {
       title: "Why choose professional fabric cleaning",
@@ -105,7 +105,7 @@ export const englishPublicContent = {
         "Moisture managed for the material and conditions",
       ],
       expectations: [
-        "Typical professional processing capacity can reach approximately 25 m² per hour depending on surface, treatment level and condition.",
+        "Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface.",
         "Many carpets can be treated where they are installed, reducing unnecessary transport and disruption.",
       ],
       limitations: [
@@ -197,7 +197,7 @@ export const englishPublicContent = {
       description:
         "A measured maintenance service focused on accumulated soil, dust, residues and body oils in suitable mattress surfaces.",
       summary:
-        "Professional cleaning can support a refreshed sleeping environment while material, construction and drying conditions remain central to the plan.",
+        "Professional cleaning can refresh the surface while material, construction and drying conditions remain central to the plan.",
       idealFor: [
         "Routine household mattress maintenance",
         "Rented and serviced accommodation",
@@ -253,7 +253,7 @@ export const englishPublicContent = {
         "Clear expectations for access and reuse",
       ],
       expectations: [
-        "Typical professional processing capacity can reach approximately 25 m² per hour depending on surface, treatment level and condition.",
+        "Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface.",
         "Early or later appointments may reduce operational disruption when building and local requirements allow.",
       ],
       limitations: [
@@ -291,7 +291,7 @@ export const englishPublicContent = {
       ],
       expectations: [
         "The aim is the best reasonable cleaning result with minimum unnecessary stress on the material.",
-        "A sustainable result may mean extending useful life rather than pursuing every remaining mark.",
+        "A responsible result may mean supporting useful life rather than pursuing every remaining mark.",
       ],
       limitations: [
         "Assessment may conclude that on-site cleaning is not appropriate.",
@@ -352,12 +352,12 @@ export const englishPublicContent = {
     {
       question: "How long does cleaning take?",
       answer:
-        "Time depends on area, material, access, condition and treatment level. Typical professional processing capacity can reach approximately 25 m² per hour depending on surface, treatment level and condition, but this is not a universal completion-time promise.",
+        "Time depends on area, material, access, condition and treatment level. Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface. This is not a guaranteed completion time.",
     },
     {
       question: "How quickly can the surface be used again?",
       answer:
-        "Rapid return to use is an important planning goal. Actual timing depends on the material, method, airflow, temperature, humidity, contamination and depth of treatment, so practical guidance is given for the specific surface.",
+        "The method is directed toward limiting residual moisture and returning treated surfaces to normal use sooner. Actual timing depends on the material, treatment depth, airflow, temperature, relative humidity, contamination and surface construction, so guidance is specific to the item and conditions.",
     },
     {
       question: "Can every stain be removed?",
@@ -400,4 +400,4 @@ export const englishPublicContent = {
         "Deep professional cleaning can help remove accumulated soil, dust and residues that routine vacuuming may leave behind. It is a fabric-maintenance service, not medical treatment, and no personal health outcome is promised.",
     },
   ],
-} as const satisfies PublicSiteContent;
+} as const satisfies PublicContentCore;

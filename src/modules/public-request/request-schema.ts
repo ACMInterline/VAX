@@ -1,82 +1,97 @@
 import { z } from "zod";
+import type { PublicLocale } from "@/config/public-site";
+import { getPublicContent } from "@/content/public-site";
 
-export const requestServiceOptions = [
-  { value: "carpet", label: "Carpet" },
-  { value: "rug", label: "Rug" },
-  { value: "sofa", label: "Sofa" },
-  { value: "armchair", label: "Armchair" },
-  { value: "dining-chair", label: "Dining chair" },
-  { value: "mattress", label: "Mattress" },
-  { value: "office-carpet", label: "Office carpet" },
-  { value: "other-upholstery", label: "Other upholstery" },
+export const requestServiceValues = [
+  "carpet",
+  "rug",
+  "sofa",
+  "armchair",
+  "dining-chair",
+  "mattress",
+  "office-carpet",
+  "other-upholstery",
 ] as const;
 
-const requestServiceValues = requestServiceOptions.map(
-  (service) => service.value,
-) as [
-  (typeof requestServiceOptions)[number]["value"],
-  ...(typeof requestServiceOptions)[number]["value"][],
-];
+export const propertyTypeValues = [
+  "apartment",
+  "house",
+  "rented-home",
+  "office",
+  "hotel-guest-house",
+  "serviced-apartment",
+  "hospitality",
+  "public-space",
+  "other",
+] as const;
 
-const optionalShortText = z.string().trim().max(120).optional();
+export const conditionValues = [
+  "routine",
+  "visible-soil",
+  "heavy-soil",
+  "unsure",
+] as const;
 
-export const publicRequestSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(2, "Enter your name.")
-    .max(100, "Keep the name under 100 characters."),
-  email: z
-    .string()
-    .trim()
-    .email("Enter a valid email address.")
-    .max(254),
-  phone: z
-    .string()
-    .trim()
-    .min(6, "Enter a phone number.")
-    .max(32, "Keep the phone number under 32 characters.")
-    .regex(/^[+()\d\s.-]+$/, "Use a valid phone-number format."),
-  district: z
-    .string()
-    .trim()
-    .min(2, "Enter a Sofia area or district.")
-    .max(100),
-  propertyType: z.enum([
-    "apartment",
-    "house",
-    "rented-home",
-    "office",
-    "hotel-guest-house",
-    "serviced-apartment",
-    "hospitality",
-    "public-space",
-    "other",
-  ]),
-  services: z
-    .array(z.enum(requestServiceValues))
-    .min(1, "Select at least one service."),
-  estimatedQuantity: optionalShortText,
-  approximateArea: optionalShortText,
-  condition: z.enum(["routine", "visible-soil", "heavy-soil", "unsure"]),
-  stainsPresent: z.enum(["yes", "no", "unsure"]),
-  delicateMaterial: z.boolean(),
-  preferredDate: z.string().trim().max(20).optional(),
-  preferredTime: z.enum([
-    "early-morning",
-    "morning",
-    "afternoon",
-    "evening",
-    "flexible",
-  ]),
-  notes: z
-    .string()
-    .trim()
-    .max(1500, "Keep notes under 1,500 characters.")
-    .optional(),
-});
+export const stainValues = ["yes", "no", "unsure"] as const;
 
-export type PublicRequestInput = z.infer<typeof publicRequestSchema>;
+export const preferredTimeValues = [
+  "early-morning",
+  "morning",
+  "afternoon",
+  "evening",
+  "flexible",
+] as const;
+
+export function createPublicRequestSchema(locale: PublicLocale) {
+  const messages = getPublicContent(locale).requestForm.validation;
+  const optionalShortText = z.string().trim().max(120).optional();
+
+  return z.object({
+    name: z
+      .string()
+      .trim()
+      .min(2, messages.nameRequired)
+      .max(100, messages.nameTooLong),
+    email: z.string().trim().email(messages.emailInvalid).max(254),
+    phone: z
+      .string()
+      .trim()
+      .min(6, messages.phoneRequired)
+      .max(32, messages.phoneTooLong)
+      .regex(/^[+()\d\s.-]+$/, messages.phoneInvalid),
+    district: z
+      .string()
+      .trim()
+      .min(2, messages.districtRequired)
+      .max(100),
+    propertyType: z.enum(propertyTypeValues, {
+      error: messages.propertyTypeRequired,
+    }),
+    services: z
+      .array(z.enum(requestServiceValues))
+      .min(1, messages.serviceRequired),
+    estimatedQuantity: optionalShortText,
+    approximateArea: optionalShortText,
+    condition: z.enum(conditionValues, {
+      error: messages.conditionRequired,
+    }),
+    stainsPresent: z.enum(stainValues, {
+      error: messages.stainsRequired,
+    }),
+    delicateMaterial: z.boolean(),
+    preferredDate: z.string().trim().max(20).optional(),
+    preferredTime: z.enum(preferredTimeValues),
+    notes: z
+      .string()
+      .trim()
+      .max(1500, messages.notesTooLong)
+      .optional(),
+  });
+}
+
+export type PublicRequestInput = z.infer<
+  ReturnType<typeof createPublicRequestSchema>
+>;
 
 function optionalFormString(formData: FormData, name: string) {
   const value = formData.get(name);

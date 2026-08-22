@@ -118,10 +118,17 @@ retention, logging, duplicate submission, idempotency, file metadata, object
 storage and operational acknowledgements.
 
 Public hygiene, stain, acoustic, timing and product-performance claims are also
-a trust boundary. `src/content/public-site/claims.ts` records prohibited
-absolute claims and evidence-review topics, with tests over publishable content.
-Content review remains required; a passing pattern test is not evidence for a
-marketing claim.
+a trust boundary. `src/content/public-site/claims.ts` classifies important
+claims as `verified`, `qualified`, `manufacturer_evidence_required`,
+`legal_verification_required` or `prohibited`, with tests over publishable
+Bulgarian and English content. `docs/CONTENT_AUTHORITY.md` records the approved
+publication boundary and evidence needed for any stronger statement. Content
+review remains required; a passing pattern test is not evidence for a marketing
+claim.
+
+The language selector uses deterministic public URLs and stores no locale
+preference. Both locale versions preserve the same non-persistent request-form
+boundary and must not import server environment or database code.
 
 ## Future identity and authorization
 

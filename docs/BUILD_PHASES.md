@@ -34,15 +34,22 @@ discovery, and contact or request entry points without prematurely building the
 booking engine.
 
 Implemented as a complete public route foundation with a temporary configurable
-identity, typed localization-ready content, six service paths, technical SEO,
-claim controls, responsive and accessible presentation, contact placeholders
-and a browser-only request prototype. The form performs no persistence and no
-database schema change is part of this phase. Final identity, original
-photography, Bulgarian copy, pricing, request connectivity, deployment and
-production performance measurement remain gated follow-up work.
+identity, typed content, six service paths, technical SEO, claim controls,
+responsive and accessible presentation, contact placeholders and a browser-only
+request prototype. The form performs no persistence and no database schema
+change is part of this phase.
 
-Gate: approved content and routes, responsive and accessible browser checks,
-performance budget, and explicit form-backend behavior.
+Phase 1A makes Bulgarian the primary unprefixed locale and retains complete
+English `/en` routes through the same components. It adds corresponding-page
+language switching, localized metadata and request validation, a typed
+five-status marketing-claim authority register and human-readable evidence
+documentation. Final identity, owner-approved Bulgarian copy, original
+photography, pricing, request connectivity, deployment and production
+performance measurement remain gated follow-up work.
+
+Gate: approved content and routes in both locales, responsive and accessible
+browser checks, claim-evidence review, performance budget, and explicit
+form-backend behavior.
 
 ## Phase 2 — Service catalogue and pricing foundation
 
