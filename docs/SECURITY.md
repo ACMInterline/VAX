@@ -1,10 +1,11 @@
 # Security
 
-## Security posture for Phase 0A
+## Security posture through Phase 3A
 
-This phase establishes safe defaults; it does not claim production security
-readiness. Authentication, authorization, rate limiting, deployment controls,
-monitoring, recovery, and production data governance remain future work.
+The repository now has a development authentication, session and RBAC boundary,
+but it does not claim production security readiness. Production-grade shared
+rate limiting, email delivery, trusted origins, monitoring, recovery and
+production data governance remain gated.
 
 ## Time-bound framework advisory
 
@@ -26,7 +27,9 @@ Deployment remains blocked until all of the following are complete:
 
 ## Secrets and environment configuration
 
-- DATABASE_URL is the only current runtime secret-bearing variable.
+- Runtime secret-bearing variables include `DATABASE_URL` and
+  `NEON_AUTH_COOKIE_SECRET`; Auth endpoint and bootstrap subject configuration
+  must also remain server-only.
 - Read it from the environment through the validated server-side boundary.
 - Never hard-code, log, return, test-fixture, or commit a real connection value.
 - Never commit .env, .env.local, credentials, tokens, keys, or certificates.
@@ -34,6 +37,9 @@ Deployment remains blocked until all of the following are complete:
 - Use separate credentials and databases per environment.
 - Local development must use the VAX Neon `development` branch, never the
   production branch.
+- Database mutation commands require an explicit `development` acknowledgement
+  and an exact expected development database hostname in addition to
+  `DATABASE_URL`; those non-secret controls must never contain credentials.
 - Future staging and production environments must inject DATABASE_URL through
   their deployment platform rather than use a committed environment file.
 - GitHub Actions must validate without a live database credential and must not
@@ -70,9 +76,13 @@ database modules.
 - Back up and rehearse recovery before destructive production changes.
 - Do not store binary files or photos in PostgreSQL.
 
-The current migration was generated locally and applied only to the VAX Neon
-`development` branch during Phase 0B. Applying any migration to production
-requires separate explicit authorization.
+Application migrations are applied only to the VAX Neon `development` branch.
+The Phase 3A migration creates additive public-schema identity/RBAC tables and
+must never target production or directly change provider-managed `neon_auth`.
+The current migration and owner-bootstrap commands refuse production mode,
+non-development mutation labels and unexpected database hostnames before
+opening a database client. Applying any migration to production requires a
+separately designed command and explicit authorization.
 
 ## Health endpoint
 
@@ -195,17 +205,35 @@ Only the reviewed additive Phase 2B migration and deterministic seed may run on
 Neon `development`. Production and Neon Auth-managed schemas remain outside the
 phase authorization. No map credential or live provider is introduced.
 
-## Future identity and authorization
+## Phase 3A identity and authorization
 
-- Keep the authentication provider replaceable.
-- Store application-owned user identity separately from provider subject IDs.
-- Deny by default and grant the minimum required permissions.
-- Enforce authorization in use cases and data access, not only in UI controls.
-- Protect privileged role changes and recovery flows with strong
-  re-authentication where appropriate.
-- Invalidate or re-evaluate sessions after material permission changes.
+- Neon Auth owns passwords, verification, reset tokens and provider sessions;
+  application code never manipulates its schema.
+- Application profiles and RBAC are separate public-schema records linked by a
+  unique opaque provider subject.
+- Signed HttpOnly cookies, `SameSite=Strict`, fixed redirects and server-side
+  session checks are used; session credentials never enter localStorage.
+- Provider calls remain server-only. No public catch-all, raw sign-in/signup or
+  provider-token route is mounted by VAX.
+- Every protected operation must re-authorize server-side. Proxy and hidden
+  navigation are defense in depth only.
+- `SUSPENDED`, `DISABLED`, no-role and missing-permission states deny access.
+- Self-registration is fixed to `CUSTOMER`; owner bootstrap is explicit,
+  provider-subject-based, idempotent and disabled after ownership exists.
+- Login and recovery errors avoid account-existence disclosure and provider
+  detail leakage. Passwords, OTPs, reset/session tokens and raw provider errors
+  are neither logged nor stored by VAX.
+- Local auth attempt limiting is process-local. Production auth fails closed
+  until a distributed/provider-backed limiter is selected.
+- Auth and `/app` routes are private/no-store and noindex, with deny framing,
+  MIME-sniffing, referrer and browser-permission headers.
+- The enabled development Data API is not an application/browser integration.
+  Because application tables do not yet have reviewed RLS, browser token access
+  is prohibited until least-privilege grants and row-level policies are designed
+  and verified.
 
-Detailed RBAC is intentionally deferred to Phase 3.
+Detailed roles, sessions, audit events and remaining production blockers are in
+`docs/IDENTITY_AND_ACCESS.md`.
 
 ## Auditability
 
@@ -226,9 +254,9 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 
 ## Application safeguards for future phases
 
-- CSRF protection appropriate to the chosen session architecture
+- Reconfirm CSRF and cookie policy if social/OAuth or cross-site embedding is added
 - Safe output encoding and content security policy
-- Rate and abuse controls for quote, booking, login, and messaging paths
+- Distributed rate and abuse controls for quote, booking, authentication, and messaging paths
 - Idempotency for bookings, payments, notifications, and webhooks
 - File type, size, malware, and authorization controls for uploads
 - Encryption in transit and provider-supported encryption at rest

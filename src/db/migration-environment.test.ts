@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
+import { assertDevelopmentDatabaseMutationTarget } from "./migration-environment";
 
 const execFileAsync = promisify(execFile);
 const temporaryDirectories: string[] = [];
@@ -77,5 +78,57 @@ describe("loadMigrationEnvironment", () => {
     await expect(
       readLoadedDatabaseUrl(projectDirectory, hostedDatabaseUrl),
     ).resolves.toBe(hostedDatabaseUrl);
+  });
+});
+
+describe("assertDevelopmentDatabaseMutationTarget", () => {
+  const developmentUrl =
+    "postgresql://synthetic:synthetic@development.db.invalid/neondb";
+
+  it("accepts only an explicit development target with an exact hostname", () => {
+    expect(() =>
+      assertDevelopmentDatabaseMutationTarget({
+        NODE_ENV: "development",
+        DATABASE_URL: developmentUrl,
+        DATABASE_MUTATION_ENVIRONMENT: "development",
+        DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+      }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    {
+      NODE_ENV: "production",
+      DATABASE_URL: developmentUrl,
+      DATABASE_MUTATION_ENVIRONMENT: "development",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+    },
+    {
+      NODE_ENV: "development",
+      DATABASE_URL: developmentUrl,
+      DATABASE_MUTATION_ENVIRONMENT: "production",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+    },
+    {
+      NODE_ENV: "development",
+      DATABASE_URL: developmentUrl,
+      DATABASE_MUTATION_ENVIRONMENT: "development",
+      DATABASE_MUTATION_EXPECTED_HOST: "production.db.invalid",
+    },
+    {
+      NODE_ENV: "development",
+      DATABASE_MUTATION_ENVIRONMENT: "development",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+    },
+    {
+      NODE_ENV: "development",
+      DATABASE_URL: "not-a-postgres-url",
+      DATABASE_MUTATION_ENVIRONMENT: "development",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+    },
+  ])("rejects an unauthorized mutation environment", (environment) => {
+    expect(() => assertDevelopmentDatabaseMutationTarget(environment)).toThrow(
+      "Database mutation target is not authorized.",
+    );
   });
 });

@@ -98,6 +98,27 @@ table. Breaks, sample jobs and future occupancy are typed ephemeral contracts in
 the pure availability module. A future accepted booking must preserve immutable
 price, duration, travel, working-hours, equipment and scheduling provenance.
 
+Phase 3A adds application-owned identity and authorization structures on
+development only:
+
+| Structure | Responsibility |
+| --- | --- |
+| `user_profiles` | Unique provider-subject mapping, display name, preferred locale, nullable phone and ACTIVE/SUSPENDED/DISABLED status |
+| `application_roles` | Stable role codes and localized labels |
+| `permissions` | Stable action capability codes |
+| `role_permissions` | Deterministically seeded canonical role mapping |
+| `user_roles` | Active/revoked assignment state, source, time and optional application actors |
+| `auth_audit_events` | Append-oriented sanitized application security events |
+
+These tables contain no password, session, reset token, provider secret,
+customer, property, request, quote or booking. Neon continues to own accounts,
+credentials and sessions in `neon_auth`, which remains outside Drizzle.
+Canonical seeds insert new roles and permissions as active but preserve an
+existing row's operator-managed active/inactive state on conflict; the
+role-to-permission mapping remains code-controlled and deterministic. The
+application profile UUID is distinct from the provider subject and from any
+future CRM customer identifier.
+
 ## Long-term relationship
 
 The central durable hierarchy is:
@@ -123,11 +144,10 @@ must be designed in the owning phase before migration.
 
 ### Identity
 
-| Planned table | Responsibility |
-| --- | --- |
-| users | Application identities independent of a specific auth provider |
-| roles | Named permission groupings |
-| user_roles | Many-to-many role assignments with lifecycle metadata |
+The initial application profile, role, permission, assignment and authentication
+event tables are implemented in Phase 3A. Privileged role/status management,
+invitations, organization membership and provider lifecycle reconciliation
+remain planned; see `docs/IDENTITY_AND_ACCESS.md`.
 
 ### CRM
 

@@ -13,9 +13,11 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "tsx src/db/migrate.ts",
+    "auth:bootstrap-owner": "tsx src/db/bootstrap-owner.ts",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build && npm run db:check && npm audit && git diff --check"
   },
   "dependencies": {
+    "@neondatabase/auth": "0.5.0-beta",
     "@neondatabase/serverless": "^1.1.0",
     "@next/env": "16.3.2",
     "drizzle-orm": "^0.45.2",

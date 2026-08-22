@@ -9,7 +9,24 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     rules: configuredUrl
-      ? { userAgent: "*", allow: "/", disallow: "/internal/" }
+      ? {
+          userAgent: "*",
+          allow: "/",
+          disallow: [
+            "/internal/",
+            "/app/",
+            "/login",
+            "/signup",
+            "/forgot-password",
+            "/reset-password",
+            "/verify-email",
+            "/en/login",
+            "/en/signup",
+            "/en/forgot-password",
+            "/en/reset-password",
+            "/en/verify-email",
+          ],
+        }
       : { userAgent: "*", disallow: "/" },
     sitemap: configuredUrl
       ? new URL("/sitemap.xml", getSitemapBaseUrl()).toString()

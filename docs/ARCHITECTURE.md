@@ -41,6 +41,8 @@ introduced.
 | src/modules/service-catalogue | Provider-neutral canonical catalogue types, codes, labels and capability definitions | Database clients, framework behavior or monetary pricing |
 | src/modules/commercial-engine | Pure versioned pricing, VAT, duration, snapshot and contribution policies | Next.js, Drizzle, Neon, persistence or public marketing copy |
 | src/modules/availability-engine | Pure service-area, travel, capacity, slot and utilisation policies | Framework, database, live map provider, customer persistence or dispatch UI |
+| src/modules/identity-access | Stable roles, permissions, authorization and navigation policy | Next.js, provider SDKs, sessions or credentials |
+| src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
 | src/lib | Small stable cross-cutting utilities | Unbounded shared business logic |
@@ -63,6 +65,11 @@ object-storage SDK, or payment-provider types.
 
 The Phase 0A health module is intentionally an infrastructure endpoint and may
 call the database health probe directly; it is not a business-domain pattern.
+
+Phase 3A follows the normal direction: auth routes and Server Actions call the
+provider-neutral authentication boundary, application authorization loads its
+own profile and permission state, and only the centralized adapter imports the
+Neon Auth SDK.
 
 ## Public website boundary
 
@@ -181,6 +188,13 @@ profiles/rules use insert-only seed behavior so existing versions are not
 rewritten. The seed contains no customers, quotes, bookings, jobs, payments,
 invoices, actual product claims or production records.
 
+Phase 3A canonical roles, permissions and mappings are also code-controlled and
+deterministically seeded. Application profiles, role assignments and sanitized
+security events are runtime records. They are separate from both provider-owned
+identity and future CRM/customer data. Canonical seed reruns refresh code-owned
+labels and mappings but preserve an operator-disabled role or permission; only a
+future explicit audited administration flow may reactivate it.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
@@ -189,9 +203,12 @@ invoices, actual product claims or production records.
 - The Neon `production` branch is not an ordinary development target.
 - Future staging and production deployments must inject DATABASE_URL through
   their hosting environment instead of relying on a repository environment
-  file.
+  file. Authentication deployments must likewise inject branch-specific Auth
+  endpoint and cookie-secret configuration.
 - Every migration must be reviewed before execution. Production migration
   requires separate explicit authorization.
+- Current mutation scripts additionally require an explicit development label
+  and exact approved database hostname; they are not production migration tools.
 
 ## Health flow
 
@@ -207,13 +224,15 @@ GET /api/health follows this path:
 Raw errors, stack traces, hostnames, usernames, and connection values do not
 cross the HTTP boundary. The response is marked no-store.
 
-## Replaceable future providers
+## Replaceable providers
 
 ### Authentication
 
-Authentication is not implemented. Future identity work must expose
-application-owned identity and authorization contracts. Provider session,
-token, and webhook types stay in an adapter.
+Phase 3A uses Neon Auth's managed Better Auth integration. Application code
+depends on `AuthenticatedUser`, `Session`, `UserId` and permission policy;
+provider session, API and token shapes stay inside `src/auth/neon-provider.ts`.
+Provider-managed `neon_auth`, application `user_profiles`, and future customer
+records are separate ownership boundaries. See `docs/IDENTITY_AND_ACCESS.md`.
 
 ### Object storage
 
@@ -242,11 +261,11 @@ validated internal commands.
 
 The following remain deliberately undecided:
 
-- authentication provider and session model;
+- production authentication email, trusted-origin and distributed rate-limit configuration;
 - object-storage provider;
 - hosting platform;
 - payment, mapping, email, and SMS providers;
-- detailed authorization matrix;
+- privileged identity administration and organization scope;
 - final commercial identity and owner-approved content workflow;
 - offline technician synchronization;
 - analytics stack;

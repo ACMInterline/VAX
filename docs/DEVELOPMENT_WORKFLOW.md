@@ -41,6 +41,8 @@ task normally owns one disposable worktree and branch.
 | Production database | Never use for normal development |
 | Local application | Loopback only unless deployment is explicitly authorized |
 | Runtime secret | Ignored `.env.local`; never commit, print, or copy into tracked configuration |
+| Database mutation interlock | Explicit development label plus exact approved development database hostname |
+| Local authentication | Neon Auth endpoint for the VAX `development` branch only; synthetic identities only |
 | CI | Credential-free; no live database, migration, or deployment step |
 
 The tracked `.worktreeinclude` contains only the filename `.env.local`, never
@@ -58,6 +60,16 @@ local worktrees promptly.
 - Application runtime database access comes only from `DATABASE_URL` in the
   ignored local `.env.local` during development, or from a future authorized
   hosting environment.
+- Application runtime authentication uses branch-specific
+  `NEON_AUTH_BASE_URL` plus a local `NEON_AUTH_COOKIE_SECRET`; the management
+  integration is not a browser/session connection.
+
+`npm run db:migrate` and `npm run auth:bootstrap-owner` additionally require
+`DATABASE_MUTATION_ENVIRONMENT=development` and
+`DATABASE_MUTATION_EXPECTED_HOST` matching the hostname parsed from the approved
+development `DATABASE_URL`. The expected-host value contains no username,
+password or connection string. These scripts intentionally cannot be reused as
+production mutation commands.
 
 The Neon management integration is not an application runtime connection. Do
 not request a connection string from it when `.env.local` already provides the
@@ -84,6 +96,11 @@ insert-only, inactive provisional price-book and duration versions; reruns must
 not update an existing commercial version. Phase 2B adds insert-only inactive
 working-hour, appointment-window and travel versions plus idempotent neutral
 team/equipment fixtures; it persists no occupancy or reservation.
+Phase 3A adds a deterministic canonical role/permission seed plus runtime
+application profile, assignment and sanitized auth-event records. Migration and
+test identities target development only; mutation commands enforce the explicit
+development label and exact-host interlock, and no script may query or mutate
+`neon_auth` directly.
 
 ## Validation automation
 

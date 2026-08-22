@@ -1,0 +1,210 @@
+.application-body {
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.application-shell {
+  min-height: 100vh;
+}
+
+.application-header {
+  display: flex;
+  min-height: 5.25rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.25rem, 5vw, 4rem);
+  border-bottom: 1px solid var(--line-inverse);
+  color: var(--ink-inverse);
+  background: var(--surface-deeper);
+}
+
+.application-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+}
+
+.application-brand span {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  letter-spacing: -0.04em;
+}
+
+.application-brand small {
+  color: rgba(247, 245, 239, 0.64);
+  font-size: 0.7rem;
+}
+
+.application-logout {
+  min-height: 2.8rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--line-inverse);
+  border-radius: 999px;
+  color: var(--ink-inverse);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.application-main {
+  width: min(calc(100% - clamp(2rem, 7vw, 7rem)), 72rem);
+  margin-inline: auto;
+  padding-block: clamp(3rem, 8vw, 7rem);
+}
+
+.application-welcome {
+  max-width: 54rem;
+}
+
+.application-welcome h1 {
+  margin-bottom: 1.3rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.7rem, 8vw, 5.7rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.application-welcome > p:last-child,
+.application-section-heading > p:last-child {
+  color: var(--ink-soft);
+}
+
+.application-account {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-top: clamp(2.5rem, 6vw, 5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-large);
+  background: var(--line);
+}
+
+.application-account > div {
+  padding: clamp(1.5rem, 5vw, 3rem);
+  background: var(--surface);
+}
+
+.application-account dl {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+}
+
+.application-account dl > div {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) minmax(8rem, auto);
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.application-account dt {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+.application-account dd {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-align: right;
+}
+
+.application-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.application-role-list li {
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.application-empty {
+  color: var(--ink-faint);
+  font-size: 0.8rem;
+}
+
+.application-navigation {
+  margin-top: clamp(3rem, 7vw, 6rem);
+}
+
+.application-section-heading {
+  max-width: 48rem;
+  margin-bottom: 2rem;
+}
+
+.application-navigation ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.application-navigation li {
+  display: grid;
+  min-height: 10rem;
+  align-content: start;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-medium);
+  background: var(--surface);
+  box-shadow: var(--shadow-small);
+}
+
+.application-navigation li span {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.application-navigation li small {
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+}
+
+.application-navigation li em {
+  align-self: end;
+  margin-top: 1.5rem;
+  color: var(--warm);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 52rem) {
+  .application-account,
+  .application-navigation ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 34rem) {
+  .application-brand small {
+    display: none;
+  }
+
+  .application-account dl > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .application-account dd {
+    text-align: left;
+  }
+}
