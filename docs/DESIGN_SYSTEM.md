@@ -7,8 +7,9 @@ visual language should evoke expert hygiene and fabric care without relying on
 generic discount-cleaning imagery, loud sales colors, or a disposable template
 look.
 
-No final company name, logo, typeface, or marketing art direction is selected
-in Phase 0A.
+No final company name, logo or trademark art direction is selected. The Phase 1
+public site uses a temporary typographic identity and abstract fabric studies
+that can be replaced without changing layout components.
 
 ## Experience principles
 
@@ -37,19 +38,28 @@ may use different page layouts while sharing:
 Shared primitives must not force the public site and operations console into
 the same information density.
 
-## Initial token direction
+## Phase 1 public tokens
 
-The Phase 0A shell uses provisional tokens only:
+The Phase 1 public surface establishes application-owned provisional tokens:
 
-- warm off-white and mineral green surfaces;
-- deep green ink rather than pure black;
-- a restrained hygienic green accent;
+- warm off-white, sage and mineral-green surfaces;
+- deep green ink and inverse surfaces rather than pure black;
+- restrained green status accents and a warm clay detail accent;
 - subtle borders and low-chroma shadows;
-- large but controlled radius;
-- native system typography to avoid external font dependencies.
+- small through extra-large radius tokens by component purpose;
+- a native editorial serif stack for public headings and a native sans stack
+  for controls and body copy; and
+- fluid content width, spacing and typography based on `clamp()`.
 
-These values demonstrate structure and may be revised during the public-site
-design phase. They are not final brand assets.
+The tokens live in `src/styles/public-foundation.css`; layout, components, pages
+and forms are separated into focused global layers. They demonstrate a coherent
+visual direction but remain replaceable and are not final brand assets.
+
+Abstract visual containers stand in for future original photography. Approved
+future photography should show real technicians, actual equipment, on-site
+work, fabric detail, permission-based examples, Sofia residential interiors and
+appropriate business environments. Stock or fabricated before-and-after proof
+must not silently replace those placeholders.
 
 ## Layout direction by surface
 

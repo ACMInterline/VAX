@@ -104,6 +104,25 @@ Validation does not replace authorization. Every protected use case must verify
 actor, action, resource ownership, and relevant organization scope on the
 server.
 
+## Phase 1 public request and content claims
+
+The public request form is a frontend-only prototype. It prevents native
+submission, has no action or server mutation, writes no database record and
+uploads no file. Its acknowledgement explicitly states that nothing was sent,
+stored, priced, scheduled or booked. Zod validation demonstrates the future
+input contract but is not a server security boundary.
+
+Before request persistence is added, complete a focused threat and privacy
+review covering server-side validation, rate and abuse controls, consent,
+retention, logging, duplicate submission, idempotency, file metadata, object
+storage and operational acknowledgements.
+
+Public hygiene, stain, acoustic, timing and product-performance claims are also
+a trust boundary. `src/content/public-site/claims.ts` records prohibited
+absolute claims and evidence-review topics, with tests over publishable content.
+Content review remains required; a passing pattern test is not evidence for a
+marketing claim.
+
 ## Future identity and authorization
 
 - Keep the authentication provider replaceable.
