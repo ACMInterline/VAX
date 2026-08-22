@@ -18,3 +18,5 @@ export const systemMetadata = pgTable("system_metadata", {
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+export * from "./schema/service-catalogue";

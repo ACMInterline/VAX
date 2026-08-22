@@ -4,6 +4,11 @@ import { useRef, useState, type FormEvent } from "react";
 import type { PublicLocale } from "@/config/public-site";
 import { getPublicContent } from "@/content/public-site";
 import {
+  getCatalogueLabel,
+  getCleaningItemType,
+  getConditionLevel,
+} from "@/modules/service-catalogue/catalogue";
+import {
   conditionValues,
   createPublicRequestSchema,
   preferredTimeValues,
@@ -191,7 +196,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
             <label key={value}>
               <input type="checkbox" name="services" value={value} />
               <span aria-hidden="true" />
-              {copy.fields.serviceOptions[value]}
+              {getCatalogueLabel(getCleaningItemType(value), locale)}
             </label>
           ))}
         </div>
@@ -249,7 +254,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               </option>
               {conditionValues.map((value) => (
                 <option key={value} value={value}>
-                  {copy.fields.conditionOptions[value]}
+                  {getCatalogueLabel(getConditionLevel(value), locale)}
                 </option>
               ))}
             </select>

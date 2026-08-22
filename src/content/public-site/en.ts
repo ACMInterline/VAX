@@ -79,6 +79,7 @@ export const englishPublicContent = {
   },
   services: [
     {
+      catalogueCode: "CARPET_CARE",
       slug: "carpet-cleaning",
       title: "On-site carpet cleaning",
       shortTitle: "Carpet cleaning",
@@ -116,6 +117,7 @@ export const englishPublicContent = {
       related: ["rug-cleaning", "office-carpet-cleaning"],
     },
     {
+      catalogueCode: "RUG_RUNNER_CARE",
       slug: "rug-cleaning",
       title: "Rug cleaning where appropriate",
       shortTitle: "Rug cleaning",
@@ -153,6 +155,7 @@ export const englishPublicContent = {
       related: ["carpet-cleaning", "delicate-fabric-care"],
     },
     {
+      catalogueCode: "UPHOLSTERY_CARE",
       slug: "sofa-upholstery-cleaning",
       title: "Sofa and upholstery cleaning",
       shortTitle: "Sofa & upholstery",
@@ -190,6 +193,7 @@ export const englishPublicContent = {
       related: ["delicate-fabric-care", "mattress-cleaning"],
     },
     {
+      catalogueCode: "MATTRESS_CARE",
       slug: "mattress-cleaning",
       title: "Professional mattress cleaning",
       shortTitle: "Mattress cleaning",
@@ -227,6 +231,7 @@ export const englishPublicContent = {
       related: ["sofa-upholstery-cleaning", "delicate-fabric-care"],
     },
     {
+      catalogueCode: "COMMERCIAL_TEXTILE_CARE",
       slug: "office-carpet-cleaning",
       title: "Office and commercial carpet cleaning",
       shortTitle: "Office carpets",
@@ -264,6 +269,7 @@ export const englishPublicContent = {
       related: ["carpet-cleaning", "sofa-upholstery-cleaning"],
     },
     {
+      catalogueCode: "DELICATE_TEXTILE_ASSESSMENT",
       slug: "delicate-fabric-care",
       title: "Delicate and valuable fabric assessment",
       shortTitle: "Delicate fabric care",
@@ -303,6 +309,7 @@ export const englishPublicContent = {
   ],
   treatmentLevels: [
     {
+      catalogueCode: "GENTLE_CARE",
       number: "01",
       name: "Gentle Care",
       description:
@@ -310,6 +317,7 @@ export const englishPublicContent = {
       intendedFor: "Sensitive materials and lighter maintenance",
     },
     {
+      catalogueCode: "REFRESH",
       number: "02",
       name: "Refresh",
       description:
@@ -317,6 +325,7 @@ export const englishPublicContent = {
       intendedFor: "Regular maintenance and general freshening",
     },
     {
+      catalogueCode: "DEEP_CLEAN",
       number: "03",
       name: "Deep Clean",
       description:
@@ -324,6 +333,7 @@ export const englishPublicContent = {
       intendedFor: "Established use and more visible soiling",
     },
     {
+      catalogueCode: "INTENSIVE",
       number: "04",
       name: "Intensive",
       description:
@@ -331,6 +341,7 @@ export const englishPublicContent = {
       intendedFor: "Heavier soil and complex, suitable surfaces",
     },
     {
+      catalogueCode: "SPECIALIST_ASSESSMENT",
       number: "05",
       name: "Specialist Assessment",
       description:

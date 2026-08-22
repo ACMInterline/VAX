@@ -11,10 +11,10 @@ function validRequest() {
     phone: "+359 88 123 4567",
     district: "Lozenets",
     propertyType: "apartment",
-    services: ["carpet", "sofa"],
+    services: ["CARPET_FIXED", "SOFA_3_SEAT"],
     estimatedQuantity: "1 sofa, 2 rooms",
     approximateArea: "35 m²",
-    condition: "visible-soil",
+    condition: "NOTICEABLY_SOILED",
     stainsPresent: "yes",
     delicateMaterial: true,
     preferredDate: "2026-09-10",
@@ -30,7 +30,10 @@ describe("localized public request schema", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.services).toEqual(["carpet", "sofa"]);
+        expect(result.data.services).toEqual([
+          "CARPET_FIXED",
+          "SOFA_3_SEAT",
+        ]);
         expect(result.data.delicateMaterial).toBe(true);
       }
     }
@@ -53,7 +56,9 @@ describe("localized public request schema", () => {
       expect(fields.email).toContain("Въведете валиден имейл адрес.");
       expect(fields.phone).toContain("Въведете телефонен номер.");
       expect(fields.propertyType).toContain("Изберете вид имот.");
-      expect(fields.services).toContain("Изберете поне една услуга.");
+      expect(fields.services).toContain(
+        "Изберете поне една повърхност или артикул.",
+      );
       expect(fields.condition).toContain("Изберете общо състояние.");
       expect(fields.stainsPresent).toContain(
         "Посочете дали виждате петна.",
@@ -78,7 +83,7 @@ describe("localized public request schema", () => {
       expect(fields.email).toContain("Enter a valid email address.");
       expect(fields.phone).toContain("Enter a phone number.");
       expect(fields.propertyType).toContain("Select a property type.");
-      expect(fields.services).toContain("Select at least one service.");
+      expect(fields.services).toContain("Select at least one surface or item.");
       expect(fields.condition).toContain("Select the general condition.");
       expect(fields.stainsPresent).toContain(
         "Select whether you can see stains.",
@@ -100,7 +105,7 @@ describe("localized public request schema", () => {
 
     expect(readPublicRequestForm(formData)).toMatchObject({
       name: "Nikolay Customer",
-      services: ["carpet", "sofa"],
+      services: ["CARPET_FIXED", "SOFA_3_SEAT"],
       delicateMaterial: true,
     });
   });

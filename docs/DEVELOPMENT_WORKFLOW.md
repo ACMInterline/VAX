@@ -68,13 +68,18 @@ approved development runtime configuration.
 Schema work follows this sequence:
 
 > feature implementation → Drizzle schema change → generated migration → SQL
-> and metadata inspection → explicitly authorized migration on Neon
-> `development` only → schema verification → tests → pull request and CI
+> and metadata inspection → explicitly authorized migration and deterministic
+> canonical seed on Neon `development` only → schema/reference verification →
+> tests → pull request and CI
 
 Never use schema push or a schema reset as a substitute for reviewed
 migrations. Never alter the Neon-managed `neon_auth` schema unless a future task
 explicitly concerns Neon Auth. Production migration requires separate explicit
 authorization and an impact review.
+
+Phase 2 catalogue definitions are code-controlled and upserted after migrations
+by `npm run db:migrate`. The seed is intentionally safe to rerun and contains no
+customers, transactions, prices or actual cleaning-product records.
 
 ## Validation automation
 

@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-Phase 0A implements exactly one infrastructure table: system_metadata.
+Phase 0A implements the infrastructure table `system_metadata`.
 
 | Column | PostgreSQL type | Rules | Purpose |
 | --- | --- | --- | --- |
@@ -16,12 +16,45 @@ The schema is defined in src/db/schema.ts. The corresponding SQL and Drizzle
 metadata live in drizzle/. The updated_at value is maintained by Drizzle on
 ORM-driven updates; the database does not contain a provider-specific trigger.
 
-No future business table listed below exists yet.
-
-Phase 0B applies this initial schema only to the VAX Neon `development` branch
+Phase 0B applied this initial schema only to the VAX Neon `development` branch
 and its `neondb` database. Drizzle also maintains its normal migration ledger.
-The production branch remains unmigrated, and no business records have been
-inserted.
+
+Phase 2 adds canonical service-catalogue reference structures to development.
+They define vocabulary and permitted relationships; they are not customer or
+transaction records.
+
+| Structure | Responsibility |
+| --- | --- |
+| `service_categories` | Stable high-level commercial and operational groupings |
+| `services` | Stable service identities, public-slug mapping and nullable duration inputs |
+| `cleaning_item_types` | Types of durable physical object or textile surface |
+| `measurement_modes` | Area, item, seat, linear and custom-assessment modes |
+| `cleaning_item_type_measurement_modes` | Permitted modes and exactly one default per item type |
+| `fibre_materials` | Fibre-composition vocabulary |
+| `surface_constructions` | Separate construction and finish vocabulary |
+| `condition_levels` | Neutral customer/inspection condition scale |
+| `issue_handling_classifications`, `issue_types` | Structured issue vocabulary and handling boundary |
+| `risk_flags` | Assessment and sensitivity flags, not diagnoses |
+| `treatment_levels` | Five non-customer-selectable treatment levels |
+| `mechanical_action_levels` | Mechanical-action intensity independent of treatment level |
+| `treatment_approaches` | Provider-neutral moisture and extraction approaches |
+| `reuse_advisory_categories` | Controlled return-to-use guidance category |
+| `cleaning_product_categories`, `cleaning_products` | Product evidence foundation; no actual products seeded |
+| `service_addons` | Price-free optional or conditional treatment vocabulary |
+| `capability_statuses` | Standard, assessment, specialist and unavailable relationship status |
+| `service_item_capabilities` | Service ↔ item applicability and inspection/instant-quote controls |
+| `service_treatment_levels` | Service ↔ treatment-level availability |
+| `material_treatment_considerations` | Explicit material ↔ treatment cautions |
+| `service_addon_capabilities` | Service ↔ add-on availability |
+
+All canonical rows use stable codes, Bulgarian and English labels and
+descriptions, ordering, active state and timestamps where appropriate. The
+code-controlled definitions and idempotent upsert seeder are described in
+`docs/SERVICE_CATALOGUE.md`.
+
+No monetary column, price row, customer, durable cleaning item, quote, booking,
+job or payment is introduced. The production branch remains without VAX
+application tables, and Neon Auth-managed schemas are not part of Drizzle.
 
 ## Long-term relationship
 
@@ -72,14 +105,15 @@ must be designed in the owning phase before migration.
 
 ### Service catalogue
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
 | service_categories | High-level catalogue grouping |
 | services | Bookable or quotable service definitions |
-| surface_materials | Materials relevant to inspection and treatment |
+| fibre_materials | Fibre composition relevant to inspection and treatment |
+| surface_constructions | Surface construction or finish, separate from fibre composition |
 | treatment_levels | Standardized effort or treatment classifications |
 | cleaning_products | Approved products and handling information |
-| stain_types | Standard stain taxonomy |
+| issue_types | Standard issue and contamination taxonomy with handling classification |
 
 ### Booking
 
