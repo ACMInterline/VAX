@@ -1,0 +1,235 @@
+:root {
+  --canvas: #f3f1ea;
+  --canvas-warm: #ebe5da;
+  --surface: #fbfaf6;
+  --surface-soft: #e8eee6;
+  --surface-sage: #d2dfd2;
+  --surface-deep: #183b33;
+  --surface-deeper: #102c27;
+  --ink: #172d28;
+  --ink-soft: #4f625c;
+  --ink-faint: #74847e;
+  --ink-inverse: #f7f5ef;
+  --accent: #286958;
+  --accent-strong: #174f42;
+  --accent-soft: #c6ddd1;
+  --warm: #c87d42;
+  --warm-soft: #f0d2b5;
+  --line: rgba(23, 45, 40, 0.14);
+  --line-strong: rgba(23, 45, 40, 0.28);
+  --line-inverse: rgba(247, 245, 239, 0.18);
+  --shadow-small: 0 12px 32px rgba(16, 44, 39, 0.08);
+  --shadow-large: 0 36px 90px rgba(16, 44, 39, 0.15);
+  --radius-small: 0.85rem;
+  --radius-medium: 1.35rem;
+  --radius-large: 2rem;
+  --radius-xlarge: 2.8rem;
+  --container: 78rem;
+  --reading: 46rem;
+  --section-space: clamp(5rem, 9vw, 8.5rem);
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+  background: var(--canvas);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: clip;
+  color: var(--ink);
+  background: var(--canvas);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  display: block;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+summary,
+select,
+label,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  border: 0;
+}
+
+p,
+h1,
+h2,
+h3,
+ul,
+ol,
+dl,
+blockquote {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  color: var(--ink-inverse);
+  background: var(--accent-strong);
+}
+
+:focus-visible {
+  outline: 3px solid var(--warm);
+  outline-offset: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 200;
+  top: 0.75rem;
+  left: 0.75rem;
+  padding: 0.8rem 1.1rem;
+  border-radius: 0.7rem;
+  color: var(--ink-inverse);
+  background: var(--surface-deeper);
+  font-size: 0.9rem;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.site-container {
+  width: min(calc(100% - clamp(2rem, 6vw, 6rem)), var(--container));
+  margin-inline: auto;
+}
+
+.section {
+  padding-block: var(--section-space);
+}
+
+.section--soft {
+  background: var(--surface-soft);
+}
+
+.section--deep {
+  color: var(--ink-inverse);
+  background: var(--surface-deep);
+}
+
+.section--bordered {
+  border-block: 1px solid var(--line);
+}
+
+.eyebrow {
+  margin-bottom: 1rem;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.eyebrow--light {
+  color: #a9cdbf;
+}
+
+.fine-print {
+  color: var(--ink-faint);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.fine-print--light {
+  color: rgba(247, 245, 239, 0.64);
+}
+
+.text-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.55rem;
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--accent-strong);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 520px) {
+  :root {
+    --section-space: 4.5rem;
+  }
+
+  .site-container {
+    width: min(calc(100% - 2rem), var(--container));
+  }
+}

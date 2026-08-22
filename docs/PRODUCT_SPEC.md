@@ -9,7 +9,9 @@ The product is broader than a marketing website. It should eventually support
 the complete customer and service lifecycle while remaining usable by a small
 team and maintainable as one application.
 
-No final company name, logo, or public-site content is selected in Phase 0A.
+No final company name or logo is selected. Phase 1 uses the explicitly temporary
+and replaceable public identity FabricCare Sofia while commercial identity work
+continues.
 
 ## Product surfaces
 
@@ -93,6 +95,19 @@ Phase 0A does not implement:
 - final branding or the complete public website;
 - analytics;
 - deployment or live database access.
+
+## Phase 1 public website
+
+Phase 1 now implements the public marketing surface described in
+`docs/PUBLIC_SITE.md`: a complete Sofia-focused homepage, six substantial
+service paths, professional-process and material-care guidance, service area,
+about, FAQ, contact and a frontend-only request prototype.
+
+The request prototype is deliberately not the booking engine. It validates the
+future information shape in the browser and states that no booking or database
+record is created. Public claims remain qualified and evidence-controlled; the
+site does not invent reviews, ratings, awards, certifications, prices, customer
+counts, business age, address or medical outcomes.
 
 ## Phase 0A acceptance criteria
 

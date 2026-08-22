@@ -1,10 +1,10 @@
 # Service Platform Foundation
 
-Production-oriented Phase 0A application foundation with a Phase 0B isolated
-development database for a future carpet and upholstery cleaning
-service-management platform serving Sofia, Bulgaria.
+Production-oriented service-platform foundation with an isolated development
+database and a Phase 1 public website for a future carpet and upholstery
+cleaning service serving Sofia, Bulgaria.
 
-This repository intentionally contains only:
+The current repository contains:
 
 - a minimal Next.js App Router shell;
 - strict TypeScript, Tailwind CSS, ESLint, and Vitest configuration;
@@ -13,10 +13,13 @@ This repository intentionally contains only:
 - one infrastructure table, system_metadata;
 - generated, reviewable SQL migrations;
 - a safe application and database health endpoint; and
-- product, architecture, data, design, security, and delivery documentation.
+- a responsive, claim-controlled public service website;
+- a browser-only request prototype that creates no records; and
+- product, public-site, architecture, data, design, security, and delivery
+  documentation.
 
-Booking, CRM, authentication, payments, operations workflows, object storage,
-and the final marketing website are not implemented in the foundation phase.
+Booking connectivity, CRM, authentication, payments, operations workflows,
+object storage, final branding and deployment are not implemented.
 
 ## Requirements
 
@@ -38,6 +41,10 @@ Add the Neon PostgreSQL connection value for the VAX `development` branch and
 `neondb` database to DATABASE_URL in .env.local. The production branch must not
 be used for ordinary development. Never put the value in source code or commit
 the local environment file.
+
+`PUBLIC_SITE_URL` is optional for local development. Leave it empty until an
+approved public HTTPS origin exists. Without it, canonical and business schema
+markup are withheld and robots configuration remains non-indexing.
 
 Apply the committed migration only after DATABASE_URL points to the intended
 non-production database:
@@ -102,6 +109,9 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | Path | Responsibility |
 | --- | --- |
 | src/app | Next.js routes, layouts, and transport adapters |
+| src/components/public | Reusable public-site layout and presentation |
+| src/config | Replaceable public identity and runtime-neutral site facts |
+| src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
 | src/modules | Application-facing modules and use-case orchestration |
 | src/db | PostgreSQL schema, connection adapter, health probe, and migrator |
 | src/lib | Small cross-cutting utilities such as environment validation |
@@ -132,5 +142,8 @@ Neon-managed authentication infrastructure; it contains no VAX business data.
 The Neon `production` branch has not been migrated or otherwise changed by the
 application setup. Phase 0C establishes the initial GitHub `main` baseline and
 credential-free CI validation. Phase 0D establishes the autonomous Codex
-worktree, pull-request, validation, and connection boundaries. Nothing has been
-deployed.
+worktree, pull-request, validation, and connection boundaries. Phase 1 adds the
+complete public route foundation, temporary configurable identity, technical
+SEO, accessibility and responsive baselines, and a non-persistent request
+prototype. See [docs/PUBLIC_SITE.md](docs/PUBLIC_SITE.md). No Phase 1 database
+schema or record changes are required, and nothing has been deployed.
