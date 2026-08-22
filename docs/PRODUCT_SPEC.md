@@ -142,6 +142,20 @@ customers, cleaning-item instances, requests, quotes, bookings, jobs, prices,
 payments or actual cleaning-product claims. Pricing and duration calculations
 remain Phase 2A owner decisions.
 
+## Phase 2A commercial calculation foundation
+
+Phase 2A implements a provider-neutral, pure pricing and duration engine with
+versioned EUR price books, explicit gross/net and VAT semantics, exact minor
+units, selected-band area rules, item/side pricing, minimum-visit logic,
+commercial condition modifiers, manual-assessment controls and explainable
+calculation lines.
+
+The Neon development branch receives only draft commercial configuration. The
+provisional residential and B2B books are inactive and not approved for
+publication. A static internal pricing lab exists only for local development;
+public routes remain informational and import no commercial values. No quote,
+booking, customer, appointment, payment, invoice or production data is created.
+
 ## Phase 0A acceptance criteria
 
 - The root page clearly identifies an operational technical foundation.

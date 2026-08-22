@@ -52,9 +52,33 @@ descriptions, ordering, active state and timestamps where appropriate. The
 code-controlled definitions and idempotent upsert seeder are described in
 `docs/SERVICE_CATALOGUE.md`.
 
-No monetary column, price row, customer, durable cleaning item, quote, booking,
-job or payment is introduced. The production branch remains without VAX
+Phase 2 introduces no monetary column, price row, customer, durable cleaning
+item, quote, booking, job or payment. The production branch remains without VAX
 application tables, and Neon Auth-managed schemas are not part of Drizzle.
+
+Phase 2A adds versioned commercial configuration only to development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `commercial_condition_bands` | Commercial complexity independent of treatment level |
+| `parking_policies` | Included, pass-through, estimated or custom parking semantics |
+| `travel_zones` | Canonical Sofia travel-zone foundation with unresolved thresholds |
+| `timing_categories` | Standard, early, evening, weekend and urgent timing vocabulary |
+| `price_books` | EUR market/segment/version, lifecycle, effective window and VAT basis |
+| `price_rules` | Version-owned item, area, minimum, modifier, add-on, travel and timing rules |
+| `duration_models` | Versioned operational-estimate configuration |
+| `duration_rules` | Setup, inspection, cleanup, item, productivity and complexity inputs |
+
+Money is stored as integer EUR minor units. VAT and percentage modifiers use
+integer basis points; measured area boundaries use integer hundredths. Draft
+price books and rules are insert-only seed records and must not be overwritten
+when historically referenced. The initial residential and B2B books and the
+duration model are provisional, inactive and not approved for publication.
+
+These tables contain configuration, not transactions. No quote, snapshot,
+booking, customer, durable cleaning item, job, payment or invoice table is
+introduced. Future accepted quotes and bookings must persist an immutable
+snapshot of the exact price-book version, rules, inputs, lines and tax result.
 
 ## Long-term relationship
 
@@ -166,7 +190,9 @@ objects held by a separate storage provider.
 
 | Planned table | Responsibility |
 | --- | --- |
-| price_rules | Versioned pricing inputs and applicability |
+| price_rules | Implemented versioned pricing inputs and applicability |
+| price_books | Implemented version, segment, currency, VAT and lifecycle authority |
+| duration_models, duration_rules | Implemented independent operational-estimate configuration |
 | quotes | Proposed commercial scope and validity |
 | quote_items | Itemized quoted work |
 | discounts | Explicit discount definitions and approvals |

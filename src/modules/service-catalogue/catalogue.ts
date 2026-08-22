@@ -458,18 +458,18 @@ export const issueHandlingClassifications = [
 export type IssueHandlingClassificationCode =
   (typeof issueHandlingClassifications)[number]["code"];
 
-type IssueTypeDefinition = LocalizedReference &
+type IssueTypeDefinition<Code extends string = string> = LocalizedReference<Code> &
   Readonly<{ handlingClassificationCode: IssueHandlingClassificationCode }>;
 
-function issue(
-  code: string,
+function issue<const Code extends string>(
+  code: Code,
   sortOrder: number,
   labelBg: string,
   labelEn: string,
   descriptionBg: string,
   descriptionEn: string,
   handlingClassificationCode: IssueHandlingClassificationCode,
-): IssueTypeDefinition {
+): IssueTypeDefinition<Code> {
   return {
     ...reference(code, sortOrder, labelBg, labelEn, descriptionBg, descriptionEn),
     handlingClassificationCode,
@@ -498,6 +498,8 @@ export const issueTypes = [
   issue("OTHER", 190, "Друг проблем", "Other issue", "Друг заявен проблем, който изисква описание.", "Other declared issue requiring description.", "ASSESSMENT_REQUIRED"),
 ] as const;
 
+export type IssueTypeCode = (typeof issueTypes)[number]["code"];
+
 export const riskFlags = [
   reference("DELICATE_MATERIAL", 10, "Деликатен материал", "Delicate material", "Материалът може да изисква ограничен или специализиран подход.", "Material may require a limited or specialist approach."),
   reference("UNKNOWN_FIBRE", 20, "Неизвестно влакно", "Unknown fibre", "Влакнестият състав не е установен.", "Fibre composition has not been established."),
@@ -517,6 +519,8 @@ export const riskFlags = [
   reference("CUSTOMER_DECLARED_SPECIAL_VALUE", 160, "Специална стойност, заявена от клиента", "Customer-declared special value", "Клиентът е заявил специална финансова или емоционална стойност.", "Customer has declared special financial or emotional value."),
   reference("OTHER", 170, "Друг рисков фактор", "Other risk flag", "Друг фактор за оценка, описан отделно.", "Other assessment factor described separately."),
 ] as const;
+
+export type RiskFlagCode = (typeof riskFlags)[number]["code"];
 
 type TreatmentLevelDefinition = LocalizedReference &
   Readonly<{ customerSelectable: false }>;

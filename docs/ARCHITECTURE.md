@@ -39,6 +39,7 @@ introduced.
 | src/config | Replaceable public identity and non-secret site facts | Credentials or final copy ownership |
 | src/content/public-site | Typed localized content, route records and claim controls | Database state or framework behavior |
 | src/modules/service-catalogue | Provider-neutral canonical catalogue types, codes, labels and capability definitions | Database clients, framework behavior or monetary pricing |
+| src/modules/commercial-engine | Pure versioned pricing, VAT, duration, snapshot and contribution policies | Next.js, Drizzle, Neon, persistence or public marketing copy |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
 | src/lib | Small stable cross-cutting utilities | Unbounded shared business logic |
@@ -111,6 +112,25 @@ labels, but every public service record carries its stable catalogue code.
 Actual product records and later operational duration values are future
 controlled admin data, not static public content.
 
+## Commercial engine boundary
+
+Phase 2A keeps commercial calculation in `src/modules/commercial-engine`. Exact
+money is represented as integer EUR cents, percentages and VAT as basis points,
+and measured area as hundredths of a square metre. The engine consumes plain
+versioned configuration and returns explainable lines, provenance identifiers,
+warnings and manual-assessment flags. It imports no framework or provider.
+
+Pricing and duration are independent calculations. Technical treatment level
+does not map directly to a commercial tier. The initial configuration is an
+inactive development fixture used by the database bootstrap and local internal
+lab; versioned database records are the future commercial value authority.
+
+`/internal/pricing-lab` uses a Server Component page for no-index metadata and a
+small Client Component for local interactivity. It has no server mutation,
+database import or public navigation link. Its route-level and robots controls
+reduce accidental discovery but are not authorization, so the route must not be
+included in an unauthorized deployment.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -128,8 +148,10 @@ change without changing domain rules.
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
 workflow. Code-controlled catalogue rows are upserted deterministically after
-the migration and contain no customers, transactions, prices or manufacturer
-claims.
+migration. Versioned commercial books and rules use insert-only seed behavior
+so existing versions are not rewritten. The seed contains no customers,
+quotes, bookings, jobs, payments, invoices, actual product claims or production
+records.
 
 ## Environment separation
 

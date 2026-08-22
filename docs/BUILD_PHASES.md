@@ -73,14 +73,32 @@ Neon Auth change.
 
 ### Phase 2A — Duration and pricing semantics
 
-Use owner-approved operating observations to define duration calculations and
-versioned, explainable pricing. Decide currency, VAT/tax display, rounding,
-effective dates, minimum call-out, travel zones, B2B volume, appointment timing
-and quote provenance before introducing monetary rows or public prices.
+Implemented as an unpublished development foundation: versioned EUR price
+books, exact minor-unit and basis-point arithmetic, gross/net VAT support,
+selected-band area pricing, item/side prices, minimum-visit logic, separate
+commercial condition factors, travel/timing foundations, independent duration
+rules, explainable output, immutable future-snapshot types and contribution
+concepts. The local internal lab has no database writes and is non-indexed.
 
-Gate: approved operating data, reviewed exact-money and tax semantics,
-deterministic calculation tests, historical price provenance and controlled
-publishing behavior.
+All seeded values remain inactive provisional assumptions. Public prices,
+quotes, bookings, customer data, production migration and deployment are not
+part of Phase 2A.
+
+Gate: reviewed additive development migration, exact boundary and tax tests,
+manual-assessment and claim safeguards, database-independent public build,
+local internal-lab verification, and no production or Neon Auth change.
+
+### Phase 2B — Commercial calibration and location rules
+
+Use owner/accountant decisions and measured field observations to approve or
+replace the provisional values. Define Sofia zone boundaries, travel and
+parking policy, timing rules, B2B volume semantics, actual duration inputs,
+effective-date/supersession behavior and the controlled activation workflow for
+the first non-draft book. Keep public publication separately gated.
+
+Gate: approved commercial and tax data, representative duration evidence,
+validated location rules, deterministic new-version tests, controlled approval
+and audit design, and explicit decision on whether any prices may become public.
 
 ## Phase 3 — Identity/authentication/RBAC
 

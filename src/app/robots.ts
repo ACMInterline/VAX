@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     rules: configuredUrl
-      ? { userAgent: "*", allow: "/" }
+      ? { userAgent: "*", allow: "/", disallow: "/internal/" }
       : { userAgent: "*", disallow: "/" },
     sitemap: configuredUrl
       ? new URL("/sitemap.xml", getSitemapBaseUrl()).toString()
