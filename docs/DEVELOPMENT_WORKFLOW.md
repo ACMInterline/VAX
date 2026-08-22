@@ -81,7 +81,9 @@ Phase 2 catalogue definitions are code-controlled and upserted after migrations
 by `npm run db:migrate`. The seed is intentionally safe to rerun and contains no
 customers, transactions or actual cleaning-product records. Phase 2A adds
 insert-only, inactive provisional price-book and duration versions; reruns must
-not update an existing commercial version.
+not update an existing commercial version. Phase 2B adds insert-only inactive
+working-hour, appointment-window and travel versions plus idempotent neutral
+team/equipment fixtures; it persists no occupancy or reservation.
 
 ## Validation automation
 

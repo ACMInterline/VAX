@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -77,6 +78,15 @@ export const travelZones = pgTable(
     ),
     travelTimeThresholdMinutes: integer("travel_time_threshold_minutes"),
     boundaryNotes: text("boundary_notes"),
+    serviceEligible: boolean("service_eligible").default(false).notNull(),
+    minimumOrderOverrideMinorUnits: integer(
+      "minimum_order_override_minor_units",
+    ),
+    estimatedBaseTravelMinutes: integer("estimated_base_travel_minutes"),
+    manualConfirmationRequired: boolean("manual_confirmation_required")
+      .default(true)
+      .notNull(),
+    geographicMetadata: jsonb("geographic_metadata"),
   },
   (table) => [
     check("travel_zones_sort_nonnegative", sql`${table.sortOrder} >= 0`),
@@ -87,6 +97,14 @@ export const travelZones = pgTable(
     check(
       "travel_zones_time_nonnegative",
       sql`${table.travelTimeThresholdMinutes} is null or ${table.travelTimeThresholdMinutes} >= 0`,
+    ),
+    check(
+      "travel_zones_minimum_order_nonnegative",
+      sql`${table.minimumOrderOverrideMinorUnits} is null or ${table.minimumOrderOverrideMinorUnits} >= 0`,
+    ),
+    check(
+      "travel_zones_base_travel_nonnegative",
+      sql`${table.estimatedBaseTravelMinutes} is null or ${table.estimatedBaseTravelMinutes} >= 0`,
     ),
   ],
 );

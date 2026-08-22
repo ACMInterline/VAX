@@ -157,7 +157,9 @@ exists.
 
 The canonical zones are `SOFIA_CORE`, `SOFIA_EXTENDED`, `SOFIA_OUTSKIRTS` and
 `OUTSIDE_SOFIA`. Exact boundaries, distance and travel-time thresholds remain
-null pending Phase 2B owner data.
+owner-controlled. Phase 2B adds operational eligibility/confirmation fields and
+a separately versioned deterministic travel matrix; neither defines permanent
+district geography or a commercial surcharge.
 
 - Sofia core has no separate travel adjustment above the minimum visit.
 - Extended Sofia and outskirts require assessment until an approved surcharge
@@ -216,8 +218,21 @@ The pure duration result separately reports setup, inspection, base cleaning,
 modifier, add-on, cleanup and total minutes. Condition adjustment applies to
 base cleaning minutes, not setup or cleanup. Issue, material, treatment and
 add-on duration records are structurally supported, but unknown operational
-values require assessment instead of fabricated minutes. Travel time remains
-outside core cleaning duration for Phase 2B.
+values require assessment instead of fabricated minutes. Travel time and
+transition buffers always remain outside the Phase 2A service duration.
+
+## Availability integration
+
+Phase 2B composes, but never merges, the commercial results with the scheduling
+engine documented in `docs/AVAILABILITY_ENGINE.md`. The duration total is the
+complete on-site service block and is consumed exactly once. Travel before and
+after, one independent buffer per neighbouring job and any explicit parking-time
+buffer are added by availability only.
+
+A manual price/duration result suppresses automatic slot offering and becomes
+`REQUEST_REVIEW` when known operational constraints otherwise fit. Gross revenue
+per occupied team-hour is available as an analytical helper; no payroll,
+consumable or travel cost is invented.
 
 ## Manual assessment
 
@@ -263,9 +278,10 @@ must create database versions without requiring a code deployment. Admin work
 requires role-based authorization, approval, validation, immutable history and
 audit logs; none is implemented here.
 
-## Phase 2B decisions
+## Commercial calibration decisions
 
-Phase 2B requires owner and professional approval for:
+The follow-up calibration/activation phase requires owner and professional
+approval for:
 
 - final residential item, mattress-side and selected-band rates;
 - whether sofa prices remain per item or become seat-based;

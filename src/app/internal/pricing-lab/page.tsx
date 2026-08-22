@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireDevelopmentServer } from "../development-only";
 import { PricingLab } from "./pricing-lab";
 
 export const metadata: Metadata = {
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default function PricingLabPage() {
+  requireDevelopmentServer();
+
   return (
     <main className="pricing-lab-shell">
       <header className="pricing-lab-header">
