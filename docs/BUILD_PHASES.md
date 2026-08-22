@@ -119,9 +119,23 @@ approval/audit design, and an explicit public-publication decision.
 
 ## Phase 3 — Identity/authentication/RBAC
 
-Implement replaceable authentication, application-owned users, roles,
-permissions, session controls, invitations, recovery, and privileged-action
-audit trails.
+### Phase 3A — Identity, authentication, sessions and RBAC foundation
+
+Implemented with a provider-neutral boundary over Neon Auth, provider-backed
+email/password and recovery/verification flows, application-owned profiles,
+five canonical roles, stable permissions, deterministic mappings, explicit
+first-owner bootstrap, account status, sanitized authentication events,
+centralized server authorization, permission-aware navigation and `/app`.
+
+No CRM, customer/property business record, persistent request, quote, booking,
+payment, upload, production migration or deployment is included.
+
+### Phase 3B — Privileged identity administration
+
+Add owner-protected user/status/role management, invitations if approved,
+re-authentication for sensitive changes, provider lifecycle reconciliation,
+session revocation validation and an audit review surface. Resolve production
+SMTP/trusted-origin/rate-limit configuration before any deployment gate.
 
 Gate: threat review, deny-by-default authorization tests, session and recovery
 tests, and administrative access approval.

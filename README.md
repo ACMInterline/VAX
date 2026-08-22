@@ -4,7 +4,7 @@ Production-oriented service-platform foundation with an isolated development
 database, a bilingual public website, a canonical service catalogue, a
 versioned development commercial engine and a non-transactional scheduling
 capacity foundation for a future carpet and upholstery cleaning service serving
-Sofia, Bulgaria.
+Sofia, Bulgaria, plus an initial secure identity and permission boundary.
 
 The current repository contains:
 
@@ -22,13 +22,15 @@ The current repository contains:
   codes that creates no records;
 - deterministic catalogue seeding plus insert-only provisional development
   price-book and duration versions, with no public prices or product claims;
-- non-indexed local-only pricing and availability calculation harnesses; and
+- non-indexed local-only pricing and availability calculation harnesses;
+- Neon Auth-backed bilingual account flows, application-owned profiles,
+  deny-by-default RBAC and a minimal protected `/app` shell; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Booking connectivity, persistent occupancy/calendar, CRM, authentication,
-payments, invoices, dispatch, object storage, final branding and deployment are
-not implemented.
+Booking connectivity, persistent occupancy/calendar, CRM, privileged user
+administration, payments, invoices, dispatch, object storage, final branding
+and deployment are not implemented.
 
 ## Requirements
 
@@ -55,14 +57,26 @@ the local environment file.
 approved public HTTPS origin exists. Without it, canonical and business schema
 markup are withheld and robots configuration remains non-indexing.
 
-Apply the committed migration only after DATABASE_URL points to the intended
-non-production database:
+Authentication additionally requires development-branch values for
+`NEON_AUTH_BASE_URL` and a locally generated `NEON_AUTH_COOKIE_SECRET` of at
+least 32 characters. Keep both server-only. Production email verification and
+rate limiting are intentionally blocked pending deployment decisions; see
+[docs/IDENTITY_AND_ACCESS.md](docs/IDENTITY_AND_ACCESS.md).
+
+Database mutation commands also require
+`DATABASE_MUTATION_ENVIRONMENT=development` and
+`DATABASE_MUTATION_EXPECTED_HOST` set to the exact hostname from the approved
+development `DATABASE_URL` (hostname only, never the connection string). This
+second input is an intentional wrong-branch interlock. Apply the committed
+migration only after both checks identify the intended development database:
 
     npm run db:migrate
 
 The migration command uses Next.js environment loading, so local development
-can use .env.local while a host-provided DATABASE_URL remains authoritative for
-future staging and production environments.
+can use `.env.local`. It refuses production mode, a non-development mutation
+label, or a database hostname that differs from the explicit expected host.
+Future staging or production migration needs a separately reviewed command and
+explicit authorization; this Phase 3A command is development-only.
 
 Start the application:
 
@@ -106,6 +120,7 @@ Neither response exposes connection details or errors.
 | npm run db:generate | Generate SQL migrations from the Drizzle schema |
 | npm run db:check | Validate the committed migration history |
 | npm run db:migrate | Apply committed migrations and canonical reference seeds using DATABASE_URL |
+| npm run auth:bootstrap-owner | Explicitly assign the first owner to an existing active application profile |
 | npm run validate | Run the full local completion gate, including migration and dependency checks |
 
 ## Git workflow and CI
@@ -128,6 +143,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | Path | Responsibility |
 | --- | --- |
 | src/app | Next.js routes, layouts, and transport adapters |
+| src/auth | Provider-neutral auth contracts, Neon adapter, session and rate-limit boundaries |
 | src/components/public | Reusable public-site layout and presentation |
 | src/config | Replaceable public identity and runtime-neutral site facts |
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
@@ -146,7 +162,9 @@ behavior.
 2. Run npm run db:generate with a descriptive migration name when appropriate.
 3. Inspect both the SQL and Drizzle metadata.
 4. Review backward compatibility and rollback implications.
-5. Confirm DATABASE_URL identifies the intended non-production branch.
+5. Confirm `DATABASE_URL`, `DATABASE_MUTATION_ENVIRONMENT=development`, and the
+   exact `DATABASE_MUTATION_EXPECTED_HOST` identify the intended development
+   branch.
 6. Apply migrations and deterministic canonical seeds with npm run db:migrate
    only against that explicitly selected database.
 
@@ -178,4 +196,9 @@ VAT, duration, travel, timing and explainability foundation defined in
 service-area, travel-time, working-hours, two-team equipment/capacity, slot and
 utilisation foundation defined in
 [docs/AVAILABILITY_ENGINE.md](docs/AVAILABILITY_ENGINE.md). No booking
-persistence, production migration or deployment is included.
+persistence, production migration or deployment is included. Phase 3A adds the
+Neon Auth server adapter, secure bilingual account flows, application-owned
+profiles, five canonical roles, 22 permissions, deterministic role mappings,
+status enforcement, sanitized auth events and the protected `/app` foundation
+described in [docs/IDENTITY_AND_ACCESS.md](docs/IDENTITY_AND_ACCESS.md). It adds
+no CRM or transactional business data and does not change Neon production.
