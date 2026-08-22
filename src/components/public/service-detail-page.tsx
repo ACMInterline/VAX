@@ -1,5 +1,7 @@
+import type { PublicLocale } from "@/config/public-site";
+import { getPublicContent, getService } from "@/content/public-site";
+import { localizePublicPath } from "@/content/public-site/routes";
 import type { ServiceContent } from "@/content/public-site/types";
-import { getService } from "@/content/public-site";
 import { ButtonLink } from "./button-link";
 import { CallToAction } from "./call-to-action";
 import { FabricVisual, PhotoPlaceholder } from "./fabric-visual";
@@ -7,38 +9,58 @@ import { PageHero } from "./page-hero";
 import { SectionHeading } from "./section-heading";
 import { ServiceCard } from "./service-card";
 
-export function ServiceDetailPage({ service }: { service: ServiceContent }) {
+export function ServiceDetailPage({
+  service,
+  locale,
+}: {
+  service: ServiceContent;
+  locale: PublicLocale;
+}) {
+  const content = getPublicContent(locale);
+  const copy = content.common.serviceDetail;
   const relatedServices = service.related
-    .map((slug) => getService(slug))
+    .map((slug) => getService(locale, slug))
     .filter((item): item is ServiceContent => item !== undefined);
 
   return (
     <>
       <PageHero
+        locale={locale}
         eyebrow={service.eyebrow}
         title={service.title}
         description={service.description}
         breadcrumbs={[
-          { label: "Home", href: "/" },
-          { label: "Services", href: "/services" },
+          { label: copy.home, href: "/" },
+          { label: copy.services, href: "/services" },
           { label: service.shortTitle, path: `/services/${service.slug}` },
         ]}
-        aside={<FabricVisual variant="care" label={`Abstract fabric-care visual for ${service.shortTitle}`} />}
+        aside={
+          <FabricVisual
+            locale={locale}
+            variant="care"
+            label={`${copy.visualLabel}: ${service.shortTitle}`}
+          />
+        }
       >
-        <ButtonLink href="/request">Describe your surface</ButtonLink>
-        <ButtonLink href="/how-it-works" variant="quiet">
-          See the process
+        <ButtonLink href={localizePublicPath(locale, "/request")}>
+          {copy.describeSurface}
+        </ButtonLink>
+        <ButtonLink
+          href={localizePublicPath(locale, "/how-it-works")}
+          variant="quiet"
+        >
+          {copy.seeProcess}
         </ButtonLink>
       </PageHero>
 
       <section className="section section--bordered">
         <div className="site-container service-intro-grid">
           <div>
-            <p className="eyebrow">The service</p>
+            <p className="eyebrow">{copy.serviceEyebrow}</p>
             <h2>{service.summary}</h2>
           </div>
           <div className="ideal-for-card">
-            <p>Well suited to</p>
+            <p>{copy.idealFor}</p>
             <ul className="check-list">
               {service.idealFor.map((item) => (
                 <li key={item}>{item}</li>
@@ -50,11 +72,7 @@ export function ServiceDetailPage({ service }: { service: ServiceContent }) {
 
       <section className="section">
         <div className="site-container">
-          <SectionHeading
-            eyebrow="A controlled sequence"
-            title="Assessment directs the work."
-            description="You provide useful context before the visit. The final method and intensity remain professional decisions made after seeing the item."
-          />
+          <SectionHeading {...copy.process} />
           <ol className="service-process">
             {service.process.map((step, index) => (
               <li key={step}>
@@ -69,16 +87,14 @@ export function ServiceDetailPage({ service }: { service: ServiceContent }) {
       <section className="section section--soft">
         <div className="site-container split-feature">
           <PhotoPlaceholder
-            title={`${service.shortTitle} in a real Sofia setting`}
-            note="Future image: actual technician, equipment and material detail, used with permission."
+            locale={locale}
+            title={`${service.shortTitle} · Sofia`}
+            note={copy.futureImage}
           />
           <div className="split-feature__copy">
-            <p className="eyebrow">Material before muscle</p>
-            <h2>Care decisions that respect the surface.</h2>
-            <p>
-              Cleaning effectiveness matters, but so do fibre sensitivity,
-              colour response, age, construction and existing wear.
-            </p>
+            <p className="eyebrow">{copy.materialEyebrow}</p>
+            <h2>{copy.materialTitle}</h2>
+            <p>{copy.materialDescription}</p>
             <ul className="care-point-list">
               {service.carePoints.map((point, index) => (
                 <li key={point}>
@@ -94,8 +110,8 @@ export function ServiceDetailPage({ service }: { service: ServiceContent }) {
       <section className="section">
         <div className="site-container expectations-grid">
           <div className="expectation-panel expectation-panel--positive">
-            <p className="eyebrow">What to expect</p>
-            <h2>Clear, practical guidance.</h2>
+            <p className="eyebrow">{copy.expectationsEyebrow}</p>
+            <h2>{copy.expectationsTitle}</h2>
             <ul>
               {service.expectations.map((expectation) => (
                 <li key={expectation}>{expectation}</li>
@@ -103,8 +119,8 @@ export function ServiceDetailPage({ service }: { service: ServiceContent }) {
             </ul>
           </div>
           <div className="expectation-panel expectation-panel--caution">
-            <p className="eyebrow">Important limits</p>
-            <h2>No one-size-fits-all promises.</h2>
+            <p className="eyebrow">{copy.limitationsEyebrow}</p>
+            <h2>{copy.limitationsTitle}</h2>
             <ul>
               {service.limitations.map((limitation) => (
                 <li key={limitation}>{limitation}</li>
@@ -116,19 +132,21 @@ export function ServiceDetailPage({ service }: { service: ServiceContent }) {
 
       <section className="section section--bordered related-services">
         <div className="site-container">
-          <SectionHeading
-            eyebrow="Related care"
-            title="Other surfaces in the same space."
-          />
+          <SectionHeading {...copy.related} />
           <div className="service-grid service-grid--two">
             {relatedServices.map((related, index) => (
-              <ServiceCard key={related.slug} service={related} index={index} />
+              <ServiceCard
+                key={related.slug}
+                service={related}
+                index={index}
+                locale={locale}
+              />
             ))}
           </div>
         </div>
       </section>
 
-      <CallToAction />
+      <CallToAction locale={locale} />
     </>
   );
 }

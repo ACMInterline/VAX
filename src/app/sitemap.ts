@@ -1,13 +1,28 @@
 import type { MetadataRoute } from "next";
+import { publicLanguageConfig } from "@/config/public-site";
 import { publicRouteMap } from "@/content/public-site/routes";
-import { getSitemapBaseUrl } from "@/lib/public-metadata";
+import {
+  getLocalizedUrls,
+  getSitemapBaseUrl,
+} from "@/lib/public-metadata";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = getSitemapBaseUrl();
 
-  return publicRouteMap.map((route) => ({
-    url: new URL(route.path, baseUrl).toString(),
-    changeFrequency: route.changeFrequency,
-    priority: route.priority,
-  }));
+  return publicRouteMap.flatMap((route) => {
+    const urls = getLocalizedUrls(route.path, baseUrl);
+
+    return publicLanguageConfig.supportedLocales.map((locale) => ({
+      url: urls[locale],
+      changeFrequency: route.changeFrequency,
+      priority: route.priority,
+      alternates: {
+        languages: {
+          bg: urls.bg,
+          en: urls.en,
+          "x-default": urls.bg,
+        },
+      },
+    }));
+  });
 }

@@ -1113,7 +1113,7 @@
   .area-callout,
   .service-intro-grid,
   .schedule-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-hero__visual,
@@ -1147,7 +1147,7 @@
   .professional-boundary,
   .capacity-feature,
   .contact-next-step {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .hygiene-note {
@@ -1165,17 +1165,18 @@
 
   .principle-grid,
   .coverage-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .contact-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 680px) {
   .home-hero h1 {
-    font-size: clamp(3.4rem, 17vw, 5rem);
+    overflow-wrap: break-word;
+    font-size: clamp(2.65rem, 13vw, 5rem);
   }
 
   .hero-facts,
@@ -1184,7 +1185,7 @@
   .expectations-grid,
   .principle-grid--four,
   .place-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .capacity-card {

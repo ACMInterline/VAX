@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { publicBrand } from "@/config/public-site";
+import {
+  publicBrand,
+  publicLanguageConfig,
+  type PublicLocale,
+} from "@/config/public-site";
+import { localizePublicPath } from "@/content/public-site/routes";
 
 const localMetadataBaseUrl = new URL("http://localhost:3000");
 
@@ -36,30 +41,54 @@ export function getSitemapBaseUrl(): URL {
   return getConfiguredPublicUrl() ?? localMetadataBaseUrl;
 }
 
+export function getLocalizedUrls(path: string, baseUrl: URL) {
+  return {
+    bg: new URL(localizePublicPath("bg", path), baseUrl).toString(),
+    en: new URL(localizePublicPath("en", path), baseUrl).toString(),
+  };
+}
+
 type PageMetadataInput = {
+  locale: PublicLocale;
   title: string;
   description: string;
   path: string;
 };
 
 export function createPageMetadata({
+  locale,
   title,
   description,
   path,
 }: PageMetadataInput): Metadata {
   const baseUrl = getConfiguredPublicUrl();
-  const canonical = baseUrl ? new URL(path, baseUrl).toString() : undefined;
+  const urls = baseUrl ? getLocalizedUrls(path, baseUrl) : undefined;
+  const canonical = urls?.[locale];
+  const alternateLocale =
+    locale === publicLanguageConfig.primaryLocale
+      ? publicLanguageConfig.openGraphLocales.en
+      : publicLanguageConfig.openGraphLocales.bg;
 
   return {
     title,
     description,
-    alternates: canonical ? { canonical } : undefined,
+    alternates: urls
+      ? {
+          canonical,
+          languages: {
+            bg: urls.bg,
+            en: urls.en,
+            "x-default": urls.bg,
+          },
+        }
+      : undefined,
     openGraph: {
       type: "website",
       title,
       description,
       siteName: publicBrand.name,
-      locale: "en_GB",
+      locale: publicLanguageConfig.openGraphLocales[locale],
+      alternateLocale,
       url: canonical,
     },
     twitter: {
@@ -70,14 +99,15 @@ export function createPageMetadata({
   };
 }
 
-export function createRootMetadata(
-  title: string,
-  description: string,
-): Metadata {
+export function createRootMetadata({
+  locale,
+  title,
+  description,
+}: Omit<PageMetadataInput, "path">): Metadata {
   const baseUrl = getConfiguredPublicUrl();
 
   return {
-    ...(createPageMetadata({ title, description, path: "/" }) as Metadata),
+    ...(createPageMetadata({ locale, title, description, path: "/" }) as Metadata),
     metadataBase: baseUrl ?? localMetadataBaseUrl,
     title: {
       default: title,
@@ -124,6 +154,6 @@ export function buildBusinessJsonLd() {
     "@type": "LocalBusiness",
     name: publicBrand.name,
     url: baseUrl.toString(),
-    areaServed: publicBrand.location,
+    areaServed: publicBrand.location.city,
   };
 }

@@ -1,11 +1,12 @@
 import { ImageResponse } from "next/og";
-import { publicBrand } from "@/config/public-site";
+import { publicBrand, type PublicLocale } from "@/config/public-site";
+import { getPublicContent } from "@/content/public-site";
 
-export const alt = `${publicBrand.name} — ${publicBrand.descriptor}`;
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const publicOpenGraphSize = { width: 1200, height: 630 };
 
-export default function OpenGraphImage() {
+export function createPublicOpenGraphImage(locale: PublicLocale) {
+  const content = getPublicContent(locale);
+
   return new ImageResponse(
     (
       <div
@@ -67,7 +68,7 @@ export default function OpenGraphImage() {
               {publicBrand.name}
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", width: "820px" }}>
+          <div style={{ display: "flex", flexDirection: "column", width: "850px" }}>
             <div
               style={{
                 display: "flex",
@@ -78,23 +79,23 @@ export default function OpenGraphImage() {
                 marginBottom: "22px",
               }}
             >
-              Professional fabric care · Sofia
+              {content.common.brand.descriptor} · Sofia
             </div>
             <div
               style={{
                 display: "flex",
-                fontSize: "70px",
+                fontSize: "64px",
                 lineHeight: 1.03,
                 letterSpacing: "-3px",
                 fontWeight: 700,
               }}
             >
-              {publicBrand.tagline}
+              {content.pages.home.hero.title}
             </div>
           </div>
         </div>
       </div>
     ),
-    size,
+    publicOpenGraphSize,
   );
 }

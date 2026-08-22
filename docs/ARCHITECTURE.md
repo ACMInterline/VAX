@@ -63,10 +63,18 @@ call the database health probe directly; it is not a business-domain pattern.
 
 ## Public website boundary
 
-The Phase 1 public site is a statically rendered application surface under the
-`(public)` route group. Pages consume provider-neutral configuration and typed
-localized content through reusable Server Components. Only mobile-navigation
-state and the request prototype require Client Components.
+The Phase 1A public site is a statically rendered bilingual application
+surface. Unprefixed routes under `(public)` are Bulgarian, the primary
+commercial locale; matching routes under `(public-en)/en` are English. Thin
+route adapters pass a locale to shared page and presentation components, while
+an exact typed content contract prevents either language from silently falling
+back to the other. Separate root layouts give each document an accurate
+`<html lang>` value. No browser-language redirect or locale cookie changes URL
+selection.
+
+Pages consume provider-neutral configuration and typed localized content
+through reusable Server Components. Only mobile-navigation state, corresponding
+page language switching, and the request prototype require Client Components.
 
 The request prototype validates browser `FormData` with a pure Zod module. It
 has no form action, Server Action, route handler, fetch, database adapter or
@@ -74,10 +82,17 @@ storage adapter. Future persistence must enter through an application use case
 and validated server boundary rather than extending the client prototype
 directly.
 
-SEO metadata is constructed centrally. Canonical and breadcrumb URLs depend on
-a validated `PUBLIC_SITE_URL`; indexing stays disabled when no approved origin
-exists. Provider or public-business structured data is emitted only when its
-facts are verified.
+SEO metadata is constructed centrally. Canonical, `hreflang`, sitemap and
+breadcrumb URLs depend on a validated `PUBLIC_SITE_URL`; indexing stays
+disabled when no approved origin exists. Bulgarian is `x-default`, and Open
+Graph locale values match each document. Provider or public-business structured
+data is emitted only when its facts are verified.
+
+Marketing claims are another trust boundary. The typed claim registry and
+`docs/CONTENT_AUTHORITY.md` distinguish verified, qualified,
+manufacturer-evidence-dependent, legally dependent and prohibited statements.
+That classification remains static content governance in Phase 1A rather than
+a database capability.
 
 ## Database boundary
 
@@ -163,7 +178,7 @@ The following remain deliberately undecided:
 - hosting platform;
 - payment, mapping, email, and SMS providers;
 - detailed authorization matrix;
-- final localization strategy;
+- final commercial identity and owner-approved content workflow;
 - offline technician synchronization;
 - analytics stack;
 - backup, recovery, and retention targets.

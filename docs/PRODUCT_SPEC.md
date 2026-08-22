@@ -109,6 +109,24 @@ record is created. Public claims remain qualified and evidence-controlled; the
 site does not invent reviews, ratings, awards, certifications, prices, customer
 counts, business age, address or medical outcomes.
 
+## Phase 1A Bulgarian content and authority
+
+Phase 1A makes Bulgarian the primary commercial locale on unprefixed routes and
+retains complete English equivalents under `/en`. Shared components consume one
+strict localized-content contract, and the BG/EN selector preserves the current
+route wherever an equivalent exists.
+
+The phase also introduces an evidence-controlled claim register. Approximate
+capacity, residual moisture, material care, stain outcomes and useful-life
+language stay explicitly qualified. Manufacturer performance, product origin,
+antibacterial or allergen performance and legal interpretation of operating
+hours remain withheld pending evidence or review. Absolute medical, hygiene and
+stain-removal promises are prohibited.
+
+This phase changes no booking, persistence, authentication, payment, upload,
+CRM or business database behavior. Bulgarian copy remains subject to final
+owner review before launch.
+
 ## Phase 0A acceptance criteria
 
 - The root page clearly identifies an operational technical foundation.

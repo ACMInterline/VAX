@@ -11,9 +11,18 @@ type NavigationLink = {
 type MobileNavigationProps = {
   links: readonly NavigationLink[];
   cta: NavigationLink;
+  navigationLabel: string;
+  openLabel: string;
+  closeLabel: string;
 };
 
-export function MobileNavigation({ links, cta }: MobileNavigationProps) {
+export function MobileNavigation({
+  links,
+  cta,
+  navigationLabel,
+  openLabel,
+  closeLabel,
+}: MobileNavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -30,9 +39,7 @@ export function MobileNavigation({ links, cta }: MobileNavigationProps) {
         aria-controls="mobile-navigation-panel"
         onClick={() => setIsOpen((open) => !open)}
       >
-        <span className="sr-only">
-          {isOpen ? "Close navigation" : "Open navigation"}
-        </span>
+        <span className="sr-only">{isOpen ? closeLabel : openLabel}</span>
         <span className="mobile-navigation__lines" aria-hidden="true">
           <span />
           <span />
@@ -41,7 +48,7 @@ export function MobileNavigation({ links, cta }: MobileNavigationProps) {
 
       {isOpen ? (
         <div className="mobile-navigation__panel" id="mobile-navigation-panel">
-          <nav aria-label="Mobile navigation">
+          <nav aria-label={navigationLabel}>
             {links.map((link) => (
               <Link
                 href={link.href}

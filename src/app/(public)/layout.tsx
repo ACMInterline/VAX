@@ -1,19 +1,31 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { SiteFooter } from "@/components/public/site-footer";
-import { SiteHeader } from "@/components/public/site-header";
-import { StructuredData } from "@/components/public/structured-data";
-import { buildBusinessJsonLd } from "@/lib/public-metadata";
+import { publicLanguageConfig } from "@/config/public-site";
+import { PublicShell } from "@/components/public/public-shell";
+import { getPublicContent } from "@/content/public-site";
+import { createRootMetadata } from "@/lib/public-metadata";
+import "../globals.css";
 
-export default function PublicLayout({ children }: { children: ReactNode }) {
+const locale = "bg";
+const homeMetadata = getPublicContent(locale).metadata.home;
+
+export const metadata: Metadata = createRootMetadata({
+  locale,
+  title: homeMetadata.title,
+  description: homeMetadata.description,
+});
+
+export default function BulgarianPublicLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
-    <>
-      <a className="skip-link" href="#main-content">
-        Skip to main content
-      </a>
-      <SiteHeader />
-      <main id="main-content">{children}</main>
-      <SiteFooter />
-      <StructuredData data={buildBusinessJsonLd()} />
-    </>
+    <html
+      lang={publicLanguageConfig.htmlLanguages[locale]}
+      data-scroll-behavior="smooth"
+    >
+      <body>
+        <PublicShell locale={locale}>{children}</PublicShell>
+      </body>
+    </html>
   );
 }

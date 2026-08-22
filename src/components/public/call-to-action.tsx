@@ -1,27 +1,39 @@
-import { publicBrand } from "@/config/public-site";
+import type { PublicLocale } from "@/config/public-site";
+import { getPublicContent } from "@/content/public-site";
+import { localizePublicPath } from "@/content/public-site/routes";
 import { ButtonLink } from "./button-link";
 
 type CallToActionProps = {
+  locale: PublicLocale;
   eyebrow?: string;
   title?: string;
   description?: string;
 };
 
 export function CallToAction({
-  eyebrow = "Start with the surface",
-  title = "Tell us what needs care.",
-  description = "Share the material, condition, access and preferred timing. This Phase 1 prototype validates your information but does not create a booking.",
+  locale,
+  eyebrow,
+  title,
+  description,
 }: CallToActionProps) {
+  const common = getPublicContent(locale).common;
+  const defaultCopy = common.defaultCta;
+
   return (
     <section className="cta-section">
       <div className="site-container cta-section__inner">
         <div>
-          <p className="eyebrow eyebrow--light">{eyebrow}</p>
-          <h2>{title}</h2>
-          <p>{description}</p>
+          <p className="eyebrow eyebrow--light">
+            {eyebrow ?? defaultCopy.eyebrow}
+          </p>
+          <h2>{title ?? defaultCopy.title}</h2>
+          <p>{description ?? defaultCopy.description}</p>
         </div>
-        <ButtonLink href={publicBrand.primaryCta.href} variant="secondary">
-          {publicBrand.primaryCta.label}
+        <ButtonLink
+          href={localizePublicPath(locale, "/request")}
+          variant="secondary"
+        >
+          {common.brand.primaryCta}
         </ButtonLink>
       </div>
     </section>

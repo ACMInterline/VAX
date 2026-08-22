@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  publicRequestSchema,
+  createPublicRequestSchema,
   readPublicRequestForm,
 } from "./request-schema";
 
@@ -23,23 +23,53 @@ function validRequest() {
   };
 }
 
-describe("publicRequestSchema", () => {
-  it("accepts a multi-service prototype request", () => {
-    const result = publicRequestSchema.safeParse(validRequest());
+describe("localized public request schema", () => {
+  it("accepts the same multi-service request in both locales", () => {
+    for (const locale of ["bg", "en"] as const) {
+      const result = createPublicRequestSchema(locale).safeParse(validRequest());
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.services).toEqual(["carpet", "sofa"]);
-      expect(result.data.delicateMaterial).toBe(true);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.services).toEqual(["carpet", "sofa"]);
+        expect(result.data.delicateMaterial).toBe(true);
+      }
     }
   });
 
-  it("rejects missing contact details and an empty service selection", () => {
-    const result = publicRequestSchema.safeParse({
+  it("returns natural Bulgarian validation messages on the primary route", () => {
+    const result = createPublicRequestSchema("bg").safeParse({
       ...validRequest(),
       email: "not-an-email",
       phone: "",
+      propertyType: "",
       services: [],
+      condition: "",
+      stainsPresent: "",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const fields = result.error.flatten().fieldErrors;
+      expect(fields.email).toContain("Въведете валиден имейл адрес.");
+      expect(fields.phone).toContain("Въведете телефонен номер.");
+      expect(fields.propertyType).toContain("Изберете вид имот.");
+      expect(fields.services).toContain("Изберете поне една услуга.");
+      expect(fields.condition).toContain("Изберете общо състояние.");
+      expect(fields.stainsPresent).toContain(
+        "Посочете дали виждате петна.",
+      );
+    }
+  });
+
+  it("retains equivalent English validation messages", () => {
+    const result = createPublicRequestSchema("en").safeParse({
+      ...validRequest(),
+      email: "not-an-email",
+      phone: "",
+      propertyType: "",
+      services: [],
+      condition: "",
+      stainsPresent: "",
     });
 
     expect(result.success).toBe(false);
@@ -47,11 +77,16 @@ describe("publicRequestSchema", () => {
       const fields = result.error.flatten().fieldErrors;
       expect(fields.email).toContain("Enter a valid email address.");
       expect(fields.phone).toContain("Enter a phone number.");
+      expect(fields.propertyType).toContain("Select a property type.");
       expect(fields.services).toContain("Select at least one service.");
+      expect(fields.condition).toContain("Select the general condition.");
+      expect(fields.stainsPresent).toContain(
+        "Select whether you can see stains.",
+      );
     }
   });
 
-  it("normalizes browser FormData without performing any persistence", () => {
+  it("normalizes browser FormData without performing persistence", () => {
     const formData = new FormData();
     Object.entries(validRequest()).forEach(([key, value]) => {
       if (Array.isArray(value)) {

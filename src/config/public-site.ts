@@ -2,37 +2,44 @@ export const publicBrand = {
   status: "temporary",
   name: "FabricCare Sofia",
   shortName: "FabricCare",
-  descriptor: "On-site carpet and upholstery care",
-  tagline: "Professional fabric care, where your furniture already lives.",
-  location: "Sofia, Bulgaria",
-  serviceArea: "Sofia city, with surrounding areas subject to availability",
+  location: {
+    city: "Sofia",
+    countryCode: "BG",
+  },
   contact: {
-    phone: {
-      label: "Phone to be confirmed",
-      href: null,
-    },
-    email: {
-      label: "Email to be confirmed",
-      href: null,
-    },
+    phoneHref: null,
+    emailHref: null,
   },
-  operatingHours: {
-    shortLabel: "Appointments intended from 06:00 to 22:00",
-    detail:
-      "Early-morning and evening appointments are intended to be available, subject to building rules, local requirements, job conditions and availability.",
-  },
-  primaryCta: {
-    label: "Describe what needs care",
-    href: "/request",
+  intendedAppointmentWindow: {
+    start: "06:00",
+    end: "22:00",
   },
   publicIdentityVerified: false,
 } as const;
 
 export const publicLanguageConfig = {
-  renderedLocale: "en",
+  primaryLocale: "bg",
+  secondaryLocale: "en",
   supportedLocales: ["bg", "en"],
-  plannedPrimaryLocale: "bg",
+  prefixes: {
+    bg: "",
+    en: "/en",
+  },
+  htmlLanguages: {
+    bg: "bg",
+    en: "en",
+  },
+  openGraphLocales: {
+    bg: "bg_BG",
+    en: "en_GB",
+  },
 } as const;
 
 export type PublicLocale =
   (typeof publicLanguageConfig.supportedLocales)[number];
+
+export function isPublicLocale(value: string): value is PublicLocale {
+  return publicLanguageConfig.supportedLocales.some(
+    (locale) => locale === value,
+  );
+}

@@ -1,3 +1,7 @@
+import {
+  publicLanguageConfig,
+  type PublicLocale,
+} from "@/config/public-site";
 import type { ServiceSlug } from "./types";
 
 export const serviceSlugs = [
@@ -24,6 +28,41 @@ export const requiredPublicRoutes = [
 
 export type PublicPath = (typeof requiredPublicRoutes)[number];
 
+const publicPathSet = new Set<string>(requiredPublicRoutes);
+
+export function localizePublicPath(
+  locale: PublicLocale,
+  path: PublicPath | string,
+): string {
+  const prefix = publicLanguageConfig.prefixes[locale];
+
+  if (path === "/") {
+    return prefix || "/";
+  }
+
+  return `${prefix}${path}`;
+}
+
+export function getBasePublicPath(pathname: string): PublicPath {
+  const withoutEnglishPrefix =
+    pathname === "/en"
+      ? "/"
+      : pathname.startsWith("/en/")
+        ? pathname.slice(3)
+        : pathname;
+
+  return publicPathSet.has(withoutEnglishPrefix)
+    ? (withoutEnglishPrefix as PublicPath)
+    : "/";
+}
+
+export function getLanguageSwitchHref(
+  targetLocale: PublicLocale,
+  pathname: string,
+): string {
+  return localizePublicPath(targetLocale, getBasePublicPath(pathname));
+}
+
 export const publicRouteMap = requiredPublicRoutes.map((path) => ({
   path,
   changeFrequency: path === "/" ? "weekly" : "monthly",
@@ -33,3 +72,12 @@ export const publicRouteMap = requiredPublicRoutes.map((path) => ({
   changeFrequency: "weekly" | "monthly";
   priority: number;
 }[];
+
+export const localizedPublicRoutes = publicLanguageConfig.supportedLocales.flatMap(
+  (locale) =>
+    requiredPublicRoutes.map((path) => ({
+      locale,
+      basePath: path,
+      path: localizePublicPath(locale, path),
+    })),
+);

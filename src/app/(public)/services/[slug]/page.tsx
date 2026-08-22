@@ -8,7 +8,7 @@ type ServicePageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const dynamicParams = false;
+const locale = "bg";
 
 export function generateStaticParams() {
   return serviceSlugs.map((slug) => ({ slug }));
@@ -16,22 +16,23 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: ServicePageProps) {
   const { slug } = await params;
-  const service = getService(slug);
+  const service = getService(locale, slug);
 
   if (!service) return {};
 
   return createPageMetadata({
+    locale,
     title: service.title,
     description: service.summary,
     path: `/services/${service.slug}`,
   });
 }
 
-export default async function ServicePage({ params }: ServicePageProps) {
+export default async function Page({ params }: ServicePageProps) {
   const { slug } = await params;
-  const service = getService(slug);
+  const service = getService(locale, slug);
 
   if (!service) notFound();
 
-  return <ServiceDetailPage service={service} />;
+  return <ServiceDetailPage service={service} locale={locale} />;
 }
