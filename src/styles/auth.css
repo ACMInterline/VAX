@@ -81,10 +81,20 @@
 }
 
 .auth-status {
+  display: grid;
+  gap: 0.55rem;
   padding: 0.9rem 1rem;
   border-radius: var(--radius-small);
   font-size: 0.78rem;
   font-weight: 650;
+}
+
+.auth-status__action {
+  width: fit-content;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .auth-status--error {

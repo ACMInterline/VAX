@@ -55,7 +55,7 @@ The server-side variables are:
 | `DATABASE_MUTATION_EXPECTED_HOST` | Exact approved development database hostname interlock | Treat as server configuration |
 | `NEON_AUTH_BASE_URL` | Branch-specific managed Auth service endpoint | Treat as server configuration |
 | `NEON_AUTH_COOKIE_SECRET` | At least 32 characters; signs the local session-data cache cookie | Yes |
-| `AUTH_REQUIRE_VERIFIED_EMAIL` | Optional explicit development override; production defaults to required | No |
+| `AUTH_REQUIRE_VERIFIED_EMAIL` | Optional development override; production always requires verification and ignores `false` | No |
 | `AUTH_BOOTSTRAP_PROVIDER_USER_ID` | Temporary explicit provider subject for the owner command | Sensitive operator input; do not persist |
 | `PUBLIC_SITE_URL` | Approved origin used for password-reset callbacks | No |
 
@@ -63,6 +63,11 @@ All remain empty in `.env.example`. Local values belong only in ignored
 `.env.local`; deployment platforms must inject environment-specific values.
 Importing application pages does not construct the provider, so credential-free
 CI builds remain supported.
+
+`AUTH_REQUIRE_VERIFIED_EMAIL=true` enables the verification gate during local
+development. A development-only `false` value leaves that gate disabled for
+provider-flow testing. In production the application always resolves this
+policy to required; `AUTH_REQUIRE_VERIFIED_EMAIL=false` cannot weaken it.
 
 ## Session security
 
@@ -206,6 +211,10 @@ MIME, referrer and browser-permission headers.
 Password reset uses the provider's time-limited token and an approved fixed
 callback origin. Request responses are identical whether or not an account
 exists. Reset and verification tokens are never logged or persisted by VAX.
+The login error and generic signup completion state link visibly to the
+localized verification page whenever runtime policy requires verification.
+Reset-password pages hide the locale switch while a recovery token is active,
+so changing languages cannot drop, duplicate or prefetch that credential.
 
 Neon supports email verification and password reset. At the Phase 3A
 development inspection, email/password and shared development email were
@@ -220,7 +229,8 @@ end-to-end delivery; no paid email provider is selected here.
 shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
 Permission-aware placeholders distinguish future customer, staff and shared
-areas without creating those modules.
+areas without creating those modules. The root document language and skip-link
+copy are derived from the validated application-profile locale.
 
 `/internal/pricing-lab` and `/internal/availability-lab` remain separate local
 development tools. Their existing production `notFound()` gate is unchanged;
@@ -281,18 +291,25 @@ records. Organization scope must be designed before persistent CRM data.
 
 Deployment remains blocked until at least:
 
-- the scheduled patched Next.js 16.3 security release is adopted and validated;
-- Neon Auth Beta suitability and its dependency tree are re-reviewed;
-- trusted production origins, custom SMTP and mandatory verification are
-  configured and exercised;
-- a distributed/provider-backed rate limiter is selected;
-- the development Data API is disabled for application use or every reachable
-  table has reviewed least-privilege grants and row-level policies;
-- the explicit initial owner and privileged role-management workflow is
-  approved and tested;
-- recovery, session revocation and status/role-change behavior receive live
-  end-to-end tests; and
-- deployment and production migration receive separate authorization.
+- the scheduled patched Next.js 16.3 security release is available locally,
+  adopted and validated; local installed, locked and cached package metadata
+  checked on 23 August 2026 contains only 16.3.0 through 16.3.2, so dependency
+  changes remain a later security-upgrade gate;
+- Neon Auth Beta suitability and its transitive dependency tree are re-reviewed;
+- owner-approved production trusted origins and custom SMTP are configured,
+  with mandatory verification exercised against real delivery;
+- a distributed or provider-backed shared rate limiter is selected and tested;
+- sanitized authentication monitoring, alerting, session-revocation response,
+  backup and recovery procedures are defined and rehearsed;
+- reset links and verification OTPs receive live end-to-end validation without
+  retaining tokens or provider details, and every synthetic development
+  identity created for that validation is cleaned up afterward;
+- the browser Data API remains unused until each reachable table has reviewed
+  least-privilege database grants and row-level security policies;
+- the explicit initial owner and future privileged role-management workflow is
+  separately approved and tested; and
+- production migration and deployment receive later, separate authorization
+  and verification.
 
 Phase 3B should add privileged user/status/role administration and invitations,
 with owner protection, re-authentication, audit review and provider lifecycle

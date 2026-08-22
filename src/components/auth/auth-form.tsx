@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import type { AuthActionState } from "@/auth/action-state";
 import type { AuthLocale } from "@/auth/validation";
 import {
   forgotPasswordAction,
@@ -10,9 +11,9 @@ import {
   resetPasswordAction,
   signupAction,
   verifyEmailAction,
-  type AuthActionState,
 } from "@/app/auth-actions";
 import { authContent } from "@/content/auth";
+import { AuthStatusMessage } from "./auth-status-message";
 
 type StandardFormKind = "login" | "signup" | "forgot-password" | "reset-password";
 const initialAuthActionState: AuthActionState = { status: "IDLE" };
@@ -23,30 +24,6 @@ function SubmitButton({ idleLabel, workingLabel }: { idleLabel: string; workingL
     <button className="auth-submit" type="submit" disabled={pending}>
       {pending ? workingLabel : idleLabel}
     </button>
-  );
-}
-
-function StatusMessage({ state }: { state: AuthActionState }) {
-  const messageRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (state.status === "ERROR") {
-      messageRef.current?.focus();
-    }
-  }, [state]);
-
-  if (!state.message) {
-    return null;
-  }
-  return (
-    <div
-      ref={messageRef}
-      className={`auth-status auth-status--${state.status.toLowerCase()}`}
-      role={state.status === "ERROR" ? "alert" : "status"}
-      aria-live="polite"
-      tabIndex={state.status === "ERROR" ? -1 : undefined}
-    >
-      {state.message}
-    </div>
   );
 }
 
@@ -102,7 +79,7 @@ export function AuthForm({
       {kind === "reset-password" ? (
         <input type="hidden" name="token" value={resetToken ?? ""} />
       ) : null}
-      <StatusMessage state={state} />
+      <AuthStatusMessage state={state} locale={locale} />
 
       {kind === "signup" ? (
         <div className="field-group">
@@ -234,7 +211,7 @@ function VerificationRequestForm({ locale }: { locale: AuthLocale }) {
   return (
     <form action={formAction} className="auth-form auth-form--secondary" noValidate>
       <input type="hidden" name="locale" value={locale} />
-      <StatusMessage state={state} />
+      <AuthStatusMessage state={state} locale={locale} />
       <div className="field-group">
         <label htmlFor="verification-request-email">{content.common.email}</label>
         <input
@@ -271,7 +248,7 @@ function VerificationCodeForm({ locale }: { locale: AuthLocale }) {
   return (
     <form action={formAction} className="auth-form" noValidate>
       <input type="hidden" name="locale" value={locale} />
-      <StatusMessage state={state} />
+      <AuthStatusMessage state={state} locale={locale} />
       <div className="field-group">
         <label htmlFor="verification-email">{content.common.email}</label>
         <input
