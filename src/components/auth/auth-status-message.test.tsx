@@ -21,6 +21,8 @@ describe("authentication status navigation", () => {
       );
 
       expect(html).toContain('role="alert"');
+      expect(html).toContain('aria-live="polite"');
+      expect(html).toContain('tabindex="-1"');
       expect(html).toContain(`href="${href}"`);
       expect(html).toContain(label);
       expect(html).not.toMatch(/provider|token|otp/i);

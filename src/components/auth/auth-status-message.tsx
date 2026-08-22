@@ -14,11 +14,12 @@ export function AuthStatusMessage({
   locale: AuthLocale;
 }) {
   const messageRef = useRef<HTMLDivElement>(null);
+  // Action-state identity is the per-response signal; status can stay ERROR.
   useEffect(() => {
     if (state.status === "ERROR") {
       messageRef.current?.focus();
     }
-  }, [state.status]);
+  }, [state]);
 
   if (!state.message) {
     return null;
