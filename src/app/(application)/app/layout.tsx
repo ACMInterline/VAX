@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ApplicationDocument } from "@/components/application/application-document";
+import { ApplicationShell } from "@/components/application/application-shell";
 import "../../globals.css";
 import "./app.css";
 import { requireApplicationPrincipal } from "./application-principal";
@@ -19,7 +20,16 @@ export default async function ApplicationLayout({
 
   return (
     <ApplicationDocument locale={principal.profile.preferredLocale}>
-      {children}
+      <ApplicationShell
+        locale={principal.profile.preferredLocale}
+        authorization={{
+          status: principal.profile.status,
+          roles: principal.roles,
+          permissions: principal.permissions,
+        }}
+      >
+        {children}
+      </ApplicationShell>
     </ApplicationDocument>
   );
 }

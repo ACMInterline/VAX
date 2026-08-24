@@ -12,6 +12,8 @@ import {
 
 describe("canonical identity and access policy", () => {
   it("defines unique stable role and permission seeds", () => {
+    expect(applicationRoleCodes).toHaveLength(5);
+    expect(permissionCodes).toHaveLength(22);
     expect(new Set(applicationRoleCodes).size).toBe(applicationRoleCodes.length);
     expect(new Set(permissionCodes).size).toBe(permissionCodes.length);
     expect(canonicalRoles.map((role) => role.code)).toEqual(applicationRoleCodes);
@@ -61,13 +63,18 @@ describe("canonical identity and access policy", () => {
     expect(rolePermissionMatrix.ADMIN).toContain("ROLE_ASSIGN");
     expect(rolePermissionMatrix.ADMIN).not.toContain("SYSTEM_SETTINGS_MANAGE");
     expect(canAssignRole(new Set(["ADMIN"]), "OWNER")).toBe(false);
+    expect(canAssignRole(new Set(["ADMIN"]), "ADMIN")).toBe(false);
     expect(canAssignRole(new Set(["ADMIN"]), "DISPATCHER")).toBe(true);
+    expect(canAssignRole(new Set(["ADMIN"]), "TECHNICIAN")).toBe(true);
+    expect(canAssignRole(new Set(["ADMIN"]), "CUSTOMER")).toBe(true);
     expect(canAssignRole(new Set(["OWNER"]), "OWNER")).toBe(true);
+    expect(canAssignRole(new Set(["OWNER"]), "ADMIN")).toBe(true);
     expect(canAssignRole(new Set(["DISPATCHER"]), "CUSTOMER")).toBe(false);
   });
 
   it("produces one deterministic mapping per role and permission pair", () => {
     const rows = rolePermissionRows();
+    expect(rows).toHaveLength(62);
     const keys = rows.map((row) => `${row.roleCode}:${row.permissionCode}`);
     expect(new Set(keys).size).toBe(keys.length);
   });

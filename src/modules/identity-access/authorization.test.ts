@@ -56,4 +56,29 @@ describe("server authorization policy", () => {
       new AuthorizationError("PERMISSION_DENIED"),
     );
   });
+
+  it("links user administration only for the matching read permission", () => {
+    const userAdministrator = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set(["USER_ADMIN_READ"] as const),
+    } satisfies AuthorizationContext;
+    const settingsReader = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set(["SYSTEM_SETTINGS_READ"] as const),
+    } satisfies AuthorizationContext;
+
+    expect(visibleNavigationItems(userAdministrator)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "ADMINISTRATION",
+          href: "/app/admin/users",
+        }),
+      ]),
+    );
+    expect(visibleNavigationItems(settingsReader).map((item) => item.code)).not.toContain(
+      "ADMINISTRATION",
+    );
+  });
 });

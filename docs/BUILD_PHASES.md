@@ -132,13 +132,22 @@ payment, upload, production migration or deployment is included.
 
 ### Phase 3B — Privileged identity administration
 
-Add owner-protected user/status/role management, invitations if approved,
-re-authentication for sensitive changes, provider lifecycle reconciliation,
-session revocation validation and an audit review surface. Resolve production
-SMTP/trusted-origin/rate-limit configuration before any deployment gate.
+Implemented application user list/detail routes, localized filtering and
+pagination, conservative owner/admin policy, atomic role/status mutations and
+audit, last-active-owner/self protection, explicit accessible confirmations,
+safe provider capability reporting and pure reconciliation states. No schema,
+provider record, synthetic identity, CRM record or deployment change is part of
+Phase 3B.
 
-Gate: threat review, deny-by-default authorization tests, session and recovery
-tests, and administrative access approval.
+Provider-attested recent authentication, session enumeration/revocation,
+production invitations and provider-admin elevation remain fail-closed gates;
+no substitute provider-table access or fake email delivery is used. Production
+SMTP/trusted origins, shared rate limiting, monitoring/recovery, reviewed
+least-privilege/RLS and the scheduled Next.js security update also remain
+unresolved before deployment.
+
+Gate: focused privilege/IDOR/race/stale-session/CSRF review,
+deny-by-default authorization tests, full validation and protected-main CI.
 
 ## Phase 4 — Customer CRM
 

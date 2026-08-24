@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A decision
+## Phase 3A/3B decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -116,7 +116,7 @@ mapping on migration runs.
 | --- | :---: | :---: | :---: | :---: | :---: |
 | Identity self read/update | ✓ | ✓ | ✓ | ✓ | ✓ |
 | User administration read/manage | ✓ | ✓ | — | — | — |
-| Role assignment | ✓ | ✓, except Owner | — | — | — |
+| Role assignment | ✓, subject to protected-flow gates | Dispatcher, Technician, Customer only | — | — | — |
 | System settings read | ✓ | ✓ | — | — | — |
 | System settings manage | ✓ | — | — | — | — |
 | Catalogue read | ✓ | ✓ | ✓ | — | — |
@@ -134,7 +134,9 @@ mapping on migration runs.
 | Audit read | ✓ | ✓ | — | — | — |
 
 `OWNER` receives the entire canonical permission set. `ADMIN` deliberately
-lacks protected system-setting management and cannot assign `OWNER`.
+lacks protected system-setting management and may assign or revoke only
+`DISPATCHER`, `TECHNICIAN` and `CUSTOMER`. It cannot manage an `OWNER` or
+another `ADMIN`, and cannot assign either privileged role.
 `TECHNICIAN` has no broad CRM, commercial or security access. `CUSTOMER` has
 only self and future own-record permissions. Resource ownership checks do not
 yet exist because Phase 3A creates no business records.
@@ -197,8 +199,115 @@ No owner bootstrap is required merely to validate Phase 3A.
 Application profiles are `ACTIVE`, `SUSPENDED` or `DISABLED`. Both suspended
 and disabled accounts fail closed even when the provider session remains valid
 and roles still exist. Records are retained; deletion is not used as a status
-transition. Future status and role management must be privileged, re-authorized
-server-side and audited.
+transition. Phase 3B status and role management is privileged, re-authorized
+server-side and audited atomically. Self-status changes are blocked, and the
+last active owner cannot be suspended or disabled. `DISABLED` is additionally
+fail-closed until reliable recent authentication is available; `SUSPENDED` and
+reactivation remain usable under the documented target-management policy.
+
+## Phase 3B privileged administration
+
+The protected `/app/admin/users` and `/app/admin/users/[id]` routes list and
+inspect application profiles by application UUID. The list supports safe name
+or profile-identifier search, canonical role and status filters, bounded
+pagination, localized role/status labels, creation time and last safe audit
+activity. Detail shows application profile state, current and historical role
+assignments, a sanitized audit view and explicit provider/session capability
+state. Email search/display is deliberately unavailable until a narrowly
+scoped Provider Admin connection is proven; no provider subject, token, cookie,
+session credential, reset value or raw provider response reaches the UI.
+
+Every page read requires `USER_ADMIN_READ` on the server. Every mutation is a
+Next.js Server Action that revalidates the current provider session, active
+application profile, role and permissions; validates canonical input; applies
+the administrative attempt limiter; and rechecks actor, target, active role,
+owner count and permissions in the database statement. Navigation visibility
+is convenience only. URLs and form inputs never carry provider subjects.
+
+Role assignment and revocation follows this initial policy:
+
+- `OWNER` may manage another profile, subject to protected-flow and last-owner
+  gates;
+- `ADMIN` may manage only non-privileged targets and only the `DISPATCHER`,
+  `TECHNICIAN` and `CUSTOMER` roles;
+- `ADMIN` cannot manage, grant or revoke `ADMIN` or `OWNER`;
+- self role and self status changes are blocked; and
+- `DISPATCHER`, `TECHNICIAN`, `CUSTOMER`, suspended/disabled identities and
+  unauthenticated requests cannot administer identities.
+
+Assignment rows are reactivated or revoked rather than deleted. Repeated
+assignment/revocation and same-status requests are safe no-ops. Successful
+changes append `ROLE_ASSIGNED`, `ROLE_REMOVED` or `ACCOUNT_STATUS_CHANGED` in
+the same PostgreSQL statement as the state change. Metadata is allowlisted to
+role, prior/new status and the privileged-administration source. A shared
+transaction explicitly selects `READ COMMITTED`, then acquires the advisory
+lock before any state is read. The authoritative actor, target and active-owner
+checks run in the following statement with a fresh snapshot; that statement
+keeps the state change and sanitized audit insert atomic. This ordering prevents
+queued changes from using authority or an owner count captured before the lock
+was acquired.
+
+Native modal confirmations separate intent from submission for all role and
+status changes, support Escape/cancel, restore focus to the invoking control,
+and disable pending controls. Every distinct mutation error response focuses
+the accessible alert, including consecutive errors, without focusing again on
+an unrelated render.
+
+### Provider operations and reconciliation
+
+The provider-neutral privileged-auth contract reports each capability
+explicitly. The pinned Neon adapter supports a safely projected, paginated
+provider user list through the documented Admin API, but the call additionally
+requires a Better Auth provider-admin role. VAX `OWNER` and `ADMIN` are not and
+must never be translated into that provider role. Direct provider user detail
+is absent from the pinned endpoint map. The session-list contract conflicts
+with the bundled provider route and remains unvalidated. No direct
+`neon_auth` query or fallback exists.
+
+The pure reconciliation policy can distinguish aligned records,
+provider-only identities, profile-only identities, no-active-role profiles,
+blocked profiles with active sessions, no record and unknown provider state.
+The current UI reports `PROVIDER_STATE_UNKNOWN` because it cannot correlate a
+safe provider projection to an application profile without exposing or
+duplicating the provider subject. It never treats an unavailable provider as a
+missing identity and never repairs a discrepancy automatically.
+
+The provider documents revoke-all-sessions, but VAX cannot yet perform it
+safely: provider-admin authority is broad, reliable recent-authentication is
+unavailable, and the 300-second signed session cache needs a proved
+authoritative invalidation path. Session listing and revoke-all therefore
+remain fail-closed capabilities with visible admin-state messaging. Application
+`SUSPENDED`/`DISABLED` checks still re-read VAX status on every protected
+boundary and block immediately even while provider sessions exist.
+
+### Recent authentication and invitations
+
+The managed provider does not expose a reliable recent-authentication or
+step-up signal through the pinned server adapter, and provider Admin routes do
+not require a fresh session. VAX does not invent password replay or trust a
+client timestamp. The administration actor contract carries authoritative
+authentication time when a future provider can supply it; absence is denied.
+Consequently `OWNER`/`ADMIN` grant or revocation, `DISABLED`, and provider
+session revocation are production gates. Ordinary non-privileged role changes,
+`SUSPENDED` and reactivation remain available within policy.
+
+Staff invitation remains architecture-only. A later design must record an
+intended canonical role, send through production-ready email, require verified
+provider acceptance, and activate the role only through an explicit audited
+operation. Provider account creation is not treated as an invitation, and no
+fake delivery, invite record or implicit staff provisioning is implemented.
+
+### Initial owner production runbook
+
+No default owner, hard-coded email or first-signup elevation exists. A future
+authorized production setup must separately: (1) run a production-specific,
+reviewed variant of the VAX owner bootstrap against the intended active
+application profile, and (2) only if provider administration is actually
+needed, assign the matching Better Auth provider-admin authority out-of-band in
+the Neon Console. The current bootstrap command remains development-only and
+must not be reused against production. Both operations require an approved
+operator runbook, audit evidence, rollback/recovery planning and separate
+production authorization.
 
 ## Public authentication flows
 
@@ -229,8 +338,10 @@ end-to-end delivery; no paid email provider is selected here.
 shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
 Permission-aware placeholders distinguish future customer, staff and shared
-areas without creating those modules. The root document language and skip-link
-copy are derived from the validated application-profile locale.
+areas without creating those modules. Authorized identities additionally see a
+real Administration → Users link; the nested routes repeat authorization on
+the server. The root document language and skip-link copy are derived from the
+validated application-profile locale.
 
 `/internal/pricing-lab` and `/internal/availability-lab` remain separate local
 development tools. Their existing production `notFound()` gate is unchanged;
@@ -238,12 +349,13 @@ authentication does not convert them into deployable internal pages.
 
 ## Rate limiting
 
-Login, signup, reset and verification Server Actions use an in-memory bounded limiter
-for loopback/local development. Keys are one-way hashes of the submitted account
-key and available forwarded address and are not logged. Process-local memory is
-not reliable across production instances, so the production adapter denies all
-auth attempts until a shared/provider-backed limiter is selected and tested.
-This is an intentional deployment blocker, not a production implementation.
+Login, signup, reset, verification and privileged-mutation Server Actions use
+an in-memory bounded limiter for loopback/local development. Keys are one-way
+hashes of the submitted account/actor key and available forwarded address and
+are not logged. Process-local memory is not reliable across production
+instances, so the production adapter denies all attempts until a
+shared/provider-backed limiter is selected and tested. This is an intentional
+deployment blocker, not a production implementation.
 
 ## Audit events
 
@@ -254,15 +366,18 @@ application actor/subject, a correlation identifier, timestamp and allowlisted
 safe metadata. They do not store email, password, OTP, reset token, session
 token or raw provider error. Provider-owned security history is not copied.
 
-Phase 3A creates the event model and records the implemented application flows.
-Future privileged management must add events to the same boundary or a reviewed
-general audit service; ordinary operators must not edit audit history.
+Phase 3A creates the event model. Phase 3B appends successful role and status
+mutations atomically with their state change. Repeated no-op requests do not
+fabricate change events. Database-level append-only grants and immutability are
+still a production least-privilege gate; ordinary operators receive no audit
+editing UI.
 
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
 belong only on Neon `development`; production accounts and sessions are outside
-this phase. Migration `0004_add_identity_access.sql` is additive, creates only
+this phase. Phase 3B uses no synthetic identity and makes no Neon mutation.
+Migration `0004_add_identity_access.sql` is additive, creates only
 application-owned public tables and never names `neon_auth`. Production remains
 unmigrated. Migration and owner-bootstrap commands additionally require an
 explicit development label and exact approved database hostname before opening
@@ -295,22 +410,29 @@ Deployment remains blocked until at least:
   adopted and validated; local installed, locked and cached package metadata
   checked on 23 August 2026 contains only 16.3.0 through 16.3.2, so dependency
   changes remain a later security-upgrade gate;
-- Neon Auth Beta suitability and its transitive dependency tree are re-reviewed;
+- Neon Auth Beta suitability, provider-admin breadth and its transitive
+  dependency tree are re-reviewed;
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
-- a distributed or provider-backed shared rate limiter is selected and tested;
+- a distributed or provider-backed shared rate limiter for authentication and
+  privileged mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
   retaining tokens or provider details, and every synthetic development
   identity created for that validation is cleaned up afterward;
 - the browser Data API remains unused until each reachable table has reviewed
-  least-privilege database grants and row-level security policies;
-- the explicit initial owner and future privileged role-management workflow is
-  separately approved and tested; and
+  least-privilege database grants and row-level security policies, including
+  append-only audit enforcement;
+- reliable provider-attested recent authentication, authoritative session
+  invalidation, and the provider session-list/revoke contracts are proven on a
+  disposable development identity before enabling high-risk operations;
+- the explicit initial-owner production runbook and any separate provider-admin
+  elevation are approved and rehearsed; and
 - production migration and deployment receive later, separate authorization
   and verification.
 
-Phase 3B should add privileged user/status/role administration and invitations,
-with owner protection, re-authentication, audit review and provider lifecycle
-reconciliation. It should still precede customer CRM persistence.
+Phase 3C may now design Customer and Property CRM. It must preserve application
+identity as distinct from CRM ownership and must define organization scope,
+privacy, retention, least privilege and per-record authorization before any
+customer persistence or browser data access.

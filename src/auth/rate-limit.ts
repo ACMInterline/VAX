@@ -2,7 +2,8 @@ export type AuthAttemptScope =
   | "LOGIN"
   | "SIGNUP"
   | "PASSWORD_RESET"
-  | "EMAIL_VERIFICATION";
+  | "EMAIL_VERIFICATION"
+  | "ADMIN_MUTATION";
 
 export type AuthRateLimitResult =
   | { allowed: true }
@@ -20,6 +21,7 @@ const scopePolicies: Record<
   SIGNUP: { limit: 3, windowMilliseconds: 60 * 60 * 1000 },
   PASSWORD_RESET: { limit: 3, windowMilliseconds: 60 * 60 * 1000 },
   EMAIL_VERIFICATION: { limit: 5, windowMilliseconds: 15 * 60 * 1000 },
+  ADMIN_MUTATION: { limit: 20, windowMilliseconds: 5 * 60 * 1000 },
 };
 
 type AttemptWindow = { count: number; resetsAt: number };
