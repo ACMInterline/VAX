@@ -71,6 +71,15 @@ provider-neutral authentication boundary, application authorization loads its
 own profile and permission state, and only the centralized adapter imports the
 Neon Auth SDK.
 
+Phase 3B keeps the same direction for privileged administration: nested routes
+and Server Actions call the pure identity-administration service, whose
+repository port requires atomic mutation-and-audit behavior. The PostgreSQL
+adapter revalidates actor, target, role and last-owner state. A separate
+provider-neutral privileged-auth contract exposes capability state and safe
+projections; only the Neon adapter may call Better Auth Admin APIs. Application
+roles never become provider roles, and provider identifiers never become route
+identifiers.
+
 ## Public website boundary
 
 The Phase 1A public site is a statically rendered bilingual application
@@ -229,8 +238,9 @@ cross the HTTP boundary. The response is marked no-store.
 ### Authentication
 
 Phase 3A uses Neon Auth's managed Better Auth integration. Application code
-depends on `AuthenticatedUser`, `Session`, `UserId` and permission policy;
-provider session, API and token shapes stay inside `src/auth/neon-provider.ts`.
+depends on `AuthenticatedUser`, `Session`, `UserId`, privileged capability
+contracts and permission policy; provider session, Admin API and token shapes
+stay inside `src/auth/neon-provider.ts` and its projection helper.
 Provider-managed `neon_auth`, application `user_profiles`, and future customer
 records are separate ownership boundaries. See `docs/IDENTITY_AND_ACCESS.md`.
 

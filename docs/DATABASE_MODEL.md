@@ -119,6 +119,17 @@ role-to-permission mapping remains code-controlled and deterministic. The
 application profile UUID is distinct from the provider subject and from any
 future CRM customer identifier.
 
+Phase 3B requires no schema or migration. Privileged list/detail reads use the
+existing profile, assignment and audit tables. Role changes update the existing
+assignment row's active/revocation state and preserve each change in the
+append-oriented audit stream. Status changes update `user_profiles.status`.
+Each successful state change and its sanitized audit insert execute atomically;
+the same transaction explicitly selects `READ COMMITTED`, then acquires a shared
+transaction advisory lock before any state is read. The mutation statement then
+rechecks the actor, target and database-side active-owner count from a fresh
+snapshot before changing state and appending its audit. Index additions are
+deferred until real query-volume evidence justifies them.
+
 ## Long-term relationship
 
 The central durable hierarchy is:
@@ -145,9 +156,11 @@ must be designed in the owning phase before migration.
 ### Identity
 
 The initial application profile, role, permission, assignment and authentication
-event tables are implemented in Phase 3A. Privileged role/status management,
-invitations, organization membership and provider lifecycle reconciliation
-remain planned; see `docs/IDENTITY_AND_ACCESS.md`.
+event tables are implemented in Phase 3A. Phase 3B implements privileged
+application role/status management and read-only reconciliation states without
+new tables. Invitations, organization membership, provider lifecycle repair,
+and reliable session administration remain planned; see
+`docs/IDENTITY_AND_ACCESS.md`.
 
 ### CRM
 

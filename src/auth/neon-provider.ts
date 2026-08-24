@@ -9,6 +9,15 @@ import {
   type SignInCredentials,
 } from "./contracts";
 import { getAuthRuntimeConfiguration } from "./config";
+import { toPrivilegedAuthUserSummary } from "./neon-privileged-projection";
+import {
+  PrivilegedAuthenticationProviderError,
+  type PrivilegedAuthenticationCapabilities,
+  type PrivilegedAuthenticationProvider,
+  type PrivilegedAuthUserListRequest,
+  type PrivilegedAuthUserPage,
+  validatePrivilegedAuthUserListRequest,
+} from "./privileged-provider";
 
 type NeonAuthClient = ReturnType<typeof createNeonAuth>;
 
@@ -127,9 +136,101 @@ class NeonAuthenticationProvider implements AuthenticationProvider {
   }
 }
 
+const privilegedAuthenticationCapabilities = {
+  listUsers: {
+    availability: "SUPPORTED",
+    requiresProviderAdmin: true,
+    requiresRecentAuthentication: false,
+  },
+  listSessions: {
+    availability: "UNAVAILABLE",
+    requiresProviderAdmin: true,
+    requiresRecentAuthentication: false,
+    unavailableReason: "UNVALIDATED_PROVIDER_CONTRACT",
+  },
+  revokeAllSessions: {
+    availability: "UNAVAILABLE",
+    requiresProviderAdmin: true,
+    requiresRecentAuthentication: true,
+    unavailableReason: "RECENT_AUTHENTICATION_UNAVAILABLE",
+  },
+  recentAuthentication: {
+    availability: "UNAVAILABLE",
+    requiresProviderAdmin: false,
+    requiresRecentAuthentication: true,
+    unavailableReason: "PROVIDER_NOT_SUPPORTED",
+  },
+} as const satisfies PrivilegedAuthenticationCapabilities;
+
+class NeonPrivilegedAuthenticationProvider implements PrivilegedAuthenticationProvider {
+  getCapabilities(): PrivilegedAuthenticationCapabilities {
+    return privilegedAuthenticationCapabilities;
+  }
+
+  async listUsers(request: PrivilegedAuthUserListRequest): Promise<PrivilegedAuthUserPage> {
+    const validated = validatePrivilegedAuthUserListRequest(request);
+    const result = await (async () => {
+      try {
+        return await getNeonAuthClient().admin.listUsers({
+          query: {
+            limit: validated.limit,
+            offset: validated.offset,
+            sortBy: "createdAt",
+            sortDirection: "desc",
+            ...(validated.searchEmail === undefined
+              ? {}
+              : {
+                  searchValue: validated.searchEmail,
+                  searchField: "email" as const,
+                  searchOperator: "contains" as const,
+                }),
+          },
+        });
+      } catch {
+        throw new PrivilegedAuthenticationProviderError("PROVIDER_UNAVAILABLE");
+      }
+    })();
+
+    if (result.error) {
+      throw new PrivilegedAuthenticationProviderError(
+        result.error.status === 401 || result.error.status === 403
+          ? "AUTHORIZATION_REQUIRED"
+          : "PROVIDER_UNAVAILABLE",
+      );
+    }
+    if (
+      !result.data ||
+      !Array.isArray(result.data.users) ||
+      !Number.isInteger(result.data.total) ||
+      result.data.total < 0
+    ) {
+      throw new PrivilegedAuthenticationProviderError("INVALID_PROVIDER_RESPONSE");
+    }
+
+    return {
+      users: result.data.users.map(toPrivilegedAuthUserSummary),
+      total: result.data.total,
+      limit: validated.limit,
+      offset: validated.offset,
+    };
+  }
+
+  async revokeAllSessions(): Promise<void> {
+    throw new PrivilegedAuthenticationProviderError(
+      "RECENT_AUTHENTICATION_UNAVAILABLE",
+    );
+  }
+}
+
 let provider: AuthenticationProvider | undefined;
+let privilegedProvider: PrivilegedAuthenticationProvider | undefined;
 
 export function getAuthenticationProvider(): AuthenticationProvider {
   provider ??= new NeonAuthenticationProvider();
   return provider;
+}
+
+export function getPrivilegedAuthenticationProvider(): PrivilegedAuthenticationProvider {
+  privilegedProvider ??= new NeonPrivilegedAuthenticationProvider();
+  return privilegedProvider;
 }

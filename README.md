@@ -24,13 +24,15 @@ The current repository contains:
   price-book and duration versions, with no public prices or product claims;
 - non-indexed local-only pricing and availability calculation harnesses;
 - Neon Auth-backed bilingual account flows, application-owned profiles,
-  deny-by-default RBAC and a minimal protected `/app` shell; and
+  deny-by-default RBAC and a protected `/app` shell;
+- bilingual privileged application user list/detail routes with conservative,
+  owner-protected role/status administration and sanitized audit review; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Booking connectivity, persistent occupancy/calendar, CRM, privileged user
-administration, payments, invoices, dispatch, object storage, final branding
-and deployment are not implemented.
+Booking connectivity, persistent occupancy/calendar, CRM, production
+invitations/session administration, payments, invoices, dispatch, object
+storage, final branding and deployment are not implemented.
 
 ## Requirements
 
@@ -145,6 +147,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/app | Next.js routes, layouts, and transport adapters |
 | src/auth | Provider-neutral auth contracts, Neon adapter, session and rate-limit boundaries |
 | src/components/public | Reusable public-site layout and presentation |
+| src/components/admin | Accessible privileged-administration presentation and confirmation controls |
 | src/config | Replaceable public identity and runtime-neutral site facts |
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
 | src/modules | Provider-neutral domain vocabulary and application-facing modules |
@@ -202,3 +205,7 @@ profiles, five canonical roles, 22 permissions, deterministic role mappings,
 status enforcement, sanitized auth events and the protected `/app` foundation
 described in [docs/IDENTITY_AND_ACCESS.md](docs/IDENTITY_AND_ACCESS.md). It adds
 no CRM or transactional business data and does not change Neon production.
+Phase 3B adds owner-protected application identity list/detail, conservative
+role/status management, atomic sanitized audit, provider reconciliation policy
+and fail-closed provider capability gates without a schema migration, synthetic
+identity, provider mutation or deployment.

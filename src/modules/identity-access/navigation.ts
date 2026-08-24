@@ -5,7 +5,8 @@ export type ApplicationNavigationItem = {
   code: "ACCOUNT" | "CUSTOMER_WORKSPACE" | "OPERATIONS" | "SCHEDULE" | "FIELD_WORK" | "ADMINISTRATION";
   labelBg: string;
   labelEn: string;
-  futurePath: string;
+  futurePath?: string;
+  href?: string;
   requiredPermissions: readonly PermissionCode[];
   audience: "CUSTOMER" | "STAFF" | "SHARED";
 };
@@ -55,8 +56,8 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     code: "ADMINISTRATION",
     labelBg: "Администрация",
     labelEn: "Administration",
-    futurePath: "/app/admin",
-    requiredPermissions: ["USER_ADMIN_READ", "SYSTEM_SETTINGS_READ"],
+    href: "/app/admin/users",
+    requiredPermissions: ["USER_ADMIN_READ"],
     audience: "STAFF",
   },
 ];

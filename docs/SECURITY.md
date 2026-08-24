@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3A
+## Security posture through Phase 3B
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -238,6 +238,42 @@ phase authorization. No map credential or live provider is introduced.
 
 Detailed roles, sessions, audit events and remaining production blockers are in
 `docs/IDENTITY_AND_ACCESS.md`.
+
+## Phase 3B privileged administration safeguards
+
+- `/app/admin/users` and application-UUID detail routes require
+  `USER_ADMIN_READ` in a nested server layout. Every Server Action separately
+  requires `USER_ADMIN_MANAGE`; role actions also require `ROLE_ASSIGN` in the
+  provider-neutral service and database recheck.
+- Role/status inputs are allowlisted. `ADMIN` can manage only unprivileged
+  targets and only `DISPATCHER`, `TECHNICIAN` and `CUSTOMER`; client-submitted
+  roles never grant authority.
+- Self role/status changes are blocked. `OWNER`/`ADMIN` changes and `DISABLED`
+  fail closed without provider-attested recent authentication.
+- A shared PostgreSQL transaction advisory lock and database-side active-owner
+  count protect the last active owner from concurrent revocation, suspension or
+  disablement. The transaction explicitly selects `READ COMMITTED`, acquires
+  the lock before reading state, then uses a fresh snapshot for actor, target
+  and owner checks while keeping mutation and sanitized audit insertion atomic.
+- Status is application-owned and re-read at each protected boundary, so a
+  suspended/disabled profile is denied even while a provider cookie exists.
+- Provider user listing uses only the supported server Admin API and projects
+  email, verification state and creation time. Provider subjects and provider
+  roles do not cross its safe DTO. The UI does not call this capability until
+  provider-admin authority is deliberately configured and reviewed.
+- Session listing/revocation stays unavailable because its pinned contract,
+  recent-authentication proof and signed-cache invalidation have not been
+  validated. There is no direct `neon_auth` SQL fallback.
+- Privileged actions use explicit modal confirmation, pending-state protection,
+  focus return and per-response error-alert focus. Next.js Server Action origin
+  checks and `SameSite=Strict` remain the CSRF boundary for this email/password
+  flow.
+- Development uses bounded in-process privileged-mutation limiting. Production
+  remains fail-closed until a shared limiter is configured.
+- The focused review found no browser database access, provider-table write,
+  role injection, client-only enforcement, raw provider error or sensitive
+  audit payload. Runtime least-privilege grants, RLS/Data API policy and audit
+  immutability remain explicit deployment gates.
 
 ## Auditability
 

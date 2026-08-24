@@ -168,7 +168,12 @@ export function canAssignRole(
     return true;
   }
 
-  return actorRoles.has("ADMIN") && targetRole !== "OWNER";
+  return (
+    actorRoles.has("ADMIN") &&
+    (targetRole === "DISPATCHER" ||
+      targetRole === "TECHNICIAN" ||
+      targetRole === "CUSTOMER")
+  );
 }
 
 export function rolePermissionRows(): readonly {
