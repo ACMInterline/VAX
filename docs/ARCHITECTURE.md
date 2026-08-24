@@ -42,6 +42,7 @@ introduced.
 | src/modules/commercial-engine | Pure versioned pricing, VAT, duration, snapshot and contribution policies | Next.js, Drizzle, Neon, persistence or public marketing copy |
 | src/modules/availability-engine | Pure service-area, travel, capacity, slot and utilisation policies | Framework, database, live map provider, customer persistence or dispatch UI |
 | src/modules/identity-access | Stable roles, permissions, authorization and navigation policy | Next.js, provider SDKs, sessions or credentials |
+| src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
@@ -79,6 +80,15 @@ provider-neutral privileged-auth contract exposes capability state and safe
 projections; only the Neon adapter may call Better Auth Admin APIs. Application
 roles never become provider roles, and provider identifiers never become route
 identifiers.
+
+Phase 3C applies that direction to business records. Staff and linked-customer
+routes call a customer-CRM service whose actor-aware repository rechecks the
+current application profile, permissions and full ownership chain. Route IDs
+and hidden form fields are untrusted selectors, not authority. Staff and
+customer projections are separate types so internal summaries, access notes,
+operational notes and link-administration metadata cannot enter the customer
+self-service response accidentally. Provider subjects and email equality are
+never business-ownership inputs.
 
 ## Public website boundary
 
@@ -204,6 +214,14 @@ identity and future CRM/customer data. Canonical seed reruns refresh code-owned
 labels and mappings but preserve an operator-disabled role or permission; only a
 future explicit audited administration flow may reactivate it.
 
+Phase 3C runtime CRM records are operator/customer data, not deterministic seed
+data. They use UUID identities, restrictive ownership foreign keys,
+archive/inactive lifecycle state and application-profile actor metadata. The
+stable cleaning-asset UUID is the attachment point for later inspection,
+treatment, completed-job and maintenance history; Phase 3C creates none of
+those events. The existing security audit stream remains identity-specific and
+is not repurposed as a general business audit log.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
@@ -276,6 +294,7 @@ The following remain deliberately undecided:
 - hosting platform;
 - payment, mapping, email, and SMS providers;
 - privileged identity administration and organization scope;
+- customer merge/shared-household/company authority and production CRM retention workflows;
 - final commercial identity and owner-approved content workflow;
 - offline technician synchronization;
 - analytics stack;

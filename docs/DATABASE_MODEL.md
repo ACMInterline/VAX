@@ -130,22 +130,56 @@ rechecks the actor, target and database-side active-owner count from a fresh
 snapshot before changing state and appending its audit. Index additions are
 deferred until real query-volume evidence justifies them.
 
+Phase 3C adds the first runtime business records on development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `customers` | Individual/business identity, contact summary, locale, lifecycle and staff-only internal summary |
+| `customer_contacts` | Multiple named contact channels, one active primary contact at most |
+| `customer_identity_links` | Explicit active/revoked application-profile access relationship; never inferred from email |
+| `properties` | Customer-owned service locations, sensitive address/access facts, optional coordinates and travel-zone reference |
+| `property_areas` | Lightweight typed rooms/areas with optional custom label and floor |
+| `cleaning_assets` | Stable physical item identity and customer-described profile linked to canonical item/material/construction/condition definitions |
+| `cleaning_asset_reported_issues` | Current customer-reported issue associations using canonical issue types |
+| `cleaning_asset_reported_risk_flags` | Current customer-reported risk associations using canonical risk flags |
+
+Customers, properties and assets use `ACTIVE`, `INACTIVE` and `ARCHIVED`
+lifecycle states. Mutable records carry a monotonic version, timestamps and
+nullable application-profile actor metadata. Identity links retain creation and
+revocation provenance. Ownership and canonical foreign keys use restrictive
+deletion; only actor metadata may become null when its profile is removed. No
+business record is cascade-deleted when an identity link is revoked.
+
+The asset-to-area relationship includes property ownership in its foreign key,
+so an area from one property cannot be attached to another property's asset.
+The asset UUID is the future Cleaning Passport attachment point. Reported
+condition/issues/risks are current descriptive facts, not a professional
+assessment or completed treatment event.
+Delicate, valuable and antique/vintage declarations reuse the canonical risk
+flags rather than introducing duplicate asset booleans.
+
+There is no Phase 3C CRM seed. The migration creates no request, quote, booking,
+job, cleaning history, payment or invoice table and does not alter
+provider-managed `neon_auth`. See `docs/CRM_AND_PRIVACY.md` for sensitive-data,
+archive and deferred retention decisions.
+
 ## Long-term relationship
 
-The central durable hierarchy is:
+The implemented durable hierarchy foundation is:
 
-> Customer → Property → Room → Cleaning Item → Cleaning History
+> Customer → Property → Property Area → Cleaning Asset → future Cleaning History
 
 Expected cardinalities:
 
 - one customer may own or manage many properties;
 - one property contains many rooms;
 - one room contains many durable cleaning items;
-- one cleaning item may appear in many booking and job events;
-- one cleaning item accumulates many cleaning-history entries.
+- one cleaning asset may later appear in many booking and job events;
+- one cleaning asset may later accumulate many cleaning-history entries.
 
-A booking item refers to a cleaning item. It does not own or replace that item.
-This distinction enables a Digital Cleaning Passport across repeat visits.
+A future booking item refers to a cleaning asset. It does not own or replace
+that asset. This distinction enables a Digital Cleaning Passport across repeat
+visits.
 
 ## Planned domains
 
@@ -164,19 +198,21 @@ and reliable session administration remain planned; see
 
 ### CRM
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| customers | Durable residential or business customer record |
-| customer_contacts | Contact people and channels associated with a customer |
+| customers | Implemented durable individual or business customer record |
+| customer_contacts | Implemented contact people and channels associated with a customer |
+| customer_identity_links | Implemented explicit application-profile access relationship |
 | customer_preferences | Consent, service, language, and communication preferences |
 
 ### Properties
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| properties | Service locations associated with customers |
-| rooms | Durable spaces within a property |
-| cleaning_items | Durable carpets, rugs, upholstery, mattresses, and other serviceable items |
+| properties | Implemented service locations associated with customers |
+| property_areas | Implemented lightweight durable spaces within a property |
+| cleaning_assets | Implemented durable carpets, rugs, upholstery, mattresses, and other serviceable physical items |
+| cleaning_asset_reported_issues, cleaning_asset_reported_risk_flags | Implemented customer-described current asset profile associations |
 
 ### Service catalogue
 

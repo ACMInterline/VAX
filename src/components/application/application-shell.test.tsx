@@ -60,4 +60,28 @@ describe("protected application shell", () => {
       expect(html).toContain(actionLabel);
     },
   );
+
+  it.each([
+    ["bg", "Клиенти", "Моите имоти"],
+    ["en", "Customers", "My properties"],
+  ] as const)(
+    "renders localized %s staff and customer CRM links for matching permissions",
+    (locale, customersLabel, propertiesLabel) => {
+      const html = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(
+            new Set(["CUSTOMER_RECORDS_READ", "OWN_CUSTOMER_DATA_READ"]),
+          )}
+        >
+          <h1>CRM route</h1>
+        </ApplicationShell>,
+      );
+
+      expect(html).toContain('href="/app/customers"');
+      expect(html).toContain(customersLabel);
+      expect(html).toContain('href="/app/my-properties"');
+      expect(html).toContain(propertiesLabel);
+    },
+  );
 });

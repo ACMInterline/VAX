@@ -2,9 +2,10 @@
 
 Production-oriented service-platform foundation with an isolated development
 database, a bilingual public website, a canonical service catalogue, a
-versioned development commercial engine and a non-transactional scheduling
-capacity foundation for a future carpet and upholstery cleaning service serving
-Sofia, Bulgaria, plus an initial secure identity and permission boundary.
+versioned development commercial engine, a non-transactional scheduling
+capacity foundation, secure identity/RBAC and the first customer/property CRM
+records for a future carpet and upholstery cleaning service serving Sofia,
+Bulgaria.
 
 The current repository contains:
 
@@ -27,12 +28,17 @@ The current repository contains:
   deny-by-default RBAC and a protected `/app` shell;
 - bilingual privileged application user list/detail routes with conservative,
   owner-protected role/status administration and sanitized audit review; and
+- bilingual staff customer/property administration plus linked-customer,
+  read-only property access with server-side record ownership checks;
+- durable customer, contact, property, area and cleaning-asset records that
+  form the identity-safe Cleaning Passport attachment foundation; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Booking connectivity, persistent occupancy/calendar, CRM, production
-invitations/session administration, payments, invoices, dispatch, object
-storage, final branding and deployment are not implemented.
+Persistent requests, quotes, bookings, occupancy/calendar, completed Cleaning
+Passport history, production invitations/session administration, payments,
+invoices, dispatch, object storage, final branding and deployment are not
+implemented.
 
 ## Requirements
 
@@ -148,6 +154,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/auth | Provider-neutral auth contracts, Neon adapter, session and rate-limit boundaries |
 | src/components/public | Reusable public-site layout and presentation |
 | src/components/admin | Accessible privileged-administration presentation and confirmation controls |
+| src/components/application | Shared protected-application shell and accessible action primitives |
 | src/config | Replaceable public identity and runtime-neutral site facts |
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
 | src/modules | Provider-neutral domain vocabulary and application-facing modules |
@@ -208,4 +215,9 @@ no CRM or transactional business data and does not change Neon production.
 Phase 3B adds owner-protected application identity list/detail, conservative
 role/status management, atomic sanitized audit, provider reconciliation policy
 and fail-closed provider capability gates without a schema migration, synthetic
-identity, provider mutation or deployment.
+identity, provider mutation or deployment. Phase 3C adds explicit
+application-profile-to-customer links, customer/contact/property/area/asset
+records and server-mediated staff/customer CRM surfaces. It keeps the public
+request browser-only, introduces no request/quote/booking/payment record, and
+does not migrate production or deploy. See
+[docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md).

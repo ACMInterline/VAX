@@ -49,13 +49,51 @@ describe("server authorization policy", () => {
 
   it("uses navigation visibility only as convenience", () => {
     const customer = context("CUSTOMER");
-    const visible = visibleNavigationItems(customer).map((item) => item.code);
+    const customerNavigation = visibleNavigationItems(customer);
+    const visible = customerNavigation.map((item) => item.code);
     expect(visible).toEqual(["ACCOUNT", "CUSTOMER_WORKSPACE"]);
+    expect(customerNavigation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "CUSTOMER_WORKSPACE",
+          href: "/app/my-properties",
+          requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+        }),
+      ]),
+    );
     expect(visible).not.toContain("OPERATIONS");
+    expect(visible).not.toContain("CUSTOMERS");
     expect(() => requirePermission(customer, "OPERATIONS_READ")).toThrowError(
       new AuthorizationError("PERMISSION_DENIED"),
     );
   });
+
+  it("links staff CRM only for customer-record readers", () => {
+    const customerReader = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set(["CUSTOMER_RECORDS_READ"] as const),
+    } satisfies AuthorizationContext;
+    const technician = context("TECHNICIAN");
+
+    expect(visibleNavigationItems(customerReader)).toEqual([
+      expect.objectContaining({
+        code: "CUSTOMERS",
+        href: "/app/customers",
+        requiredPermissions: ["CUSTOMER_RECORDS_READ"],
+      }),
+    ]);
+    expect(visibleNavigationItems(technician).map((item) => item.code)).not.toContain(
+      "CUSTOMERS",
+    );
+  });
+
+  it.each(["SUSPENDED", "DISABLED"] as const)(
+    "hides CRM navigation for a %s profile even when permissions are present",
+    (status) => {
+      expect(visibleNavigationItems(context("OWNER", status))).toEqual([]);
+    },
+  );
 
   it("links user administration only for the matching read permission", () => {
     const userAdministrator = {

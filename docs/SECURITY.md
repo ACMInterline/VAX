@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3B
+## Security posture through Phase 3C
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -274,6 +274,39 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   role injection, client-only enforcement, raw provider error or sensitive
   audit payload. Runtime least-privilege grants, RLS/Data API policy and audit
   immutability remain explicit deployment gates.
+
+## Phase 3C CRM and record-ownership safeguards
+
+- Authentication identity, application profile and CRM customer remain
+  separate records. Only an active application-owned identity/customer link can
+  establish customer self-service scope; matching email is never authority.
+- Staff pages require the existing CRM read/manage permissions. Identity-link
+  administration additionally requires user-administration manage permission.
+  Dispatcher can operate CRM records but cannot grant customer identity access;
+  Technician has no unrestricted CRM access.
+- Every read and mutation reauthorizes the current application actor and derives
+  the owning customer through the database relationship. Customer, property,
+  area, asset and hidden form identifiers are untrusted. Missing and forbidden
+  records have the same external outcome.
+- Self-service uses a linked-only repository surface and accepts no
+  client-selected customer scope. Customer DTOs exclude staff-only summaries,
+  access/parking notes, operational notes, actor metadata and link-management
+  information.
+- Zod allowlists mutable fields; foreign and canonical references are checked
+  server-side. Optimistic record versions prevent silent stale overwrites.
+- Ownership and canonical foreign keys restrict deletion. Normal lifecycle
+  changes archive or deactivate records, and revoking an identity link cannot
+  cascade into customer/property/asset loss.
+- The public request form remains client-only: no action endpoint, database
+  adapter or persistence was added. CRM creation is authenticated staff-only.
+- Direct browser SQL/Data API access remains prohibited. Application record
+  policy is server-mediated; production least-privilege grants and fully
+  reviewed RLS are still mandatory deployment gates, not partially implemented
+  controls.
+- Addresses, coordinates and operational notes are treated as sensitive. Free
+  text must not contain credentials or payment/identity secrets. Retention,
+  export, erasure, merge and data-subject workflows remain unresolved and are
+  documented in `docs/CRM_AND_PRIVACY.md`.
 
 ## Auditability
 

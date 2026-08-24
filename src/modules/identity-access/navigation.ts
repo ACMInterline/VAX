@@ -2,7 +2,14 @@ import { hasAnyPermission, type AuthorizationContext } from "./authorization";
 import type { PermissionCode } from "./policy";
 
 export type ApplicationNavigationItem = {
-  code: "ACCOUNT" | "CUSTOMER_WORKSPACE" | "OPERATIONS" | "SCHEDULE" | "FIELD_WORK" | "ADMINISTRATION";
+  code:
+    | "ACCOUNT"
+    | "CUSTOMER_WORKSPACE"
+    | "CUSTOMERS"
+    | "OPERATIONS"
+    | "SCHEDULE"
+    | "FIELD_WORK"
+    | "ADMINISTRATION";
   labelBg: string;
   labelEn: string;
   futurePath?: string;
@@ -22,11 +29,19 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
   },
   {
     code: "CUSTOMER_WORKSPACE",
-    labelBg: "Моите услуги",
-    labelEn: "My services",
-    futurePath: "/app/requests",
+    labelBg: "Моите имоти",
+    labelEn: "My properties",
+    href: "/app/my-properties",
     requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
     audience: "CUSTOMER",
+  },
+  {
+    code: "CUSTOMERS",
+    labelBg: "Клиенти",
+    labelEn: "Customers",
+    href: "/app/customers",
+    requiredPermissions: ["CUSTOMER_RECORDS_READ"],
+    audience: "STAFF",
   },
   {
     code: "OPERATIONS",
