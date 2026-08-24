@@ -36,6 +36,13 @@
       "when": 1787390709268,
       "tag": "0004_add_identity_access",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787539680582,
+      "tag": "0005_add_customer_property_crm",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A/3B decision
+## Phase 3A–3C decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -15,12 +15,12 @@ The integration is deliberately split into three concepts:
    verification and session lifecycle.
 2. **Application profile and authorization** answer whether that identity may
    use VAX and which application actions it may perform.
-3. **Future business ownership** will answer which customer, property, request,
-   quote, booking or job records that actor may access.
+3. **Business ownership** answers which implemented customer, property, area
+   and cleaning-asset records that actor may access; future requests, quotes,
+   bookings and jobs will extend this boundary.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
-and a `CUSTOMER` role alone will never prove ownership of a future business
-record.
+and a `CUSTOMER` role alone never proves ownership of a business record.
 
 ## Provider boundary
 
@@ -138,8 +138,39 @@ lacks protected system-setting management and may assign or revoke only
 `DISPATCHER`, `TECHNICIAN` and `CUSTOMER`. It cannot manage an `OWNER` or
 another `ADMIN`, and cannot assign either privileged role.
 `TECHNICIAN` has no broad CRM, commercial or security access. `CUSTOMER` has
-only self and future own-record permissions. Resource ownership checks do not
-yet exist because Phase 3A creates no business records.
+only self and own-record permissions. Phase 3C additionally requires an active
+application-owned identity/customer link before that own-record read permission
+can resolve any CRM data.
+
+## Phase 3C customer record authorization
+
+`customer_identity_links` explicitly connects a `user_profiles.id` to a
+`customers.id` with a controlled relationship and active/revoked lifecycle.
+Provider subjects, provider roles and matching email addresses are not link
+inputs. A CRM record may exist without any login, and one application profile
+may be linked to multiple customers for future household, property-manager and
+company-contact cases.
+
+Staff reads require `CUSTOMER_RECORDS_READ`; staff mutations require
+`CUSTOMER_RECORDS_MANAGE`. Creating or revoking an identity/customer link also
+requires `USER_ADMIN_MANAGE`, limiting that authority to Owner/Admin under the
+current canonical mapping. Dispatcher may manage CRM records but cannot grant
+CRM identity access. Technician receives no unrestricted CRM access.
+
+Customer self-service requires `OWN_CUSTOMER_DATA_READ` and an active link to
+the exact owning customer. It is deliberately read-only in Phase 3C even though
+the canonical future `OWN_CUSTOMER_DATA_UPDATE` permission already exists.
+Self-service methods derive customer scope from the authenticated application
+profile and never accept a caller-selected access mode. Staff and customer DTOs
+are separate; customer responses exclude internal summaries, access/parking
+notes, operational notes, actor metadata and link-administration details.
+
+Every route and mutation treats customer, property, area and asset IDs as
+untrusted. The server derives each nested object's owning customer through
+database relationships and repeats current actor status, permission, parent and
+link checks at the operation boundary. Missing and cross-customer identifiers
+produce the same safe external result. Archive state is used for normal
+deactivation; link revocation does not delete CRM data.
 
 ## Central authorization
 
@@ -337,11 +368,12 @@ end-to-end delivery; no paid email provider is selected here.
 `/app` is the authenticated operational/customer namespace. Its initial page
 shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
-Permission-aware placeholders distinguish future customer, staff and shared
-areas without creating those modules. Authorized identities additionally see a
-real Administration → Users link; the nested routes repeat authorization on
-the server. The root document language and skip-link copy are derived from the
-validated application-profile locale.
+Permission-aware navigation exposes staff Customers and linked-customer My
+Properties destinations. `/app/customers` and nested routes repeat staff
+authorization on the server; `/app/my-properties` always uses linked-only
+scope. Authorized identities additionally see Administration → Users. The root
+document language and skip-link copy are derived from the validated
+application-profile locale.
 
 `/internal/pricing-lab` and `/internal/availability-lab` remain separate local
 development tools. Their existing production `notFound()` gate is unchanged;
@@ -432,7 +464,9 @@ Deployment remains blocked until at least:
 - production migration and deployment receive later, separate authorization
   and verification.
 
-Phase 3C may now design Customer and Property CRM. It must preserve application
-identity as distinct from CRM ownership and must define organization scope,
-privacy, retention, least privilege and per-record authorization before any
-customer persistence or browser data access.
+Phase 3C implements the initial Customer and Property CRM with application
+identity separate from explicit CRM ownership and server-side per-record
+authorization. Direct browser database access remains prohibited. Organization
+scope, reviewed production least-privilege/RLS, final privacy/retention policy,
+data-subject workflows and a general business audit log remain production or
+future-phase gates; see `docs/CRM_AND_PRIVACY.md`.

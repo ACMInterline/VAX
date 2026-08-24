@@ -14,6 +14,11 @@ cleaning-item records, requests, quotes, bookings, jobs, prices, payments,
 schedules or invoices. A future `cleaning_item` will persist independently of
 any booking and will refer to the codes defined here.
 
+Phase 3C implements that physical instance as `cleaning_assets`. A canonical
+`cleaning_item_types` row answers “what kind of item is this?”; a cleaning asset
+answers “which physical item at which authorized property?” Assets reference
+this taxonomy and remain independent of any future request, quote or booking.
+
 ## Sources of truth
 
 The provider-neutral definitions in

@@ -149,26 +149,41 @@ unresolved before deployment.
 Gate: focused privilege/IDOR/race/stale-session/CSRF review,
 deny-by-default authorization tests, full validation and protected-main CI.
 
-## Phase 4 — Customer CRM
+### Phase 3C — Customer CRM, Property Registry and Cleaning Asset foundation
 
-Implement customers, contacts, preferences, search, duplicate handling,
-consent, notes, ownership, and lifecycle controls.
+Implemented individual/business customers, multiple contacts, explicit
+application-profile links, properties, areas and physical cleaning assets that
+reuse the canonical cleaning taxonomy. Staff routes use existing CRM
+permissions; customer self-service is linked-only and read-only. UUID asset
+identity is the future Cleaning Passport attachment point without fabricated
+inspection, treatment or completed-job history.
 
-Gate: privacy and retention decisions, permission coverage, validation,
-duplicate-resolution behavior, and auditability.
+The public request remains non-persistent. No quote, booking, payment, invoice,
+file, message, notification, occupancy or deployment is introduced. Production
+least-privilege/RLS, final retention/data-subject workflows, duplicate/merge
+policy and a general business audit stream remain explicit gates.
 
-## Phase 5 — Properties, rooms and cleaning items
+Gate: reviewed additive development migration, record-level authorization and
+IDOR tests, sensitive projection review, archive/delete integrity, bilingual
+responsive accessibility, full validation and protected-main CI.
 
-Implement the durable Customer → Property → Room → Cleaning Item hierarchy and
-item identity required for repeated service history.
+### Phase 3D — Persistent Request → Estimate → Quote
 
-Gate: ownership and move semantics, merge and archival behavior, item-history
-invariants, and mobile usability.
+Next recommended phase: introduce authenticated/policy-controlled request
+capture, estimate and quote records that reference the Phase 3C customer,
+property and cleaning-asset foundation. Preserve immutable pricing and duration
+provenance and keep booking creation outside the phase until quote acceptance
+semantics are separately reviewed.
 
-## Phase 6 — Quote and booking engine
+Gate: request ownership and public-intake abuse/privacy design, immutable
+commercial provenance, concurrency/idempotency, auditability and explicit
+acceptance boundaries.
 
-Implement request capture, quote creation, itemized scope, availability
-selection, booking confirmation, amendments, cancellation, and idempotency.
+### Phase 3E — Quote acceptance → Booking
+
+Convert an explicitly accepted Phase 3D quote into a booking, then add
+availability selection, confirmation, amendments, cancellation and
+idempotency without duplicating the quote's commercial provenance.
 
 Gate: pricing provenance, concurrency handling, customer confirmations,
 failure recovery, and end-to-end booking tests.

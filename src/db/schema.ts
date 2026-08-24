@@ -23,3 +23,4 @@ export * from "./schema/service-catalogue";
 export * from "./schema/commercial-engine";
 export * from "./schema/availability-engine";
 export * from "./schema/identity-access";
+export * from "./schema/customer-crm";
