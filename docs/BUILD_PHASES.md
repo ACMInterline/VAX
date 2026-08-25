@@ -196,18 +196,38 @@ full validation, protected-main CI and explicit acceptance boundaries.
 
 ### Phase 3E — Quote acceptance → Booking
 
-Convert an explicitly accepted Phase 3D quote into a booking, then add
-availability selection, confirmation, amendments, cancellation and
-idempotency without duplicating the quote's commercial provenance.
+Implemented the conservative issued-quote acceptance and Booking foundation.
+Customer or authorized staff-on-behalf acceptance consumes only an intact,
+still-valid `ISSUED` quote and atomically creates one immutable acceptance, one
+customer-safe Booking, copied item/commercial snapshots and audited evidence.
+It neither renormalizes request facts nor recalculates price or duration. The
+quote remains `ISSUED`, the request remains `QUOTED`, and the acceptance
+relation is authoritative.
 
-Gate: pricing provenance, concurrency handling, customer confirmations,
-failure recovery, and end-to-end booking tests.
+Every new Booking starts `PENDING_SCHEDULING` / `REVIEW_REQUIRED` because the
+Phase 2B scheduling configuration is unapproved and the issued quote does not
+freeze complete operational requirements. No exact slot, team, equipment or
+occupancy is fabricated. A durable occupancy schema provides PostgreSQL GiST
+half-open `[)` overlap protection for one team and optional equipment, and
+cancellation releases blocking capacity while preserving history. The actual
+schedule/assignment/reschedule command remains future and must append audited
+snapshot revisions without repricing. See `docs/BOOKING_ENGINE.md`.
+
+No payment, invoice, Job/treatment execution, notification, production
+migration or deployment is included.
+
+Gate: immutable pricing/request provenance, authorization and IDOR defense,
+duplicate/concurrent acceptance idempotency, atomic failure recovery,
+database-backed occupancy constraints, cancellation history, bilingual
+accessible customer/staff flows, reviewed development-only migration, full
+validation and protected-main CI.
 
 ## Phase 7 — Calendar, availability and dispatch
 
 Build the durable calendar and dispatch workflow on the Phase 2B calculation
-foundation: persisted occupancy, holds, calendar views, dispatch queues,
-assignments, audited overrides and concurrent conflict handling.
+foundation and Phase 3E occupancy constraints: approved scheduling inputs,
+holds, calendar views, dispatch queues, assignments, audited schedule revisions
+and overrides, and broader concurrent conflict handling.
 
 Gate: Sofia time-zone and daylight-saving tests, concurrency rules, override
 audit logs, and dispatcher workflow validation.

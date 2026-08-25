@@ -1,18 +1,21 @@
 # Customer CRM and Privacy
 
-## Scope through Phase 3D
+## Scope through Phase 3E
 
 Phase 3C introduced the first persistent VAX business records: customers,
 contacts, identity-to-customer links, properties, property areas and physical
 cleaning assets. At the Phase 3C gate it did not persist public requests or
 quotes.
 
-Phase 3D now persists anonymous, linked-customer and staff-created service
-requests, append-only estimates and versioned staff-reviewed quotes. It still
-creates no quote acceptance, booking, job, occupancy, reservation, payment,
-invoice, file, message, notification or completed cleaning history. The
-request/quote lifecycle and projections are defined in
-`docs/REQUEST_AND_QUOTE.md`.
+Phase 3D persists anonymous, linked-customer and staff-created service requests,
+append-only estimates and versioned staff-reviewed quotes. Phase 3E adds the
+immutable acceptance of an eligible issued quote, the resulting Booking and
+copied booking items, a durable occupancy foundation and booking audit events.
+New Bookings remain `PENDING_SCHEDULING` / `REVIEW_REQUIRED`; acceptance creates
+no confirmed slot or occupancy. Job execution, payment, invoice, file, message,
+notification and completed cleaning history remain absent. The commercial and
+booking contracts are defined in `docs/REQUEST_AND_QUOTE.md` and
+`docs/BOOKING_ENGINE.md`.
 
 The model serves one VAX cleaning business. It is not a general multi-tenant
 platform and does not claim that future organization, retention or data-subject
@@ -32,7 +35,7 @@ An active `customer_identity_links` row is the only application-owned
 relationship that can grant a signed-in customer profile access to a CRM
 customer. Matching an email address never creates or proves that relationship.
 Removing or revoking a link does not delete the customer, contacts, properties,
-assets, requests, estimates or historical quotes.
+assets, requests, estimates, historical quotes, acceptances or Bookings.
 
 Staff access requires the existing CRM permissions. `OWNER`, `ADMIN` and
 `DISPATCHER` may read and manage CRM records under the application policy.
@@ -65,6 +68,7 @@ identifiers are not distinguished to the caller.
 | Authorization metadata | Application-profile link, relationship, actor and timestamps | Prove explicit record ownership and administrative provenance |
 | Request intake | Submitted contact details, service descriptions, preferred timing and original free text | Preserve what was requested for staff assessment without inferring identity |
 | Commercial history | Normalized scope, estimate snapshots, quote lines, terms, validity and status | Explain and present a reviewed offer without recalculating historical facts |
+| Booking and appointment history | Acceptance evidence, copied commercial/item snapshots, preferred or confirmed timing, service address, cancellation and occupancy history | Preserve the operational commitment and explain scheduling decisions without rewriting the quote |
 
 Full addresses and coordinates are sensitive operational data. They are shown
 only to staff with CRM access or to application profiles explicitly linked to
@@ -97,12 +101,13 @@ validate parent state before new child records are added; retained children
 remain available for authorized historical review. Exact restoration,
 customer-merge and property-move workflows remain future decisions.
 
-Requests and issued quotes retain their own controlled lifecycle rather than
-following CRM archive state automatically. Estimates and issued commercial
-history are not overwritten. Phase 3D provides no quote acceptance or business
-record deletion command; retention, anonymization and lawful deletion must
-reconcile request contact data with commercial and audit integrity before
-production.
+Requests, issued quotes, acceptances and Bookings retain their own controlled
+lifecycle rather than following CRM archive state automatically. Estimates,
+issued commercial evidence, copied booking items and cancelled occupancy
+history are not overwritten. Normal closure uses controlled status and link
+revocation rather than cascading deletion. Retention, anonymization and lawful
+deletion must reconcile request contact data, address/schedule history and
+commercial/audit integrity before production.
 
 ## Cleaning Passport foundation
 
@@ -127,9 +132,11 @@ newer change.
 Mutable business records retain creation/update timestamps and application
 actor metadata. Link rows retain creation and revocation provenance. Phase 3D
 adds separate `business_audit_events` for allowlisted request, estimate and
-quote changes in the same transaction as the change. Safe metadata excludes
-contact details, addresses, notes, provider subjects, tokens and secrets, and
-ordinary application code has no update/delete operation for the stream.
+quote changes. Phase 3E adds a separate Booking event stream for acceptance,
+Booking creation and cancellation, written atomically with its owning change.
+Safe metadata excludes contact details, addresses, notes, provider subjects,
+tokens and secrets, and ordinary application code has no update/delete
+operation for either stream.
 
 This is not a complete business audit system. Sensitive reads, exports, merges,
 retention actions and later domains still require reviewed coverage without
@@ -149,11 +156,13 @@ production CRM deployment, the owner must approve and test:
 - backup/PITR retention and deletion propagation;
 - audit-log retention and access controls;
 - anonymous-request abuse, duplicate and contact-data retention policy;
-- issued-quote retention and its relationship to future acceptance;
+- issued-quote and immutable acceptance retention;
+- acceptance, Booking, appointment-address, occupancy and cancellation
+  retention, including the relationship to future Job history;
 - production least-privilege grants and reviewed row-level security;
 - monitoring for unauthorized access and an incident/recovery procedure; and
 - a separate authorized production migration and deployment review.
 
 Direct browser database access remains prohibited. The enabled development
-Data API is not an application integration, and no CRM or request/quote route
-receives a database credential or provider token.
+Data API is not an application integration, and no CRM, request/quote or
+Booking route receives a database credential or provider token.

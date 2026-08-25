@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3D
+## Security posture through Phase 3E
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -81,6 +81,11 @@ database modules.
 Application migrations are applied only to the VAX Neon `development` branch.
 The Phase 3A migration creates additive public-schema identity/RBAC tables and
 must never target production or directly change provider-managed `neon_auth`.
+Phase 3E migration 0007 is likewise additive and development-only; it creates
+only application-owned acceptance, Booking, item, occupancy and Booking-audit
+tables plus the required `btree_gist` extension and overlap constraints. It
+never names `neon_auth`, creates no payment/invoice/Job table and is not
+authorized for production.
 The current migration and owner-bootstrap commands refuse production mode,
 non-development mutation labels and unexpected database hostnames before
 opening a database client. Applying any migration to production requires a
@@ -368,17 +373,79 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   quote link, acceptance, booking, occupancy, payment, invoice, upload, message,
   notification or deployment is added. See `docs/REQUEST_AND_QUOTE.md`.
 
+## Phase 3E quote acceptance and Booking safeguards
+
+- Customer acceptance requires own-record update permission plus the current
+  exact identity/customer link. Staff-on-behalf acceptance requires CRM and
+  operations management permissions, a controlled source and a non-blank
+  evidence note. Anonymous acceptance is unavailable.
+- The DRAFT-to-ISSUED statement builds a canonical acceptance-source snapshot
+  database-side while locking quote/request, request item provenance, quote
+  items, CRM/property/zone and the complete estimate. The browser cannot submit
+  or replace this evidence.
+- The acceptance transaction locks and rechecks the `ISSUED` quote and
+  `QUOTED` request, `[valid_from, valid_until)` validity, ownership/active state,
+  full reported-versus-normalized request graph, complete estimate, mutable
+  CRM/zone semantics and quote items. Its canonical current reconstruction must
+  equal the issued JSONB snapshot exactly. Missing, extra, malformed, stale or
+  changed evidence fails closed. Route identifiers and preview state are never
+  authority.
+- Estimate evidence is decoded database-side before issue or acceptance. The
+  guard validates the strict engine item/enumeration contract, configuration
+  provenance, canonical price/duration inputs, timestamp equality, scalar and
+  result flags, line-to-subtotal/component arithmetic, unique rule references,
+  VAT/minimum-total derivation, status and warning/review-code derivation. The
+  database-canonical price-snapshot SHA-256 must also match the quote's stored
+  source-estimate digest. Malformed JSON takes a false/review branch rather
+  than an unsafe cast or exception.
+- Acceptance invokes no request normalization, pricing, duration, CRM repair or
+  snapshot refresh path, and booking values are extracted only from the issued
+  snapshot. A legacy issued quote with `NULL` evidence is never backfilled.
+  Any stale, incomplete or inconsistent provenance fails closed to safe staff
+  review with no partial acceptance/Booking/audit state.
+- Unique quote/acceptance/Booking constraints and one atomic database statement
+  make duplicate and concurrent submissions idempotent. A bounded retry handles
+  only random Booking-reference collision; it cannot weaken eligibility.
+- The accepted quote remains `ISSUED` and the request remains `QUOTED`.
+  `quote_acceptances` is immutable, unique acceptance evidence, and Booking
+  items copy the frozen line descriptions, measurements, calculation evidence
+  and integer commercial amounts.
+- Every new Booking is `PENDING_SCHEDULING` / `REVIEW_REQUIRED`. The preferred
+  window remains a preference; no exact time, team, equipment or occupancy is
+  fabricated while scheduling configuration and frozen operational
+  requirements are absent.
+- `btree_gist` team/equipment exclusion constraints apply to half-open `[)`
+  operational ranges for `PENDING`/`CONFIRMED` occupancy. They reject races at
+  the database boundary. Cancellation changes blocking occupancy to
+  `CANCELLED`, releasing capacity while retaining the historical row.
+- The occupancy adapter is scoped to one requested team and Sofia work date,
+  reads operational-range overlap rather than only service-start date, checks
+  denormalized policy/profile provenance against referenced configuration and
+  rejects malformed, mixed-context or arithmetically impossible snapshots.
+- Staff cancellation reauthorizes CRM/operations/schedule management, checks
+  the optimistic Booking version, changes Booking and occupancy atomically and
+  appends sanitized audit evidence. Future rescheduling must append a linked
+  schedule snapshot and audit event rather than rewrite history.
+- Customer projections exclude staff acceptance notes, internal notes,
+  operational snapshots, actor identifiers and other customers' records.
+  Booking addresses, appointment times, access/parking facts and cancellation
+  history remain sensitive server-mediated data.
+- There is still no browser Data API/SQL access, provider Auth mutation,
+  payment, invoice, Job/treatment execution, upload, message, notification,
+  production migration or deployment. See `docs/BOOKING_ENGINE.md`.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
-business stream. Authentication and role/status events remain in
+business stream. Phase 3E separately records acceptance, Booking creation and
+cancellation. Authentication and role/status events remain in
 `auth_audit_events`. Broader sensitive-read and future-domain operations still
 require durable audit coverage, including:
 
 - role and permission changes;
 - access to sensitive customer information;
-- quote acceptance, discount, invoice and payment state changes;
-- booking, assignment, and job-status overrides;
+- discount, invoice and payment state changes;
+- scheduling, rescheduling, assignment, and job-status overrides;
 - inspection, damage, treatment, and claim changes;
 - exports, deletions, and retention actions;
 - security-setting changes; and
@@ -394,8 +461,9 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 - Safe output encoding and content security policy
 - Distributed rate and abuse controls for request, quote, booking,
   authentication and messaging paths
-- An approved duplicate/replay policy for public request intake, plus
-  idempotency for bookings, payments, notifications and webhooks
+- An approved duplicate/replay policy for public request intake, preservation
+  of Booking idempotency, plus idempotency for payments, notifications and
+  webhooks
 - File type, size, malware, and authorization controls for uploads
 - Encryption in transit and provider-supported encryption at rest
 - Dependency and lockfile review

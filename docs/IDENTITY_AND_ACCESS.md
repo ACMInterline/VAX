@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A–3D decision
+## Phase 3A–3E decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -17,7 +17,8 @@ The integration is deliberately split into three concepts:
    use VAX and which application actions it may perform.
 3. **Business ownership** answers which implemented customer, property, area
    and cleaning-asset records that actor may access. Phase 3D extends the same
-   boundary to requests and issued quotes; bookings and jobs remain future.
+   boundary to requests and issued quotes; Phase 3E extends it to acceptance and
+   Bookings. Jobs remain future.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
 and a `CUSTOMER` role alone never proves ownership of a business record.
@@ -197,6 +198,31 @@ customer-authorized historical quote may remain visible after supersession,
 expiry or withdrawal, but there is no quote acceptance control in Phase 3D.
 Every identifier is treated as untrusted and missing/forbidden results remain
 indistinguishable. See `docs/REQUEST_AND_QUOTE.md`.
+
+## Phase 3E acceptance and Booking authorization
+
+Phase 3E adds no role or permission. Customer acceptance requires
+`OWN_CUSTOMER_DATA_UPDATE`; customer Booking reads require
+`OWN_CUSTOMER_DATA_READ`. Both derive customer scope from the active
+application-profile identity link and recheck the exact quote/customer/property
+graph. A submitted quote reference is only a selector, never proof of ownership.
+
+Staff acceptance-on-behalf requires both `CUSTOMER_RECORDS_MANAGE` and
+`OPERATIONS_MANAGE` plus an allowlisted source and evidence note. Staff Booking
+reads require `CUSTOMER_RECORDS_READ`, `OPERATIONS_READ` and `SCHEDULE_READ`.
+Cancellation additionally requires the three matching management permissions,
+including `SCHEDULE_MANAGE`. The current canonical mapping admits Owner, Admin
+and Dispatcher while keeping Technician out of unrestricted acceptance,
+Booking and cancellation.
+
+The repository repeats active-profile, permission, ownership, lifecycle,
+validity and provenance checks in the acceptance transaction. It never trusts a
+role label, route visibility, client-supplied customer ID or the earlier preview
+state. The quote stays `ISSUED`, the request stays `QUOTED`, and the unique
+application-owned acceptance relation is authoritative. If any source graph or
+commercial evidence is inconsistent, the operation writes nothing and returns
+safe staff review rather than repairing or recalculating data. See
+`docs/BOOKING_ENGINE.md`.
 
 ## Central authorization
 
@@ -394,11 +420,12 @@ end-to-end delivery; no paid email provider is selected here.
 `/app` is the authenticated operational/customer namespace. Its initial page
 shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
-Permission-aware navigation exposes staff Customers and Requests plus
-linked-customer My Properties, My Requests and My Quotes destinations.
-`/app/customers` and `/app/requests` repeat their respective permission checks
-on the server; own-record routes always derive linked-only scope. Draft quotes
-and estimate internals have no customer route. Authorized identities
+Permission-aware navigation exposes staff Customers, Requests and Bookings plus
+linked-customer My Properties, My Requests, My Quotes and My Bookings
+destinations. `/app/customers`, `/app/requests` and `/app/bookings` repeat their
+respective permission checks on the server; own-record routes always derive
+linked-only scope. Draft quotes, estimate internals, staff acceptance evidence
+and operational Booking snapshots have no customer route. Authorized identities
 additionally see Administration → Users. The root document language and
 skip-link copy are derived from the validated application-profile locale.
 
@@ -408,13 +435,14 @@ authentication does not convert them into deployable internal pages.
 
 ## Rate limiting
 
-Login, signup, reset, verification, anonymous request intake and privileged
-mutation Server Actions use bounded in-memory limiting for loopback/local
-development. Auth keys are one-way hashes of the submitted account/actor key
-and available forwarded address; public intake uses an address-scoped constant
-instead of contact details. Keys are not logged. Process-local memory is not
-reliable across production instances, so production remains blocked until a
-shared/provider-backed limiter is selected and tested.
+Login, signup, reset, verification, anonymous request intake, privileged
+identity mutation and Booking mutation Server Actions use bounded in-memory
+limiting for loopback/local development. Auth/Booking keys are one-way hashes
+of the submitted account/actor key and available forwarded address; public
+intake uses an address-scoped constant instead of contact details. Keys are not
+logged. Process-local memory is not reliable across production instances, so
+production remains blocked until a shared/provider-backed limiter is selected
+and tested.
 
 ## Audit events
 
@@ -437,14 +465,21 @@ quote lifecycle changes and never stores provider subjects, contact details,
 addresses, notes, tokens or secrets. That separation prevents business history
 from weakening or overloading authentication audit policy.
 
+Phase 3E similarly uses `booking_audit_events` for acceptance, Booking creation
+and cancellation rather than adding business vocabulary to `auth_audit_events`.
+Its metadata is allowlisted and excludes provider subjects, addresses, contact
+details and free-form acceptance/cancellation notes. Database-level append-only
+grants remain a production gate.
+
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
 belong only on Neon `development`; production accounts and sessions are outside
 this phase. Migration `0004_add_identity_access.sql` is additive, creates only
 application-owned public tables and never names `neon_auth`. Phase 3D adds only
-application-owned public-schema request/quote tables on development and does
-not query or mutate Auth-managed tables. Production remains unmigrated.
+application-owned public-schema request/quote tables, and Phase 3E adds only
+application-owned acceptance/Booking/occupancy/audit tables on development.
+Neither queries or mutates Auth-managed tables. Production remains unmigrated.
 Migration and owner-bootstrap commands additionally require an explicit
 development label and exact approved database hostname before opening the
 database client.
@@ -481,7 +516,8 @@ Deployment remains blocked until at least:
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
 - a distributed or provider-backed shared rate limiter for authentication,
-  anonymous request intake and privileged mutations is selected and tested;
+  anonymous request intake, privileged identity mutations and Booking
+  mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
@@ -501,9 +537,10 @@ Deployment remains blocked until at least:
 Phase 3C implements the initial Customer and Property CRM with application
 identity separate from explicit CRM ownership and server-side per-record
 authorization. Phase 3D applies that boundary to persistent requests and issued
-quotes, with a separate scoped business-event stream. Direct browser database
-access remains prohibited. Organization scope, reviewed production
+quotes; Phase 3E applies it to acceptance and Bookings with a further scoped
+event stream. Direct browser database access remains prohibited. Organization
+scope, reviewed production
 least-privilege/RLS and append-only grants, final privacy/retention policy,
 data-subject workflows and broader business-audit coverage remain production or
-future-phase gates; see `docs/CRM_AND_PRIVACY.md` and
-`docs/REQUEST_AND_QUOTE.md`.
+future-phase gates; see `docs/CRM_AND_PRIVACY.md`,
+`docs/REQUEST_AND_QUOTE.md` and `docs/BOOKING_ENGINE.md`.

@@ -173,7 +173,7 @@ to development:
 | `service_request_item_issues` | Relational customer-reported/staff-confirmed issue provenance |
 | `service_request_item_addons` | Relational customer-requested/staff-included add-on provenance |
 | `request_estimates` | Append-only estimate versions with complete immutable price and duration snapshots, exact model identities, searchable totals and review state |
-| `quotes` | Versioned staff-reviewed commercial offer, estimate provenance, frozen terms/totals/validity and optimistic draft version |
+| `quotes` | Versioned staff-reviewed commercial offer, estimate provenance, frozen terms/totals/validity, nullable database-built Phase 3E acceptance-source snapshot and optimistic draft version |
 | `quote_items` | Frozen bilingual line descriptions, measurements, exact integer amounts and calculation evidence |
 | `business_audit_events` | Separate append-oriented, allowlisted request/estimate/quote event stream with safe metadata |
 
@@ -210,6 +210,55 @@ The schema creates no acceptance, booking, reservation, occupancy, payment,
 invoice, upload, message or notification record. Phase 3D does not alter Neon
 Auth or production. See `docs/REQUEST_AND_QUOTE.md`.
 
+Phase 3E adds the acceptance and Booking boundary to development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `quote_acceptances` | Immutable agreement to one exact issued quote/version, including actor/source and copied commercial, terms, price, duration and provenance snapshots |
+| `bookings` | Durable operational commitment with customer-safe random reference, accepted customer/property relationship, immutable snapshots, separate booking/scheduling state, cancellation evidence and optimistic version |
+| `booking_items` | Append-oriented copies of issued quote lines, bilingual descriptions, measurement/calculation evidence and integer minor-unit amounts |
+| `booking_occupancies` | Append-oriented schedule versions with one team, optional equipment, service/operational instants, policy identities and full availability/travel/working-hours evidence |
+| `booking_audit_events` | Separate allowlisted acceptance, Booking, scheduling and cancellation event stream |
+
+One quote can have only one acceptance and one Booking, and each acceptance can
+have only one Booking. Composite restrictive foreign keys bind acceptance to
+the exact quote/request/customer/property graph and bind the Booking to that
+exact acceptance graph. Business/history references use `ON DELETE RESTRICT`;
+only application-profile actor metadata may become null.
+
+Acceptance does not update its source rows. The quote remains `ISSUED`, the
+request remains `QUOTED`, and `quote_acceptances` is the authoritative
+acceptance relation. The DRAFT-to-ISSUED statement constructs the new quote's
+canonical acceptance-source snapshot under source-row locks. It contains the
+issued quote/items, raw reported and normalized request-item graph, complete
+estimate, allowlisted CRM/property versioned presentation and travel-zone
+semantics. Acceptance locks and reconstructs those sources, requires exact
+JSONB equality, and copies booking content only from the issued snapshot. No
+normalization, price, duration, CRM or commercial row is recalculated,
+refreshed or repaired. A legacy `NULL`, malformed value or mismatch writes
+nothing and returns staff review.
+
+All newly accepted Bookings are `PENDING_SCHEDULING` with scheduling status
+`REVIEW_REQUIRED`. Their scheduling snapshot records that operational
+requirements are not frozen and scheduling configuration is not approved;
+preferred date/window remains a preference, exact scheduling columns remain
+null, and acceptance inserts no occupancy.
+
+Migration 0007 installs `btree_gist` and adds team and equipment GiST exclusion
+constraints over half-open `[)` operational ranges for `PENDING`/`CONFIRMED`
+occupancy. PostgreSQL therefore rejects concurrent overlap for the same team or
+non-null equipment resource. `CANCELLED` rows remain as history but leave the
+blocking predicate, releasing capacity. A future reschedule must append a new
+snapshot version linked to its prior occupancy and add audited scheduling
+evidence; no such scheduling command is implemented in this phase.
+
+Money copied into booking items remains exact integer EUR minor units. Acceptance,
+booking and occupancy evidence uses reviewed JSONB snapshots plus searchable
+relational/scalar facts. The migration is additive, creates no payment, invoice,
+Job, treatment, message or upload table, never names `neon_auth`, is authorized
+only for Neon development and requires a separate production gate. See
+`docs/BOOKING_ENGINE.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
@@ -218,7 +267,7 @@ The implemented durable hierarchy foundation is:
 
 The implemented commercial-intake relationship is:
 
-> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → future accepted Booking
+> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → Quote Acceptance → Booking
 
 Expected cardinalities:
 
@@ -228,9 +277,9 @@ Expected cardinalities:
 - one cleaning asset may later appear in many booking and job events;
 - one cleaning asset may later accumulate many cleaning-history entries.
 
-A future booking item refers to a cleaning asset. It does not own or replace
-that asset. This distinction enables a Digital Cleaning Passport across repeat
-visits.
+A Booking item can retain an indirect relationship to a cleaning asset through
+its source request item. It does not own or replace that asset. This distinction
+enables a Digital Cleaning Passport across repeat visits.
 
 ## Planned domains
 
@@ -290,12 +339,18 @@ and reliable session administration remain planned; see
 
 ### Booking
 
-| Planned table | Responsibility |
+| Implemented table | Responsibility |
 | --- | --- |
-| bookings | Customer request and reserved service context |
-| booking_items | Requested service scope linked to durable cleaning items |
-| booking_time_slots | Candidate, held, or confirmed booking windows |
-| booking_notes | Timestamped contextual notes without overwriting history |
+| quote_acceptances | Immutable explicit acceptance of one issued quote |
+| bookings | Operational commitment and lifecycle created from that acceptance |
+| booking_items | Frozen quote-line copies and commercial/duration evidence |
+| booking_occupancies | Versioned team/equipment operational intervals with PostgreSQL overlap protection |
+| booking_audit_events | Allowlisted acceptance, Booking and cancellation history |
+
+Candidate holds, a confirmed-scheduling command, audited rescheduling/override
+workflow and timestamped contextual-note history remain planned. Booking items
+may retain an optional relationship to the implemented cleaning asset through
+their request-item provenance; they do not own or replace the durable CRM asset.
 
 ### Operations
 

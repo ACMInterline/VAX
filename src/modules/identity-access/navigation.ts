@@ -11,8 +11,10 @@ export type ApplicationNavigationItem = {
     | "CUSTOMER_WORKSPACE"
     | "MY_REQUESTS"
     | "MY_QUOTES"
+    | "MY_BOOKINGS"
     | "CUSTOMERS"
     | "REQUESTS"
+    | "BOOKINGS"
     | "OPERATIONS"
     | "SCHEDULE"
     | "FIELD_WORK"
@@ -60,6 +62,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     audience: "CUSTOMER",
   },
   {
+    code: "MY_BOOKINGS",
+    labelBg: "Моите резервации",
+    labelEn: "My bookings",
+    href: "/app/my-bookings",
+    requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+    audience: "CUSTOMER",
+  },
+  {
     code: "CUSTOMERS",
     labelBg: "Клиенти",
     labelEn: "Customers",
@@ -73,6 +83,19 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     labelEn: "Requests",
     href: "/app/requests",
     requiredPermissions: ["CUSTOMER_RECORDS_READ", "OPERATIONS_READ"],
+    permissionMatch: "ALL",
+    audience: "STAFF",
+  },
+  {
+    code: "BOOKINGS",
+    labelBg: "Резервации",
+    labelEn: "Bookings",
+    href: "/app/bookings",
+    requiredPermissions: [
+      "CUSTOMER_RECORDS_READ",
+      "OPERATIONS_READ",
+      "SCHEDULE_READ",
+    ],
     permissionMatch: "ALL",
     audience: "STAFF",
   },

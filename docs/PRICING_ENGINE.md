@@ -4,10 +4,11 @@
 
 Phase 2A provides the versioned calculation foundation. Phase 3D now uses that
 foundation to persist staff-only estimate versions and staff-reviewed quote
-versions. It does not create quote acceptance, a booking, appointment,
-occupancy, payment or invoice. All seeded commercial values remain
-development-only assumptions and are not approved for automatic public pricing
-or production use.
+versions. Phase 3E records acceptance of one immutable issued quote and copies
+its commercial evidence into a Booking without invoking this engine. It does
+not create a confirmed appointment, payment or invoice. All seeded commercial
+values remain development-only assumptions and are not approved for automatic
+public pricing or production use.
 
 The provider-neutral pure engine lives in `src/modules/commercial-engine`.
 Drizzle tables persist versioned commercial configuration, and
@@ -33,8 +34,8 @@ The Phase 3D orchestration and persistence contract is documented in
   while retaining explainable known lines.
 - Each Phase 3D estimate persists complete immutable price and duration
   snapshots. An issued quote freezes its reviewed commercial provenance, and a
-  future accepted booking must copy that evidence; recalculating historical
-  value against the current price book is forbidden.
+  Phase 3E accepted Booking copies that evidence; recalculating historical value
+  against the current price book is forbidden.
 
 ## Price books and lifecycle
 
@@ -244,6 +245,16 @@ normalized request context exists. It retains only service-area and scheduling-
 configuration readiness in the estimate snapshot; it does not persist a
 candidate slot, create a hold or expose a customer-bookable slot.
 
+Phase 3E acceptance does not call either engine again. It verifies that the
+issued quote, quote items, complete source estimate, exact totals, duration,
+CRM/zone semantics and raw reported-versus-normalized request provenance still
+equal the database-built issuance snapshot, then copies only that frozen
+evidence unchanged. Current rows are used only for locked equality validation.
+A mismatch does not trigger a refresh, repair, fresh normalization or
+replacement calculation; it fails closed to staff review. Later availability
+revalidation may select an operational slot, but it must never reprice the
+accepted commercial terms.
+
 ## Manual assessment
 
 Manual assessment is required when any configured item, condition, issue,
@@ -269,10 +280,14 @@ that `source_request_version` instead of updating history.
 
 An issued quote freezes the reviewed estimate provenance, bilingual item
 descriptions, measurement/calculation evidence, exact line and aggregate
-amounts, terms and validity. Issued commercial data is never edited in place;
-a revised offer is a new quote version. A future Booking must copy the accepted
-issued evidence rather than display a later recalculation as the historical
-quoted price.
+amounts, terms and validity. Phase 3E also constructs a canonical source
+snapshot in the same issuing statement; it contains the complete estimate and
+the exact non-commercial source provenance needed at acceptance. Issued data is
+never edited in place; a revised offer is a new quote version. Phase 3E copies
+the accepted issued evidence into the acceptance, Booking and booking items
+rather than displaying a later recalculation or CRM refresh as historical
+truth. The quote remains `ISSUED`; the unique acceptance relation is the
+acceptance authority.
 
 ## Contribution foundation
 
@@ -300,8 +315,10 @@ reviewed bootstrap. Commercial rows in PostgreSQL own effective, versioned
 values. After an authenticated admin surface exists, routine price changes
 must create database versions without requiring a code deployment. Admin work
 requires role-based authorization, approval, validation, immutable history and
-audit logs. Phase 3D records estimate creation and quote lifecycle events, but
-it does not implement commercial-rule administration, activation or approval.
+audit logs. Phase 3D records estimate creation and quote lifecycle events, and
+Phase 3E records immutable acceptance/Booking events without changing the
+commercial configuration. Neither implements commercial-rule administration,
+activation or approval.
 
 ## Commercial calibration decisions
 

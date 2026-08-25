@@ -155,8 +155,12 @@ describe("Phase 3D request and quote migration boundary", () => {
         breakpoints: boolean;
       }>;
     };
-    const previous = journal.entries.at(-2);
-    const current = journal.entries.at(-1);
+    const previous = journal.entries.find(
+      (entry) => entry.tag === "0005_add_customer_property_crm",
+    );
+    const current = journal.entries.find(
+      (entry) => entry.tag === "0006_phase_3d_request_quote",
+    );
 
     expect(journal).toMatchObject({ version: "7", dialect: "postgresql" });
     expect(previous).toMatchObject({

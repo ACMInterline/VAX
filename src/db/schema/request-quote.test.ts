@@ -94,6 +94,8 @@ describe("request, estimate, quote and business-audit schema contract", () => {
     expect(requestEstimates.reviewReasonCodes.getSQLType()).toBe("jsonb");
     expect(quotes.commercialSnapshot.getSQLType()).toBe("jsonb");
     expect(quotes.termsSnapshot.getSQLType()).toBe("jsonb");
+    expect(quotes.acceptanceSourceSnapshot.getSQLType()).toBe("jsonb");
+    expect(quotes.acceptanceSourceSnapshot.notNull).toBe(false);
     expect(quoteItems.calculationSnapshot.getSQLType()).toBe("jsonb");
   });
 

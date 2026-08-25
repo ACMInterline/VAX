@@ -65,6 +65,7 @@ const requestId = "40000000-0000-4000-8000-000000000001";
 const requestItemId = "50000000-0000-4000-8000-000000000001";
 const estimateId = "60000000-0000-4000-8000-000000000001";
 const quoteId = "70000000-0000-4000-8000-000000000001";
+const databasePriceSnapshotSha256 = "ab".repeat(32);
 
 const storedPriceSnapshot = {
   schemaVersion: 1,
@@ -214,6 +215,7 @@ beforeEach(() => {
         price_book_code: "SOFIA-DEV-V1",
         price_book_version: 1,
         price_snapshot: storedPriceSnapshot,
+        price_snapshot_sha256: databasePriceSnapshotSha256,
       },
       {
         id: estimateId,
@@ -223,6 +225,7 @@ beforeEach(() => {
         price_book_code: "SOFIA-DEV-V1",
         price_book_version: 1,
         price_snapshot: storedPriceSnapshot,
+        price_snapshot_sha256: databasePriceSnapshotSha256,
       },
     ],
   });
@@ -444,7 +447,7 @@ describe("request and quote Server Action boundaries", () => {
         estimateId,
         estimateVersion: 2,
         sourceRequestVersion: 1,
-        priceSnapshotSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        priceSnapshotSha256: databasePriceSnapshotSha256,
         aggregateEvidence: {
           allocationScope: "REQUEST_AGGREGATE_NOT_LINE_ALLOCATED",
           baseLinesMinorUnits: 8_000,
@@ -465,6 +468,25 @@ describe("request and quote Server Action boundaries", () => {
       pricingMode: "STAFF_REVIEWED_LUMP_SUM",
       sourceEstimate: { estimateId, sourceRequestVersion: 1 },
     });
+  }, 10_000);
+
+  it("fails closed when the persisted estimate has no database-canonical price digest", async () => {
+    const request = await doubles.service.getRequest();
+    doubles.service.getRequest.mockClear();
+    doubles.service.getRequest.mockResolvedValueOnce({
+      ...request,
+      estimates: request.estimates.map((estimate: Record<string, unknown>) => {
+        const { price_snapshot_sha256: digest, ...withoutDigest } = estimate;
+        void digest;
+        return withoutDigest;
+      }),
+    });
+
+    await expect(createQuoteDraftAction(idle, quoteForm())).resolves.toMatchObject({
+      status: "ERROR",
+      message: requestQuoteContent.en.common.invalid,
+    });
+    expect(doubles.service.createQuoteDraft).not.toHaveBeenCalled();
   });
 
   it("requires an explicit reason for every manually reviewed line amount", async () => {

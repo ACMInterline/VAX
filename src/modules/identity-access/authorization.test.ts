@@ -56,12 +56,18 @@ describe("server authorization policy", () => {
       "CUSTOMER_WORKSPACE",
       "MY_REQUESTS",
       "MY_QUOTES",
+      "MY_BOOKINGS",
     ]);
     expect(customerNavigation).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: "CUSTOMER_WORKSPACE",
           href: "/app/my-properties",
+          requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+        }),
+        expect.objectContaining({
+          code: "MY_BOOKINGS",
+          href: "/app/my-bookings",
           requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
         }),
       ]),
@@ -71,6 +77,46 @@ describe("server authorization policy", () => {
     expect(() => requirePermission(customer, "OPERATIONS_READ")).toThrowError(
       new AuthorizationError("PERMISSION_DENIED"),
     );
+  });
+
+  it("requires the complete staff booking read boundary", () => {
+    const completeBookingReader = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set([
+        "CUSTOMER_RECORDS_READ",
+        "OPERATIONS_READ",
+        "SCHEDULE_READ",
+      ] as const),
+    } satisfies AuthorizationContext;
+    const withoutScheduleRead = {
+      ...completeBookingReader,
+      permissions: new Set([
+        "CUSTOMER_RECORDS_READ",
+        "OPERATIONS_READ",
+      ] as const),
+    } satisfies AuthorizationContext;
+
+    expect(visibleNavigationItems(completeBookingReader)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "BOOKINGS",
+          href: "/app/bookings",
+          permissionMatch: "ALL",
+          requiredPermissions: [
+            "CUSTOMER_RECORDS_READ",
+            "OPERATIONS_READ",
+            "SCHEDULE_READ",
+          ],
+        }),
+      ]),
+    );
+    expect(
+      visibleNavigationItems(withoutScheduleRead).map((item) => item.code),
+    ).not.toContain("BOOKINGS");
+    expect(
+      visibleNavigationItems(context("TECHNICIAN")).map((item) => item.code),
+    ).not.toContain("BOOKINGS");
   });
 
   it("links staff CRM only for customer-record readers", () => {

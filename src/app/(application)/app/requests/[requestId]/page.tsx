@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ApplicationConfirmationAction } from "@/components/application/confirmation-action";
 import { ApplicationStatusBadge } from "@/components/application/status-badge";
+import { StaffQuoteAcceptanceForm } from "@/components/booking/booking-forms";
 import {
   CreateCustomerFromRequestForm,
   EstimateCreationForm,
@@ -33,6 +34,7 @@ import {
   updateQuoteDraftAction,
   withdrawQuoteAction,
 } from "../actions";
+import { acceptQuoteOnBehalfAction } from "../../bookings/actions";
 import {
   getRequestNormalizationOptions,
   loadStaffRequestCustomerOptions,
@@ -385,6 +387,7 @@ export default async function StaffRequestDetailPage({
           <ol>
             {request.quoteHistory.map((quote, index) => {
               const quoteId = string(quote.id);
+              const quoteReference = string(quote.quote_reference);
               const status = string(quote.status);
               const recordVersion = number(quote.record_version, 1);
               const total = number(quote.gross_total_minor_units);
@@ -449,7 +452,7 @@ export default async function StaffRequestDetailPage({
                   request.status === "QUOTED");
               return (
                 <li key={quoteId || String(index)}>
-                  <strong>{string(quote.quote_reference, `#${index + 1}`)}</strong>
+                  <strong>{quoteReference || `#${index + 1}`}</strong>
                   <span> · {status} · {money.format(total / 100)}</span>
                   {canManage && isLatestDraft && !isCurrentRequestQuote ? (
                     <p className="crm-form__notice">
@@ -519,6 +522,14 @@ export default async function StaffRequestDetailPage({
                         </ApplicationConfirmationAction>
                       ) : null}
                     </>
+                  ) : null}
+                  {canManage && status === "ISSUED" && quoteReference ? (
+                    <StaffQuoteAcceptanceForm
+                      action={acceptQuoteOnBehalfAction}
+                      expectedQuoteVersion={quoteVersion}
+                      locale={locale}
+                      quoteReference={quoteReference}
+                    />
                   ) : null}
                 </li>
               );

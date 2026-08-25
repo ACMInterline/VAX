@@ -7,6 +7,11 @@ evaluate ephemeral work requests against development teams, equipment, working
 hours, travel assumptions and in-memory occupancy. It does not create or hold a
 customer reservation and is not a dispatch calendar.
 
+Phase 3E adds a durable Booking occupancy schema and a database-backed overlap
+boundary, but the acceptance flow does not create a slot or occupancy. Every
+new Booking remains review-required because approved scheduling configuration
+and a frozen operational-requirements contract are still absent.
+
 All initial values are inactive, provisional development assumptions. They are
 not owner-approved operating policy, legal working-hour guidance, real map
 results or customer promises. The availability module's Neon persistence is
@@ -237,6 +242,38 @@ service-area and scheduling-configuration readiness used for its review gate.
 Quote issue therefore offers reviewed commercial scope, not a confirmed
 appointment. See `docs/REQUEST_AND_QUOTE.md`.
 
+## Phase 3E booking integration
+
+Acceptance consumes the immutable issued quote without rerunning this engine,
+renormalizing the request or refreshing its commercial/duration evidence. It
+copies the preferred date and appointment window only as customer preference,
+sets `PENDING_SCHEDULING` / `REVIEW_REQUIRED`, leaves exact times and team or
+equipment assignment empty, and creates no occupancy. This is the required
+fail-closed result while operational requirements and the draft Phase 2B
+configuration are not approved and frozen.
+
+`booking_occupancies` is now the durable adapter boundary for a later
+authorized staff scheduling command. It stores one team, optional equipment,
+service and wider operational instants, policy/profile versions and full
+scheduling evidence. Only `PENDING` and `CONFIRMED` rows become Phase 2B
+blocking work; cancelled or malformed rows are never interpreted as valid
+availability input.
+
+The database adapter is always scoped to one team and requested Sofia date. It
+loads every operational interval overlapping that local day, verifies the
+working-hours and travel-profile code/version against the referenced rows, and
+strictly decodes date, team, intervals, policy versions, location and travel
+evidence. Mixed-team/date batches, cross-day shapes unsupported by the
+minute-of-day engine, unsafe arithmetic and inconsistent provenance fail closed
+instead of disappearing from capacity input.
+
+PostgreSQL exclusion constraints protect both team and equipment capacity over
+half-open `[)` operational ranges. Adjacent ranges may touch, while concurrent
+overlap for the same team or non-null equipment resource is rejected even when
+application-side previews race. Cancellation retains the occupancy snapshot
+but moves it outside the blocking predicate, releasing capacity. See
+`docs/BOOKING_ENGINE.md`.
+
 ## Persisted configuration
 
 The additive Phase 2B model extends `travel_zones` with service-eligibility and
@@ -250,10 +287,11 @@ operational metadata and adds:
 
 Versioned working-hour and travel profiles, their rules and appointment-window
 definitions use insert-only seed behavior. Team and neutral equipment reference
-state can be idempotently reconciled during development bootstrap. All rows in
-this availability schema are configuration; there is no persisted occupancy,
-hold, reservation, booking, invoice or payment. Phase 3C customer/property and
-Phase 3D request/quote records live in their separate owning modules.
+state can be idempotently reconciled during development bootstrap. All Phase 2B
+rows in this availability schema are configuration. Phase 3E owns the separate
+Booking and occupancy records; it adds no general hold, reservation, invoice or
+payment. Phase 3C customer/property and Phase 3D request/quote records remain in
+their separate owning modules.
 
 ## Versioning and future snapshots
 
@@ -262,16 +300,19 @@ stable code/version/lifecycle metadata or effective windows where applicable.
 A change from 20 to 30 minutes creates a new profile version; it must not mutate
 the assumptions behind accepted work.
 
-`FutureSchedulingOccupancy` defines the later adapter contract. A durable
-accepted record must identify team, date/times, status, location, service
-duration, travel metadata, equipment requirements and immutable versions of the
-scheduling, working-hours and travel assumptions. The complete normalized
-snapshot should be retained with future booking provenance rather than
-recalculated against current configuration.
+The earlier `FutureSchedulingOccupancy` contract is now complemented by the
+Phase 3E `booking_occupancies` persistence boundary. A durable scheduled record
+must identify team, date/times, status, location, service duration, travel
+metadata, equipment requirements and immutable versions of the scheduling,
+working-hours and travel assumptions. The complete reviewed snapshot is
+retained with Booking provenance rather than recalculated against current
+configuration.
 
-Phase 3D request/quote concurrency and business events do not solve scheduling
-concurrency. Holds, occupancy, booking state, dispatch overrides and their audit
-history remain future transactional concerns.
+Database exclusion constraints now solve the same-team and same-equipment
+overlap race for persisted blocking occupancy. The staff scheduling command,
+holds, dispatch overrides and audited append-only schedule revisions remain
+future work; application preview alone must never substitute for those
+transactional boundaries.
 
 ## Internal availability lab
 
@@ -303,5 +344,6 @@ Before activation or customer use, approve or measure:
 - large-job and multi-team approval/dispatch rules;
 - scheduling-policy activation, supersession and audit workflow;
 - daylight-saving, same-day, cross-midnight and holiday behavior;
-- occupancy concurrency, holds, idempotency and override rules; and
+- hold expiry, scheduling idempotency and audited override rules beyond the
+  implemented occupancy overlap constraints; and
 - which internal assumptions, if any, may ever become public.
