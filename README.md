@@ -3,9 +3,9 @@
 Production-oriented service-platform foundation with an isolated development
 database, a bilingual public website, a canonical service catalogue, a
 versioned development commercial engine, a non-transactional scheduling
-capacity foundation, secure identity/RBAC and the first customer/property CRM
-records for a future carpet and upholstery cleaning service serving Sofia,
-Bulgaria.
+capacity foundation, secure identity/RBAC, customer/property CRM records and a
+persistent request-to-versioned-quote workflow for a future carpet and
+upholstery cleaning service serving Sofia, Bulgaria.
 
 The current repository contains:
 
@@ -19,26 +19,27 @@ The current repository contains:
 - a safe application and database health endpoint;
 - a responsive, Bulgarian-first public service website with complete English
   routes and evidence-controlled marketing claims;
-- a browser-only request prototype aligned to canonical item and condition
-  codes that creates no records;
+- a server-validated bilingual public request form that persists a safe
+  staff-review request without creating an account, quote or booking;
 - deterministic catalogue seeding plus insert-only provisional development
   price-book and duration versions, with no public prices or product claims;
 - non-indexed local-only pricing and availability calculation harnesses;
 - Neon Auth-backed bilingual account flows, application-owned profiles,
   deny-by-default RBAC and a protected `/app` shell;
 - bilingual privileged application user list/detail routes with conservative,
-  owner-protected role/status administration and sanitized audit review; and
+  owner-protected role/status administration and sanitized audit review;
 - bilingual staff customer/property administration plus linked-customer,
   read-only property access with server-side record ownership checks;
 - durable customer, contact, property, area and cleaning-asset records that
   form the identity-safe Cleaning Passport attachment foundation; and
+- separate request, normalized-item, estimate, versioned-quote and business
+  audit records with protected staff and linked-customer access; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Persistent requests, quotes, bookings, occupancy/calendar, completed Cleaning
-Passport history, production invitations/session administration, payments,
-invoices, dispatch, object storage, final branding and deployment are not
-implemented.
+Accepted bookings, occupancy/calendar, completed Cleaning Passport history,
+production invitations/session administration, payments, invoices, dispatch,
+object storage, final branding and deployment are not implemented.
 
 ## Requirements
 
@@ -185,9 +186,9 @@ Production migrations require separate explicit authorization.
 
 Phase 0B connects local development to the VAX Neon `development` branch and
 applies the initial migration to its `neondb` database. That branch contains
-Drizzle migration bookkeeping, `system_metadata`, canonical catalogue data and
-development-only versioned commercial configuration; it contains no customer,
-quote, booking, job, payment or invoice records.
+Drizzle migration bookkeeping, application tables, canonical catalogue data
+and development-only versioned commercial configuration. No real personal
+data is seeded.
 The Neon `production` branch has not been migrated or otherwise changed by the
 application setup. Phase 0C establishes the initial GitHub `main` baseline and
 credential-free CI validation. Phase 0D establishes the autonomous Codex
@@ -217,7 +218,10 @@ role/status management, atomic sanitized audit, provider reconciliation policy
 and fail-closed provider capability gates without a schema migration, synthetic
 identity, provider mutation or deployment. Phase 3C adds explicit
 application-profile-to-customer links, customer/contact/property/area/asset
-records and server-mediated staff/customer CRM surfaces. It keeps the public
-request browser-only, introduces no request/quote/booking/payment record, and
-does not migrate production or deploy. See
-[docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md).
+records and server-mediated staff/customer CRM surfaces. Phase 3D adds the
+persistent public/customer/staff request workflow, provenance-preserving item
+normalization, append-only estimate versions, staff-reviewed quote versions,
+linked-customer issued-quote access and a separate business audit. It creates
+no accepted Booking, payment, invoice or occupancy, and does not migrate
+production or deploy. See [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md)
+and [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md).

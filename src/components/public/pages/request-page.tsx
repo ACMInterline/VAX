@@ -1,9 +1,16 @@
 import type { PublicLocale } from "@/config/public-site";
 import { getPublicContent } from "@/content/public-site";
 import { RequestForm } from "@/modules/public-request/request-form";
+import type { PublicRequestFormAction } from "@/modules/public-request/action-state";
 import { PageHero } from "../page-hero";
 
-export function RequestPage({ locale }: { locale: PublicLocale }) {
+export function RequestPage({
+  action,
+  locale,
+}: {
+  action: PublicRequestFormAction;
+  locale: PublicLocale;
+}) {
   const content = getPublicContent(locale);
   const copy = content.pages.request;
 
@@ -43,7 +50,7 @@ export function RequestPage({ locale }: { locale: PublicLocale }) {
               </ul>
             </div>
           </aside>
-          <RequestForm locale={locale} />
+          <RequestForm action={action} locale={locale} />
         </div>
       </section>
     </>

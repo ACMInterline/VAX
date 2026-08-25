@@ -43,6 +43,8 @@ introduced.
 | src/modules/availability-engine | Pure service-area, travel, capacity, slot and utilisation policies | Framework, database, live map provider, customer persistence or dispatch UI |
 | src/modules/identity-access | Stable roles, permissions, authorization and navigation policy | Next.js, provider SDKs, sessions or credentials |
 | src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
+| src/modules/request-quote | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports | Provider identities, browser authority, booking acceptance, payments or occupancy |
+| src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
 | src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
@@ -90,6 +92,17 @@ operational notes and link-administration metadata cannot enter the customer
 self-service response accidentally. Provider subjects and email equality are
 never business-ownership inputs.
 
+Phase 3D extends the same direction through `src/modules/request-quote`.
+Anonymous, linked-customer and staff transports call validated use cases; the
+PostgreSQL repository repeats source, actor, permission, active-link, CRM graph,
+lifecycle and optimistic-version checks. Public contact details are submission
+data, never identity or customer-link authority. Staff reads require both CRM
+and operations read permissions, while staff mutations require both matching
+manage permissions. Customer reads and submissions require the own-record
+permission plus the exact active identity/customer link. Request, staff and
+customer projections remain distinct so original contact facts, staff notes,
+draft quotes and internal estimate details cannot cross the wrong boundary.
+
 ## Public website boundary
 
 The Phase 1A public site is a statically rendered bilingual application
@@ -102,14 +115,18 @@ back to the other. Separate root layouts give each document an accurate
 selection.
 
 Pages consume provider-neutral configuration and typed localized content
-through reusable Server Components. Only mobile-navigation state, corresponding
-page language switching, and the request prototype require Client Components.
+through reusable Server Components. Mobile-navigation state, corresponding
+page language switching and accessible request-form interaction use Client
+Components; persistence remains behind a Server Action and application use
+case.
 
-The request prototype validates browser `FormData` with a pure Zod module. It
-has no form action, Server Action, route handler, fetch, database adapter or
-storage adapter. Future persistence must enter through an application use case
-and validated server boundary rather than extending the client prototype
-directly.
+Phase 1's browser-only request prototype is historical. Phase 3D now validates
+the public `FormData` again on the server, applies bounded anonymous-intake
+abuse controls, and calls the request application boundary. It stores an
+immutable original-submission snapshot and returns only a random customer-safe
+reference. The public boundary does not authenticate, infer an existing
+customer from contact details, calculate a public price, create a quote or
+booking, upload a file, or expose a database/provider credential.
 
 SEO metadata is constructed centrally. Canonical, `hreflang`, sitemap and
 breadcrumb URLs depend on a validated `PUBLIC_SITE_URL`; indexing stays
@@ -185,6 +202,38 @@ returns not-found unless Next.js is running in development, while no-index and
 public-boundary checks remain defense in depth. Draft team codes, routes and
 utilisation must not cross into public components.
 
+## Request, estimate and quote boundary
+
+Phase 3D persists a controlled transaction chain without turning it into a
+booking engine:
+
+> Service Request → append-only Estimate → staff-reviewed versioned Quote
+
+The request retains the validated original submission separately from staff's
+structured normalization. Request items may reference the catalogue, existing
+CRM assets, relational issues and add-ons, but normalization never rewrites the
+original facts. State changes and mutable structured scope use database-side
+authorization plus optimistic versions.
+
+Each estimate is a new version. It stores complete price and duration input and
+result snapshots, advisory service-area/configuration readiness, exact
+configuration identities, the resulting request version and searchable integer
+totals; earlier estimates are not recalculated or edited. Provisional or
+incomplete engine output fails closed to manual review and is never shown as an
+automatic public price.
+
+Quote drafts are staff-only mutable records. Issue freezes the commercial
+scope, item descriptions, totals, terms, validity, source request version and
+estimate provenance. A request change makes an older draft stale.
+Revisions create a new quote version, and issuing a replacement supersedes the
+prior issued version atomically. Request-row locking, optimistic record
+versions, unique per-request versions and one active issued quote per request
+protect concurrent writes. Linked customers can read issued history for their
+exact customer only; they cannot read drafts, internal estimates or staff
+notes. Phase 3D has no acceptance command, booking, payment, invoice,
+notification, document generation, occupancy or reservation. The complete
+contract is in `docs/REQUEST_AND_QUOTE.md`.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -195,8 +244,10 @@ src/db/client.ts is the single connection construction point. It:
 - avoids opening a connection during import or production build; and
 - prevents provider setup from spreading into business modules.
 
-Neon HTTP is appropriate for the current one-shot health query. If later use
-cases require interactive transactions or session semantics, the adapter may
+The current Neon HTTP adapter supports the bounded transactions used by the CRM
+and request/quote repositories. Transactional invariants stay in the database
+adapter rather than the domain policy. If a later workflow requires interactive
+session semantics that the HTTP transport cannot provide, the adapter may
 change without changing domain rules.
 
 Drizzle schema definitions are the source for generated migrations. Generated
@@ -221,6 +272,15 @@ stable cleaning-asset UUID is the attachment point for later inspection,
 treatment, completed-job and maintenance history; Phase 3C creates none of
 those events. The existing security audit stream remains identity-specific and
 is not repurposed as a general business audit log.
+
+Phase 3D request, estimate and quote rows are runtime transaction data and are
+never seeded. Restrictive ownership and provenance foreign keys preserve their
+relationship to CRM, catalogue, commercial configuration and application
+actors. `business_audit_events` is a separate append-oriented stream for
+allowlisted request/estimate/quote changes; it does not replace
+`auth_audit_events`, and application code exposes no ordinary update or delete
+operation for it. Database-level append-only grants and reviewed production
+least privilege remain a deployment gate.
 
 ## Environment separation
 
@@ -259,8 +319,11 @@ Phase 3A uses Neon Auth's managed Better Auth integration. Application code
 depends on `AuthenticatedUser`, `Session`, `UserId`, privileged capability
 contracts and permission policy; provider session, Admin API and token shapes
 stay inside `src/auth/neon-provider.ts` and its projection helper.
-Provider-managed `neon_auth`, application `user_profiles`, and future customer
-records are separate ownership boundaries. See `docs/IDENTITY_AND_ACCESS.md`.
+Provider-managed `neon_auth`, application `user_profiles`, and CRM customer
+records are separate ownership boundaries. Implemented customer, request and
+quote authorization remains application-owned and never changes the provider
+schema. See `docs/IDENTITY_AND_ACCESS.md` and
+`docs/REQUEST_AND_QUOTE.md`.
 
 ### Object storage
 
@@ -280,7 +343,8 @@ validated internal commands.
   data.
 - Authorize every protected use case, not only navigation.
 - Use UTC instants for stored events and explicit local zones for scheduling.
-- Record critical state changes and privileged actions in future audit logs.
+- Record critical state changes and privileged actions in their owning audit
+  stream; Phase 3D covers material request, estimate and quote events.
 - Design idempotency before adding bookings, payments, messages, or webhooks.
 - Avoid irreversible deletes for records that contribute to service history.
 - Implement accessible, responsive loading, empty, error, and recovery states.

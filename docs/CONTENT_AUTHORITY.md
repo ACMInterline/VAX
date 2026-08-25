@@ -23,18 +23,22 @@ wording change must update both sources in the same reviewed pull request.
 
 ## Claim register
 
-### Request prototype boundary
+### Request submission boundary
 
-- **Claim:** the current form validates only in the browser and does not create,
-  transmit or persist a request.
-- **Publication wording:** “Формата проверява въведеното само в браузъра. Не се
-  създава заявка и нищо не се изпраща или съхранява.” The English version has
-  equivalent meaning.
+- **Claim:** the current form persists a request for staff review but does not
+  create an automatic quote, booking or payment.
+- **Publication wording:** “Формата изпраща заявка за преглед от екипа. Не се
+  създава автоматична оферта, резервация или плащане.” English: “The form
+  submits a request for staff review. It creates no automatic quote, booking or
+  payment.”
 - **Status:** `verified`.
-- **Evidence needed:** repository inspection and browser verification after any
-  request-form change.
-- **Notes:** adding an action, API call, email, storage, upload or database import
-  invalidates this status and belongs to a separately authorized phase.
+- **Evidence needed:** Server Action, database-boundary and browser verification
+  after any request-form change.
+- **Notes:** Phase 1's browser-only prototype is historical. Phase 3D stores the
+  validated submission and returns a request reference, but does not upload a
+  file, calculate a public price, confirm availability, issue a quote or create
+  a booking. Any stronger wording requires a new reviewed claim. See
+  `docs/REQUEST_AND_QUOTE.md`.
 
 ### Processing capacity around 25 m² per hour
 

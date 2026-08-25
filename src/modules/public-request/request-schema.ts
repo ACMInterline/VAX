@@ -32,51 +32,99 @@ export const preferredTimeValues = [
   "flexible",
 ] as const;
 
+function isCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 export function createPublicRequestSchema(locale: PublicLocale) {
   const messages = getPublicContent(locale).requestForm.validation;
-  const optionalShortText = z.string().trim().max(120).optional();
+  const boundaryMessages =
+    locale === "bg"
+      ? {
+          duplicateService: "Изберете всяка повърхност или артикул само веднъж.",
+          invalidDate: "Въведете валидна дата.",
+          textTooLong: "Текстът е по-дълъг от допустимото.",
+        }
+      : {
+          duplicateService: "Select each surface or item only once.",
+          invalidDate: "Enter a valid date.",
+          textTooLong: "The text is longer than allowed.",
+        };
+  const optionalShortText = z
+    .string()
+    .trim()
+    .max(120, boundaryMessages.textTooLong)
+    .optional();
 
-  return z.object({
-    name: z
-      .string()
-      .trim()
-      .min(2, messages.nameRequired)
-      .max(100, messages.nameTooLong),
-    email: z.string().trim().email(messages.emailInvalid).max(254),
-    phone: z
-      .string()
-      .trim()
-      .min(6, messages.phoneRequired)
-      .max(32, messages.phoneTooLong)
-      .regex(/^[+()\d\s.-]+$/, messages.phoneInvalid),
-    district: z
-      .string()
-      .trim()
-      .min(2, messages.districtRequired)
-      .max(100),
-    propertyType: z.enum(propertyTypeValues, {
-      error: messages.propertyTypeRequired,
-    }),
-    services: z
-      .array(z.enum(requestServiceValues))
-      .min(1, messages.serviceRequired),
-    estimatedQuantity: optionalShortText,
-    approximateArea: optionalShortText,
-    condition: z.enum(conditionValues, {
-      error: messages.conditionRequired,
-    }),
-    stainsPresent: z.enum(stainValues, {
-      error: messages.stainsRequired,
-    }),
-    delicateMaterial: z.boolean(),
-    preferredDate: z.string().trim().max(20).optional(),
-    preferredTime: z.enum(preferredTimeValues),
-    notes: z
-      .string()
-      .trim()
-      .max(1500, messages.notesTooLong)
-      .optional(),
-  });
+  return z
+    .object({
+      name: z
+        .string()
+        .trim()
+        .min(2, messages.nameRequired)
+        .max(100, messages.nameTooLong),
+      email: z
+        .string()
+        .trim()
+        .max(254, messages.emailInvalid)
+        .email(messages.emailInvalid)
+        .transform((value) => value.toLowerCase()),
+      phone: z
+        .string()
+        .trim()
+        .min(6, messages.phoneRequired)
+        .max(32, messages.phoneTooLong)
+        .regex(/^[+()\d\s.-]+$/, messages.phoneInvalid),
+      district: z
+        .string()
+        .trim()
+        .min(2, messages.districtRequired)
+        .max(100, boundaryMessages.textTooLong),
+      propertyType: z.enum(propertyTypeValues, {
+        error: messages.propertyTypeRequired,
+      }),
+      services: z
+        .array(z.enum(requestServiceValues))
+        .min(1, messages.serviceRequired)
+        .max(requestServiceValues.length, messages.serviceRequired)
+        .refine((values) => new Set(values).size === values.length, {
+          message: boundaryMessages.duplicateService,
+        }),
+      estimatedQuantity: optionalShortText,
+      approximateArea: optionalShortText,
+      condition: z.enum(conditionValues, {
+        error: messages.conditionRequired,
+      }),
+      stainsPresent: z.enum(stainValues, {
+        error: messages.stainsRequired,
+      }),
+      delicateMaterial: z.boolean(),
+      preferredDate: z
+        .string()
+        .trim()
+        .max(10, boundaryMessages.invalidDate)
+        .refine(isCalendarDate, boundaryMessages.invalidDate)
+        .optional(),
+      preferredTime: z.enum(preferredTimeValues),
+      notes: z
+        .string()
+        .trim()
+        .max(1_500, messages.notesTooLong)
+        .optional(),
+      website: z.literal("").default(""),
+    })
+    .strict()
+    .transform(({ website, ...request }) => {
+      void website;
+      return request;
+    });
 }
 
 export type PublicRequestInput = z.infer<
@@ -111,5 +159,8 @@ export function readPublicRequestForm(formData: FormData) {
     preferredDate: optionalFormString(formData, "preferredDate"),
     preferredTime: formString(formData, "preferredTime"),
     notes: optionalFormString(formData, "notes"),
+    website: formString(formData, "website"),
   };
 }
+
+export type PublicRequestRawInput = ReturnType<typeof readPublicRequestForm>;

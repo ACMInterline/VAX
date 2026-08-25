@@ -51,7 +51,12 @@ describe("server authorization policy", () => {
     const customer = context("CUSTOMER");
     const customerNavigation = visibleNavigationItems(customer);
     const visible = customerNavigation.map((item) => item.code);
-    expect(visible).toEqual(["ACCOUNT", "CUSTOMER_WORKSPACE"]);
+    expect(visible).toEqual([
+      "ACCOUNT",
+      "CUSTOMER_WORKSPACE",
+      "MY_REQUESTS",
+      "MY_QUOTES",
+    ]);
     expect(customerNavigation).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

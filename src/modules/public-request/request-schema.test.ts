@@ -109,4 +109,81 @@ describe("localized public request schema", () => {
       delicateMaterial: true,
     });
   });
+
+  it("normalizes canonical contact values while preserving submitted free text", () => {
+    const original = {
+      ...validRequest(),
+      name: "  Nikolay Customer  ",
+      email: "  CUSTOMER@EXAMPLE.COM  ",
+      estimatedQuantity: "  1 sofa, about 2 rooms  ",
+      notes: "  Keep this customer wording exactly in the original snapshot.  ",
+    };
+    const formData = new FormData();
+    Object.entries(original).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((entry) => formData.append(key, entry));
+      } else if (typeof value === "boolean") {
+        if (value) formData.set(key, "on");
+      } else {
+        formData.set(key, value);
+      }
+    });
+
+    const raw = readPublicRequestForm(formData);
+    const result = createPublicRequestSchema("en").safeParse(raw);
+
+    expect(raw.estimatedQuantity).toBe("  1 sofa, about 2 rooms  ");
+    expect(raw.notes).toBe(
+      "  Keep this customer wording exactly in the original snapshot.  ",
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty("website");
+      expect(result.data.name).toBe("Nikolay Customer");
+      expect(result.data.email).toBe("customer@example.com");
+      expect(result.data.estimatedQuantity).toBe("1 sofa, about 2 rooms");
+      expect(result.data.notes).toBe(
+        "Keep this customer wording exactly in the original snapshot.",
+      );
+    }
+  });
+
+  it("rejects duplicate services, impossible dates, extra fields, and oversized free text", () => {
+    const duplicate = createPublicRequestSchema("en").safeParse({
+      ...validRequest(),
+      services: ["CARPET_FIXED", "CARPET_FIXED"],
+    });
+    const invalidDate = createPublicRequestSchema("en").safeParse({
+      ...validRequest(),
+      preferredDate: "2026-02-30",
+    });
+    const extraField = createPublicRequestSchema("en").safeParse({
+      ...validRequest(),
+      unexpected: "must not cross the public boundary",
+    });
+    const oversized = createPublicRequestSchema("en").safeParse({
+      ...validRequest(),
+      approximateArea: "x".repeat(121),
+    });
+
+    expect(duplicate.success).toBe(false);
+    expect(invalidDate.success).toBe(false);
+    expect(extraField.success).toBe(false);
+    expect(oversized.success).toBe(false);
+  });
+
+  it("includes an empty honeypot in the allowlisted input and rejects a filled one", () => {
+    expect(
+      createPublicRequestSchema("en").safeParse({
+        ...validRequest(),
+        website: "",
+      }).success,
+    ).toBe(true);
+    expect(
+      createPublicRequestSchema("en").safeParse({
+        ...validRequest(),
+        website: "https://bot.invalid",
+      }).success,
+    ).toBe(false);
+  });
 });

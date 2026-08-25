@@ -21,8 +21,8 @@ export default async function ApplicationLandingPage() {
         </h1>
         <p>
           {isEnglish
-            ? "Identity and permission checks are active. Business modules will arrive in later phases."
-            : "Проверките за идентичност и права са активни. Бизнес модулите ще бъдат добавени в следващи фази."}
+            ? "Identity and permission checks are active. Available CRM, request and quote views follow your assigned access."
+            : "Проверките за идентичност и права са активни. Достъпните CRM, заявъчни и офертни изгледи следват зададените ви права."}
         </p>
       </section>
 

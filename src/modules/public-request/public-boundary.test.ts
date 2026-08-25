@@ -14,15 +14,17 @@ function sourceFilesWithin(directory: string): string[] {
 }
 
 describe("public request persistence boundary", () => {
-  it("keeps submission in the browser and prevents native form submission", () => {
+  it("accepts an injected action and delegates submission to React action state", () => {
     const form = readFileSync(
       path.join(process.cwd(), "src/modules/public-request/request-form.tsx"),
       "utf8",
     );
 
     expect(form).toContain('"use client"');
-    expect(form).toContain("event.preventDefault()");
-    expect(form).toContain("schema.safeParse");
+    expect(form).toContain("useActionState(");
+    expect(form).toContain("action={formAction}");
+    expect(form).toContain("action: PublicRequestFormAction");
+    expect(form).not.toContain("event.preventDefault()");
     expect(form).not.toMatch(/\bfetch\s*\(/);
     expect(form).not.toMatch(/\baxios\b|XMLHttpRequest|navigator\.sendBeacon/);
   });
@@ -36,6 +38,7 @@ describe("public request persistence boundary", () => {
       const source = readFileSync(filePath, "utf8");
       expect(source).not.toContain('"use server"');
       expect(source).not.toMatch(/@\/db\/|server-only|DATABASE_URL|process\.env/);
+      expect(source).not.toMatch(/@\/auth\/|@neondatabase|drizzle-orm/);
       expect(source).not.toMatch(/export\s+async\s+function\s+(?:POST|PUT|PATCH|DELETE)\b/);
     }
   });

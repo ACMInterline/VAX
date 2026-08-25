@@ -9,8 +9,9 @@ customer reservation and is not a dispatch calendar.
 
 All initial values are inactive, provisional development assumptions. They are
 not owner-approved operating policy, legal working-hour guidance, real map
-results or customer promises. Neon persistence is limited to reference and
-configuration records on the `development` branch.
+results or customer promises. The availability module's Neon persistence is
+limited to reference and configuration records on the `development` branch;
+Phase 3D request and quote transactions do not make those assumptions approved.
 
 ## Separation of concerns
 
@@ -45,7 +46,9 @@ geography.
 The ephemeral location contract supports city, district/neighbourhood, address
 text, postal code, coordinate pair, access notes, parking notes and zone code.
 Coordinates are optional, but latitude and longitude must be supplied together
-and pass range validation. No customer or property record is created.
+and pass range validation. The engine itself creates no customer or property
+record; Phase 3D may adapt an already authorized normalized request/property
+into this ephemeral contract.
 
 ## Teams, capabilities and equipment
 
@@ -219,6 +222,21 @@ Where an explainable price exists, another helper reports gross revenue per
 occupied team-hour and estimated contribution per occupied team-hour. Phase 2B
 seeds no payroll, consumable or travel-cost inputs and does not create a ledger.
 
+## Phase 3D request integration
+
+Phase 3D can evaluate availability only as a staff-only advisory preview after
+request scope, location, service duration and capabilities are sufficiently
+normalized. A manual-review or unavailable result cannot become a customer
+promise. Public and customer request submission does not calculate or expose
+slots.
+
+Candidate-slot preview remains ephemeral: no candidate, hold, team assignment,
+occupancy, reservation or booking row is written, and no slot preview is copied
+into a Phase 3D quote. An estimate does retain a staff-only snapshot of the
+service-area and scheduling-configuration readiness used for its review gate.
+Quote issue therefore offers reviewed commercial scope, not a confirmed
+appointment. See `docs/REQUEST_AND_QUOTE.md`.
+
 ## Persisted configuration
 
 The additive Phase 2B model extends `travel_zones` with service-eligibility and
@@ -232,9 +250,10 @@ operational metadata and adds:
 
 Versioned working-hour and travel profiles, their rules and appointment-window
 definitions use insert-only seed behavior. Team and neutral equipment reference
-state can be idempotently reconciled during development bootstrap. All rows are
-configuration; there is no persisted occupancy, booking, customer, quote,
-property, invoice or payment.
+state can be idempotently reconciled during development bootstrap. All rows in
+this availability schema are configuration; there is no persisted occupancy,
+hold, reservation, booking, invoice or payment. Phase 3C customer/property and
+Phase 3D request/quote records live in their separate owning modules.
 
 ## Versioning and future snapshots
 
@@ -250,8 +269,9 @@ scheduling, working-hours and travel assumptions. The complete normalized
 snapshot should be retained with future booking provenance rather than
 recalculated against current configuration.
 
-Concurrency, holds, booking state, dispatch overrides and audit history remain
-future transactional concerns.
+Phase 3D request/quote concurrency and business events do not solve scheduling
+concurrency. Holds, occupancy, booking state, dispatch overrides and their audit
+history remain future transactional concerns.
 
 ## Internal availability lab
 

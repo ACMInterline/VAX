@@ -3,12 +3,12 @@
 ## Phase 1 and Phase 1A scope
 
 Phase 1 establishes the customer-facing marketing foundation for professional
-on-site carpet, rug, upholstery and mattress care in Sofia. It is a static
-service-discovery experience plus a browser-only request prototype. It does not
-create a quote, booking, customer, property, file, database record or external
-message. Phase 1A makes Bulgarian the primary commercial language, retains
-English as a complete secondary locale, and adds evidence-controlled content
-authority without changing that application boundary.
+on-site carpet, rug, upholstery and mattress care in Sofia. Phase 3D connects
+its request form to a server-validated persistent service-request boundary. An
+anonymous submission creates only an unresolved request for staff review: it
+does not create an Auth identity, CRM customer, quote, booking, property, file,
+payment or external message. Bulgarian remains the primary commercial language
+and English a complete secondary locale.
 
 The repository remains internally named VAX. The public identity is the neutral
 temporary name **FabricCare Sofia** and does not use the identity, assets or
@@ -32,7 +32,7 @@ claims of the VAX appliance manufacturer.
 | `/about` | `/en/about` | Service principles and temporary identity context |
 | `/faq` | `/en/faq` | Carefully qualified practical answers |
 | `/contact` | `/en/contact` | Configured placeholders and intended operating context |
-| `/request` | `/en/request` | Frontend-only, non-persistent request prototype |
+| `/request` | `/en/request` | Anonymous persistent request for staff review; no quote or booking |
 
 The six service details share one typed dynamic route and are statically
 generated from reviewed content. This avoids duplicate page implementations
@@ -45,16 +45,20 @@ and discourages thin SEO pages.
 - `src/content/public-site/` owns typed Bulgarian and English content, service
   records, FAQs, treatment levels, locale routing and claim controls.
 - `src/components/public/` owns reusable public layout and presentation.
-- `src/modules/public-request/` owns the provider-independent Zod request model
-  and the browser-only form.
+- `src/modules/public-request/` owns the provider-independent Zod request model,
+  bounded action state and accessible Client Component.
+- `src/app/public-request-actions.ts` owns the unauthenticated, rate-limited
+  Server Action and calls the request repository without importing Auth or CRM
+  account creation.
 - `src/lib/public-metadata.ts` owns URL validation, metadata construction and
   structured-data eligibility.
 - `src/app/(public)/` adapts the unprefixed Bulgarian routes.
 - `src/app/(public-en)/en/` adapts their English `/en` equivalents.
 
 Public pages are Server Components by default. Only the mobile navigation and
-request form are Client Components. Neither imports database or server
-environment code.
+request form are Client Components. The form receives a Server Action through
+its route adapter and keeps database, Auth and environment imports outside the
+public-request module.
 
 ## Temporary brand configuration
 
@@ -133,25 +137,26 @@ facts listed in `docs/CONTENT_AUTHORITY.md`.
 be set to the approved public origin as part of a separately authorized
 deployment-readiness phase.
 
-## Request prototype behavior
+## Persistent request behavior
 
 The form accepts customer contact fields, Sofia area, property type, multiple
 services, quantity or area estimates, condition, stains, delicate-material
 indication, preferred timing and notes. The image control is disabled and
 clearly marked as future functionality.
 
-Submission uses `preventDefault`, converts the current browser `FormData` to a
-plain object and validates it with a locale-aware Zod schema. Bulgarian and
-English labels, options, validation errors and acknowledgements have equivalent
-behavior. Invalid fields receive associated error messages. Valid input
-produces a status message stating that nothing was sent or stored. The form has
-no `action`, Server Action, route handler, fetch call, email integration,
-storage adapter or database import.
+Submission uses a Server Action and validates every request with the
+locale-aware Zod schema on the server. Bulgarian and English labels, options,
+validation errors and acknowledgements have equivalent behavior. Invalid
+fields retain only bounded allowlisted values and each distinct failed response
+moves focus to the accessible error summary. Valid input creates one unresolved
+`PUBLIC_WEB` service request and canonical customer-reported item references,
+then returns only a random `REQ-…` reference. No raw database ID is exposed.
 
-Future connectivity belongs to the booking/request phase and requires server
-validation, abuse controls, privacy decisions, durable data design,
-authorization where applicable, file-storage controls and operational
-acknowledgement behavior.
+The boundary uses a honeypot, strict field/count limits, generic failures and
+the shared rate-limit abstraction. Production remains fail-closed until a
+shared limiter is configured. It never auto-links contact details, creates an
+account/customer, publishes an internal estimate or confirms a quote, time or
+booking. Files and email delivery remain disabled.
 
 ## Phase 2 catalogue alignment
 
@@ -162,9 +167,10 @@ changing that identity.
 
 Request-form surface choices use canonical cleaning-item codes and their
 localized catalogue labels. The condition selector uses the canonical neutral
-five-level condition scale. This is taxonomy alignment only: the form remains
-browser-only and imports no database, environment or server module. The public
-build and static pages remain independent of Neon credentials.
+five-level condition scale. The Client Component remains independent of
+database, environment and Auth modules; persistence belongs to the injected
+server boundary. Public content does not publish the provisional internal
+calculation.
 
 ## Accessibility and responsive baseline
 
@@ -184,9 +190,10 @@ origin.
 ## Deferred dependencies
 
 Phase 2 owns the versioned service catalogue, pricing semantics, district or
-travel pricing and explainable calculations. Later booking work owns request
-persistence, availability, confirmation and uploads. Identity, payments,
-communications, reviews and analytics remain in their documented phases.
+travel pricing and explainable calculations. Phase 3D owns request persistence
+and staff-reviewed quote versions. Later booking work owns acceptance,
+occupancy and confirmation. Uploads, payments, communications, reviews and
+analytics remain in their documented phases.
 
 Deployment remains separately blocked by the time-bound Next.js security gate
 in `docs/SECURITY.md`.

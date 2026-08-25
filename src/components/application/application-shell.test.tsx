@@ -84,4 +84,44 @@ describe("protected application shell", () => {
       expect(html).toContain(propertiesLabel);
     },
   );
+
+  it.each([
+    ["bg", "Заявки", "Моите заявки", "Моите оферти"],
+    ["en", "Requests", "My requests", "My quotes"],
+  ] as const)(
+    "renders localized %s request and quote links only for matching permission sets",
+    (locale, requestsLabel, myRequestsLabel, myQuotesLabel) => {
+      const html = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(
+            new Set([
+              "CUSTOMER_RECORDS_READ",
+              "OPERATIONS_READ",
+              "OWN_CUSTOMER_DATA_READ",
+            ]),
+          )}
+        >
+          <h1>Request routes</h1>
+        </ApplicationShell>,
+      );
+
+      expect(html).toContain('href="/app/requests"');
+      expect(html).toContain(requestsLabel);
+      expect(html).toContain('href="/app/my-requests"');
+      expect(html).toContain(myRequestsLabel);
+      expect(html).toContain('href="/app/my-quotes"');
+      expect(html).toContain(myQuotesLabel);
+
+      const operationsOnly = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(new Set(["OPERATIONS_READ"]))}
+        >
+          <h1>Technician-style navigation</h1>
+        </ApplicationShell>,
+      );
+      expect(operationsOnly).not.toContain('href="/app/requests"');
+    },
+  );
 });

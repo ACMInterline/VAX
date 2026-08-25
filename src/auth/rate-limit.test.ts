@@ -29,5 +29,20 @@ describe("authentication rate-limit boundary", () => {
     await expect(limiter.consume("SIGNUP", "opaque-key")).resolves.toMatchObject({
       allowed: false,
     });
+    await expect(
+      limiter.consume("PUBLIC_REQUEST", "anonymous-source"),
+    ).resolves.toMatchObject({ allowed: false });
+  });
+
+  it("bounds repeated local public requests per opaque source key", async () => {
+    const limiter = new InMemoryAuthRateLimiter();
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        limiter.consume("PUBLIC_REQUEST", "anonymous-source"),
+      ).resolves.toEqual({ allowed: true });
+    }
+    await expect(
+      limiter.consume("PUBLIC_REQUEST", "anonymous-source"),
+    ).resolves.toMatchObject({ allowed: false });
   });
 });

@@ -1,12 +1,18 @@
 # Customer CRM and Privacy
 
-## Phase 3C scope
+## Scope through Phase 3D
 
-Phase 3C introduces the first persistent VAX business records: customers,
+Phase 3C introduced the first persistent VAX business records: customers,
 contacts, identity-to-customer links, properties, property areas and physical
-cleaning assets. It does not persist public requests, quotes, bookings, jobs,
-payments, invoices, files, messages, notifications or completed cleaning
-history.
+cleaning assets. At the Phase 3C gate it did not persist public requests or
+quotes.
+
+Phase 3D now persists anonymous, linked-customer and staff-created service
+requests, append-only estimates and versioned staff-reviewed quotes. It still
+creates no quote acceptance, booking, job, occupancy, reservation, payment,
+invoice, file, message, notification or completed cleaning history. The
+request/quote lifecycle and projections are defined in
+`docs/REQUEST_AND_QUOTE.md`.
 
 The model serves one VAX cleaning business. It is not a general multi-tenant
 platform and does not claim that future organization, retention or data-subject
@@ -22,21 +28,30 @@ Three identifiers remain deliberately distinct:
    permissions.
 3. `customers` owns the residential or business CRM record.
 
-An active `customer_identity_links` row is the only Phase 3C relationship that
-can grant a signed-in customer profile access to a CRM customer. Matching an
-email address never creates or proves that relationship. Removing or revoking a
-link does not delete the customer, contacts, properties or assets.
+An active `customer_identity_links` row is the only application-owned
+relationship that can grant a signed-in customer profile access to a CRM
+customer. Matching an email address never creates or proves that relationship.
+Removing or revoking a link does not delete the customer, contacts, properties,
+assets, requests, estimates or historical quotes.
 
 Staff access requires the existing CRM permissions. `OWNER`, `ADMIN` and
 `DISPATCHER` may read and manage CRM records under the application policy.
 `TECHNICIAN` receives no unrestricted CRM access. A later technician workspace
 must expose only the minimum property/job facts needed for an assigned job.
 
-The customer self-service surface is read-only in this phase. It always derives
-linked customers from the authenticated application profile and never accepts a
-client-selected ownership scope. An unlinked customer receives a safe empty
-state. Missing and unauthorized record identifiers are not distinguished to
-the caller.
+Request and quote access is deliberately narrower than CRM access alone. Staff
+reads require both `CUSTOMER_RECORDS_READ` and `OPERATIONS_READ`; mutations
+require both corresponding manage permissions. No role label, route visibility
+or submitted customer identifier substitutes for those conjunctions.
+
+The Phase 3C CRM surface remains read-only. Phase 3D additionally permits an
+authenticated customer with `OWN_CUSTOMER_DATA_UPDATE` to submit a request for
+an exact actively linked customer and validated customer/property/asset graph.
+Own-request and issued-quote reads require `OWN_CUSTOMER_DATA_READ` and the same
+current link. The server derives linked customers from the authenticated
+application profile and never accepts a client-selected ownership scope. An
+unlinked customer receives a safe empty state. Missing and unauthorized record
+identifiers are not distinguished to the caller.
 
 ## Data categories and purpose
 
@@ -48,12 +63,16 @@ the caller.
 | Cleaning asset data | Item type, room/area, measurements, material, construction, condition, issues and risks | Describe a physical item for future assessment and repeat service |
 | Internal operational data | Customer summaries, access notes and operational notes | Help authorized staff administer the relationship and prepare work |
 | Authorization metadata | Application-profile link, relationship, actor and timestamps | Prove explicit record ownership and administrative provenance |
+| Request intake | Submitted contact details, service descriptions, preferred timing and original free text | Preserve what was requested for staff assessment without inferring identity |
+| Commercial history | Normalized scope, estimate snapshots, quote lines, terms, validity and status | Explain and present a reviewed offer without recalculating historical facts |
 
 Full addresses and coordinates are sensitive operational data. They are shown
 only to staff with CRM access or to application profiles explicitly linked to
 the owning customer. Customer-facing projections omit internal customer
 summaries, access/parking notes, asset operational notes, link-administration
-metadata and staff actor identifiers.
+metadata, staff notes, draft quotes, estimate internals and staff actor
+identifiers. An issued quote is visible only through the exact actively linked
+customer and never through an anonymous secret link.
 
 Internal notes are for concise operational context only. Passwords, tokens,
 payment details, identity documents, health information and other secrets must
@@ -78,6 +97,13 @@ validate parent state before new child records are added; retained children
 remain available for authorized historical review. Exact restoration,
 customer-merge and property-move workflows remain future decisions.
 
+Requests and issued quotes retain their own controlled lifecycle rather than
+following CRM archive state automatically. Estimates and issued commercial
+history are not overwritten. Phase 3D provides no quote acceptance or business
+record deletion command; retention, anonymization and lawful deletion must
+reconcile request contact data with commercial and audit integrity before
+production.
+
 ## Cleaning Passport foundation
 
 Each `cleaning_assets.id` is a stable identity for one physical item. Phase 3C
@@ -99,11 +125,16 @@ authoritative database comparison so a stale form cannot silently overwrite a
 newer change.
 
 Mutable business records retain creation/update timestamps and application
-actor metadata. Link rows retain creation and revocation provenance. These
-fields are not a complete business audit log. A later append-only business
-audit model must cover sensitive reads, exports, merges, retention actions and
-material changes without reusing the security-specific `auth_audit_events`
-vocabulary.
+actor metadata. Link rows retain creation and revocation provenance. Phase 3D
+adds separate `business_audit_events` for allowlisted request, estimate and
+quote changes in the same transaction as the change. Safe metadata excludes
+contact details, addresses, notes, provider subjects, tokens and secrets, and
+ordinary application code has no update/delete operation for the stream.
+
+This is not a complete business audit system. Sensitive reads, exports, merges,
+retention actions and later domains still require reviewed coverage without
+reusing the security-specific `auth_audit_events` vocabulary. Database-level
+append-only grants remain a production least-privilege gate.
 
 ## Retention and data-subject work still required
 
@@ -117,10 +148,12 @@ production CRM deployment, the owner must approve and test:
 - duplicate detection, customer merge and shared-household/company authority;
 - backup/PITR retention and deletion propagation;
 - audit-log retention and access controls;
+- anonymous-request abuse, duplicate and contact-data retention policy;
+- issued-quote retention and its relationship to future acceptance;
 - production least-privilege grants and reviewed row-level security;
 - monitoring for unauthorized access and an incident/recovery procedure; and
 - a separate authorized production migration and deployment review.
 
 Direct browser database access remains prohibited. The enabled development
-Data API is not an application integration, and no Phase 3C route receives a
-database credential or provider token.
+Data API is not an application integration, and no CRM or request/quote route
+receives a database credential or provider token.
