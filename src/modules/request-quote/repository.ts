@@ -3,6 +3,10 @@ import "server-only";
 import { and, sql, type SQL } from "drizzle-orm";
 import type { Database } from "@/db/client";
 import {
+  appointmentWindowCodes,
+  operationsTeamCodes,
+} from "@/modules/availability-engine/types";
+import {
   businessAuditEvents,
   quoteItems,
   quotes,
@@ -47,12 +51,37 @@ import {
   services,
   surfaceConstructions,
 } from "@/db/schema/service-catalogue";
+import {
+  adjustmentKinds,
+  billingUnits,
+  commercialConditionBandCodes,
+  customerSegments,
+  durationRuleTypes,
+  priceBases,
+  priceBookStatuses,
+  priceRuleTypes,
+  timingCategoryCodes,
+  travelZoneCodes,
+  vatModes,
+} from "@/modules/commercial-engine/types";
 import type { PermissionCode } from "@/modules/identity-access/policy";
-import type {
-  CleaningItemTypeCode,
-  ConditionLevelCode,
+import {
+  cleaningItemTypes as catalogueItemTypes,
+  fibreMaterials as catalogueFibreMaterials,
+  issueTypes as catalogueIssueTypes,
+  riskFlags as catalogueRiskFlags,
+  serviceAddons as catalogueAddons,
+  services as catalogueServices,
+  treatmentLevels as catalogueTreatmentLevels,
+  type CleaningItemTypeCode,
+  type ConditionLevelCode,
 } from "@/modules/service-catalogue/catalogue";
-import type { EstimateEngineInput, StaffEstimateCalculation } from "./estimate";
+import {
+  estimateGovernanceReviewReasonCodes,
+  estimateReviewReasonCodes,
+  type EstimateEngineInput,
+  type StaffEstimateCalculation,
+} from "./estimate";
 import type {
   CustomerResolutionStatus,
   JsonObject,
@@ -501,6 +530,11 @@ function jsonParameter(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** PostgreSQL 18 core SHA-256 over the database-canonical JSONB text. */
+export function priceSnapshotSha256Sql(value: SQL): SQL {
+  return sql`encode(sha256(convert_to((${value})::text, 'UTF8')), 'hex')`;
+}
+
 /** Map only canonical CRM customer types to commercial-engine segments. */
 function commercialCustomerSegmentSql(customerType: SQL): SQL {
   return sql`case ${customerType}
@@ -508,6 +542,1150 @@ function commercialCustomerSegmentSql(customerType: SQL): SQL {
     when 'BUSINESS' then 'B2B'
     else null
   end`;
+}
+
+function exactJsonObject(value: SQL, keys: readonly string[]): SQL {
+  const keyList = sql.join(
+    keys.map((key) => sql`${key}`),
+    sql`, `,
+  );
+  return sql`case
+    when jsonb_typeof(${value}) = 'object'
+    then (select count(*) from jsonb_object_keys(${value})) = ${keys.length}
+      and ${value} ?& array[${keyList}]::text[]
+    else false
+  end`;
+}
+
+function jsonObjectWithAllowedKeys(
+  value: SQL,
+  requiredKeys: readonly string[],
+  optionalKeys: readonly string[],
+): SQL {
+  const requiredKeyList = sql.join(
+    requiredKeys.map((key) => sql`${key}`),
+    sql`, `,
+  );
+  const allowedKeyList = sql.join(
+    [...requiredKeys, ...optionalKeys].map((key) => sql`${key}`),
+    sql`, `,
+  );
+  return sql`case
+    when jsonb_typeof(${value}) = 'object'
+    then ${value} ?& array[${requiredKeyList}]::text[]
+      and not exists (
+        select 1 from jsonb_object_keys(${value}) object_key(key)
+        where object_key.key not in (${allowedKeyList})
+      )
+    else false
+  end`;
+}
+
+function jsonString(value: SQL, maximumLength: number): SQL {
+  return sql`case
+    when jsonb_typeof(${value}) = 'string'
+    then length(btrim(${value} #>> '{}')) between 1 and ${maximumLength}
+    else false
+  end`;
+}
+
+function jsonStringIn(value: SQL, allowedValues: readonly string[]): SQL {
+  const allowed = sql.join(
+    allowedValues.map((candidate) => sql`${candidate}`),
+    sql`, `,
+  );
+  return sql`case
+    when jsonb_typeof(${value}) = 'string'
+    then (${value} #>> '{}') in (${allowed})
+    else false
+  end`;
+}
+
+function jsonIsoInstant(value: SQL): SQL {
+  return sql`case
+    when jsonb_typeof(${value}) = 'string'
+    then (${value} #>> '{}')
+      ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'
+      and pg_input_is_valid(${value} #>> '{}', 'timestamp with time zone')
+    else false
+  end`;
+}
+
+function jsonBoolean(value: SQL): SQL {
+  return sql`jsonb_typeof(${value}) = 'boolean'`;
+}
+
+function jsonInteger(
+  value: SQL,
+  minimum: number,
+  maximum: number,
+  nullable = false,
+): SQL {
+  const numericCheck = sql`case
+    when jsonb_typeof(${value}) = 'number'
+      and (${value} #>> '{}') ~ '^-?[0-9]+$'
+    then (${value} #>> '{}')::numeric between ${minimum} and ${maximum}
+    else false
+  end`;
+  return nullable
+    ? sql`(jsonb_typeof(${value}) = 'null' or ${numericCheck})`
+    : numericCheck;
+}
+
+function jsonStringArray(
+  value: SQL,
+  maximumItems: number,
+  maximumStringLength: number,
+): SQL {
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) <= ${maximumItems}
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) element(value)
+        where not (${jsonString(sql.raw("element.value"), maximumStringLength)})
+      )
+    else false
+  end`;
+}
+
+function jsonStringArrayIn(
+  value: SQL,
+  maximumItems: number,
+  allowedValues: readonly string[],
+): SQL {
+  const item = sql.raw("enum_array_item.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) <= ${maximumItems}
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) enum_array_item(value)
+        where not (${jsonStringIn(item, allowedValues)})
+      )
+    else false
+  end`;
+}
+
+function optionalJsonInteger(
+  object: SQL,
+  key: string,
+  minimum: number,
+  maximum: number,
+): SQL {
+  return sql`(not (${object} ? ${key})
+    or ${jsonInteger(sql`${object} -> ${key}`, minimum, maximum)})`;
+}
+
+function optionalJsonStringIn(
+  object: SQL,
+  key: string,
+  allowedValues: readonly string[],
+): SQL {
+  return sql`(not (${object} ? ${key})
+    or ${jsonStringIn(sql`${object} -> ${key}`, allowedValues)})`;
+}
+
+function optionalJsonString(
+  object: SQL,
+  key: string,
+  maximumLength: number,
+): SQL {
+  return sql`(not (${object} ? ${key})
+    or ${jsonString(sql`${object} -> ${key}`, maximumLength)})`;
+}
+
+function optionalJsonBoolean(object: SQL, key: string): SQL {
+  return sql`(not (${object} ? ${key})
+    or ${jsonBoolean(sql`${object} -> ${key}`)})`;
+}
+
+function optionalNullableJsonInteger(
+  object: SQL,
+  key: string,
+  minimum: number,
+  maximum: number,
+): SQL {
+  return sql`(not (${object} ? ${key})
+    or ${jsonInteger(sql`${object} -> ${key}`, minimum, maximum, true)})`;
+}
+
+function nullableJsonString(value: SQL, maximumLength: number): SQL {
+  return sql`(jsonb_typeof(${value}) = 'null'
+    or ${jsonString(value, maximumLength)})`;
+}
+
+const catalogueServiceCodes = catalogueServices.map((entry) => entry.code);
+const catalogueItemTypeCodes = catalogueItemTypes.map((entry) => entry.code);
+const catalogueIssueCodes = catalogueIssueTypes.map((entry) => entry.code);
+const catalogueAddonCodes = catalogueAddons.map((entry) => entry.code);
+const catalogueRiskCodes = catalogueRiskFlags.map((entry) => entry.code);
+const catalogueFibreCodes = catalogueFibreMaterials.map((entry) => entry.code);
+const catalogueTreatmentCodes = catalogueTreatmentLevels.map(
+  (entry) => entry.code,
+);
+
+function estimateInputItemsAreWellFormed(value: SQL): SQL {
+  const item = sql.raw("estimate_input_item.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 50
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) estimate_input_item(value)
+        where not (
+          ${jsonObjectWithAllowedKeys(
+            item,
+            [
+              "serviceCode",
+              "itemTypeCode",
+              "quantity",
+              "issueCodes",
+              "addonCodes",
+              "riskFlagCodes",
+            ],
+            [
+              "areaHundredthsM2",
+              "seatCount",
+              "sides",
+              "fibreMaterialCode",
+              "treatmentLevelCode",
+            ],
+          )}
+          and ${jsonStringIn(sql`${item} -> 'serviceCode'`, catalogueServiceCodes)}
+          and ${jsonStringIn(sql`${item} -> 'itemTypeCode'`, catalogueItemTypeCodes)}
+          and ${jsonInteger(sql`${item} -> 'quantity'`, 1, 100_000)}
+          and ${optionalJsonInteger(item, "areaHundredthsM2", 1, 100_000_000)}
+          and ${optionalJsonInteger(item, "seatCount", 1, 10_000)}
+          and ${optionalJsonInteger(item, "sides", 1, 2)}
+          and ${jsonStringArrayIn(sql`${item} -> 'issueCodes'`, 100, catalogueIssueCodes)}
+          and ${jsonStringArrayIn(sql`${item} -> 'addonCodes'`, 100, catalogueAddonCodes)}
+          and ${jsonStringArrayIn(sql`${item} -> 'riskFlagCodes'`, 100, catalogueRiskCodes)}
+          and ${optionalJsonStringIn(item, "fibreMaterialCode", catalogueFibreCodes)}
+          and ${optionalJsonStringIn(item, "treatmentLevelCode", catalogueTreatmentCodes)}
+        )
+      )
+    else false
+  end`;
+}
+
+function priceLinesAreWellFormed(value: SQL): SQL {
+  const line = sql.raw("price_line.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) <= 1000
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) price_line(value)
+        where not (
+          ${exactJsonObject(line, ["kind", "label", "amountMinorUnits", "ruleId"])}
+          and ${jsonStringIn(sql`${line} -> 'kind'`, [
+            ...priceRuleTypes,
+            "MINIMUM_VISIT_ADJUSTMENT",
+          ])}
+          and ${jsonString(sql`${line} -> 'label'`, 255)}
+          and ${jsonInteger(sql`${line} -> 'amountMinorUnits'`, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)}
+          and ${jsonString(sql`${line} -> 'ruleId'`, 160)}
+        )
+      )
+    else false
+  end`;
+}
+
+function priceLineEvidenceIsConsistent(
+  lines: SQL,
+  result: SQL,
+  configuration: SQL,
+): SQL {
+  const subtotal = sql`${result} ->> 'subtotalMinorUnits'`;
+  const minimum = sql`${result} ->> 'minimumVisitAdjustmentMinorUnits'`;
+  const net = sql`${result} ->> 'netAmountMinorUnits'`;
+  const vatRate = sql`${result} ->> 'vatRateBasisPoints'`;
+  const vat = sql`${result} ->> 'vatAmountMinorUnits'`;
+  const gross = sql`${result} ->> 'grossTotalMinorUnits'`;
+  const manual = sql`${result} -> 'manualAssessmentRequired'`;
+  const rules = sql`${configuration} -> 'rules'`;
+  const configuredVat = sql`${configuration} -> 'vatConfiguration'`;
+
+  return sql`case
+    when jsonb_typeof(${lines}) = 'array'
+      and jsonb_typeof(${rules}) = 'array'
+      and jsonb_typeof(${result} -> 'appliedRuleIds') = 'array'
+      and (${subtotal}) ~ '^[0-9]+$'
+      and (${vatRate}) ~ '^[0-9]+$'
+      and ${manual} in ('true'::jsonb, 'false'::jsonb)
+      and not exists (
+        select 1 from jsonb_array_elements(${lines}) price_evidence_line(value)
+        where jsonb_typeof(price_evidence_line.value) <> 'object'
+          or (price_evidence_line.value ->> 'amountMinorUnits')
+            !~ '^-?[0-9]+$'
+      )
+      and case when ${manual} = 'true'::jsonb then
+        jsonb_typeof(${result} -> 'minimumVisitAdjustmentMinorUnits') = 'null'
+          and jsonb_typeof(${result} -> 'netAmountMinorUnits') = 'null'
+          and jsonb_typeof(${result} -> 'vatAmountMinorUnits') = 'null'
+          and jsonb_typeof(${result} -> 'grossTotalMinorUnits') = 'null'
+      else (${minimum}) ~ '^[0-9]+$'
+        and (${net}) ~ '^[0-9]+$'
+        and (${vat}) ~ '^[0-9]+$'
+        and (${gross}) ~ '^[0-9]+$'
+      end
+    then
+      coalesce((
+        select sum((price_evidence_line.value ->> 'amountMinorUnits')::numeric)
+          filter (where price_evidence_line.value ->> 'kind'
+            <> 'MINIMUM_VISIT_ADJUSTMENT')
+        from jsonb_array_elements(${lines}) price_evidence_line(value)
+      ), 0) = (${subtotal})::numeric
+      and (
+        select count(*) from jsonb_array_elements(${lines}) price_minimum_line(value)
+        where price_minimum_line.value ->> 'kind' = 'MINIMUM_VISIT_ADJUSTMENT'
+      ) <= 1
+      and coalesce((
+        select sum((price_minimum_line.value ->> 'amountMinorUnits')::numeric)
+        from jsonb_array_elements(${lines}) price_minimum_line(value)
+        where price_minimum_line.value ->> 'kind' = 'MINIMUM_VISIT_ADJUSTMENT'
+      ), 0) = case when ${manual} = 'true'::jsonb
+        then 0 else (${minimum})::numeric end
+      and jsonb_array_length(${result} -> 'appliedRuleIds') = (
+        select count(distinct applied_rule.value #>> '{}')
+        from jsonb_array_elements(${result} -> 'appliedRuleIds') applied_rule(value)
+      )
+      and not exists (
+        select 1
+        from jsonb_array_elements(${result} -> 'appliedRuleIds') applied_rule(value)
+        where jsonb_typeof(applied_rule.value) <> 'string'
+          or not exists (
+            select 1 from jsonb_array_elements(${rules}) configured_rule(value)
+            where configured_rule.value -> 'id' = applied_rule.value
+              and configured_rule.value -> 'active' = 'true'::jsonb
+          )
+      )
+      and not exists (
+        select 1 from jsonb_array_elements(${lines}) price_rule_line(value)
+        where not (${result} -> 'appliedRuleIds'
+          @> jsonb_build_array(price_rule_line.value -> 'ruleId'))
+          or not exists (
+            select 1 from jsonb_array_elements(${rules}) configured_rule(value)
+            where configured_rule.value -> 'id' = price_rule_line.value -> 'ruleId'
+              and configured_rule.value -> 'active' = 'true'::jsonb
+              and (
+                configured_rule.value -> 'type' = price_rule_line.value -> 'kind'
+                or (
+                  price_rule_line.value ->> 'kind' = 'MINIMUM_VISIT_ADJUSTMENT'
+                  and configured_rule.value ->> 'type' = 'MINIMUM_VISIT'
+                )
+              )
+          )
+      )
+      and ${configuredVat} -> 'rateBasisPoints'
+        = ${result} -> 'vatRateBasisPoints'
+      and case
+        when ${manual} = 'true'::jsonb then true
+        when ${configuredVat} ->> 'mode' = 'VAT_NOT_REGISTERED' then
+          (${net})::numeric = (${subtotal})::numeric + (${minimum})::numeric
+            and (${vat})::numeric = 0
+            and (${gross})::numeric = (${net})::numeric
+        when ${configuration} ->> 'priceBasis' = 'GROSS' then
+          (${gross})::numeric = (${subtotal})::numeric + (${minimum})::numeric
+            and (${net})::numeric = round(
+              (${gross})::numeric * 10000
+                / (10000 + (${vatRate})::numeric)
+            )
+            and (${vat})::numeric = (${gross})::numeric - (${net})::numeric
+        else (${net})::numeric = (${subtotal})::numeric + (${minimum})::numeric
+          and (${vat})::numeric = round(
+            (${net})::numeric * (${vatRate})::numeric / 10000
+          )
+          and (${gross})::numeric = (${net})::numeric + (${vat})::numeric
+      end
+    else false
+  end`;
+}
+
+function durationLinesAreWellFormed(value: SQL): SQL {
+  const line = sql.raw("duration_line.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) <= 1000
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) duration_line(value)
+        where not (
+          ${exactJsonObject(line, ["kind", "label", "minutes", "ruleId"])}
+          and ${jsonStringIn(sql`${line} -> 'kind'`, durationRuleTypes)}
+          and ${jsonString(sql`${line} -> 'label'`, 255)}
+          and ${jsonInteger(sql`${line} -> 'minutes'`, 0, 1_000_000)}
+          and ${jsonString(sql`${line} -> 'ruleId'`, 160)}
+        )
+      )
+    else false
+  end`;
+}
+
+function durationLineEvidenceIsConsistent(
+  lines: SQL,
+  result: SQL,
+  configuration: SQL,
+): SQL {
+  const rules = sql`${configuration} -> 'rules'`;
+  const appliedRuleIds = sql`${result} -> 'appliedRuleIds'`;
+  const component = (key: string) => sql`${result} ->> ${key}`;
+  const lineSum = (kinds: readonly string[]) => sql`coalesce((
+    select sum((duration_evidence_line.value ->> 'minutes')::numeric)
+    from jsonb_array_elements(${lines}) duration_evidence_line(value)
+    where duration_evidence_line.value ->> 'kind' in (${sql.join(
+      kinds.map((kind) => sql`${kind}`),
+      sql`, `,
+    )})
+  ), 0)`;
+
+  return sql`case
+    when jsonb_typeof(${lines}) = 'array'
+      and jsonb_typeof(${rules}) = 'array'
+      and jsonb_typeof(${appliedRuleIds}) = 'array'
+      and not exists (
+        select 1 from jsonb_array_elements(${lines}) duration_evidence_line(value)
+        where jsonb_typeof(duration_evidence_line.value) <> 'object'
+          or (duration_evidence_line.value ->> 'minutes') !~ '^[0-9]+$'
+          or duration_evidence_line.value ->> 'kind' not in (
+            'JOB_SETUP', 'JOB_INSPECTION', 'JOB_CLEANUP', 'ITEM_BASE',
+            'AREA_PRODUCTIVITY', 'CONDITION_MULTIPLIER',
+            'ISSUE_COMPLEXITY', 'ADD_ON_TIME'
+          )
+      )
+      and (${component("setupMinutes")}) ~ '^[0-9]+$'
+      and (${component("inspectionMinutes")}) ~ '^[0-9]+$'
+      and (${component("baseCleaningMinutes")}) ~ '^[0-9]+$'
+      and (${component("modifierMinutes")}) ~ '^[0-9]+$'
+      and (${component("addonMinutes")}) ~ '^[0-9]+$'
+      and (${component("cleanupMinutes")}) ~ '^[0-9]+$'
+    then
+      ${lineSum(["JOB_SETUP"])} = (${component("setupMinutes")})::numeric
+      and ${lineSum(["JOB_INSPECTION"])}
+        = (${component("inspectionMinutes")})::numeric
+      and ${lineSum(["ITEM_BASE", "AREA_PRODUCTIVITY"])}
+        = (${component("baseCleaningMinutes")})::numeric
+      and ${lineSum(["CONDITION_MULTIPLIER", "ISSUE_COMPLEXITY"])}
+        = (${component("modifierMinutes")})::numeric
+      and ${lineSum(["ADD_ON_TIME"])}
+        = (${component("addonMinutes")})::numeric
+      and ${lineSum(["JOB_CLEANUP"])}
+        = (${component("cleanupMinutes")})::numeric
+      and (
+        select count(*) from jsonb_array_elements(${lines}) fixed_line(value)
+        where fixed_line.value ->> 'kind' = 'JOB_SETUP'
+      ) = 1
+      and (
+        select count(*) from jsonb_array_elements(${lines}) fixed_line(value)
+        where fixed_line.value ->> 'kind' = 'JOB_INSPECTION'
+      ) = 1
+      and (
+        select count(*) from jsonb_array_elements(${lines}) fixed_line(value)
+        where fixed_line.value ->> 'kind' = 'JOB_CLEANUP'
+      ) = 1
+      and jsonb_array_length(${appliedRuleIds}) = (
+        select count(distinct applied_rule.value #>> '{}')
+        from jsonb_array_elements(${appliedRuleIds}) applied_rule(value)
+      )
+      and not exists (
+        select 1 from jsonb_array_elements(${appliedRuleIds}) applied_rule(value)
+        where jsonb_typeof(applied_rule.value) <> 'string'
+          or not exists (
+            select 1 from jsonb_array_elements(${rules}) configured_rule(value)
+            where configured_rule.value -> 'id' = applied_rule.value
+              and configured_rule.value -> 'active' = 'true'::jsonb
+          )
+      )
+      and not exists (
+        select 1 from jsonb_array_elements(${lines}) duration_rule_line(value)
+        where not (${appliedRuleIds}
+          @> jsonb_build_array(duration_rule_line.value -> 'ruleId'))
+          or not exists (
+            select 1 from jsonb_array_elements(${rules}) configured_rule(value)
+            where configured_rule.value -> 'id'
+                = duration_rule_line.value -> 'ruleId'
+              and configured_rule.value -> 'type'
+                = duration_rule_line.value -> 'kind'
+              and configured_rule.value -> 'active' = 'true'::jsonb
+          )
+      )
+    else false
+  end`;
+}
+
+function priceRulesAreWellFormed(value: SQL): SQL {
+  const rule = sql.raw("price_config_rule.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 1000
+      and jsonb_array_length(${value}) = (
+        select count(distinct unique_price_rule.value ->> 'id')
+        from jsonb_array_elements(${value}) unique_price_rule(value)
+      )
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) price_config_rule(value)
+        where not (
+          ${jsonObjectWithAllowedKeys(
+            rule,
+            ["id", "type", "label", "adjustmentKind", "active", "priority"],
+            [
+              "serviceCode", "itemTypeCode", "conditionBandCode", "issueCode",
+              "addonCode", "suggestedAddonCode", "riskFlagCode",
+              "travelZoneCode", "timingCategoryCode", "billingUnit",
+              "amountMinorUnits", "percentageBasisPoints",
+              "measurementMinHundredths", "measurementMaxHundredths",
+              "manualAssessmentRequired", "declineOrReferRequired", "notes",
+            ],
+          )}
+          and ${jsonString(sql`${rule} -> 'id'`, 160)}
+          and ${jsonStringIn(sql`${rule} -> 'type'`, priceRuleTypes)}
+          and ${jsonString(sql`${rule} -> 'label'`, 255)}
+          and ${jsonStringIn(sql`${rule} -> 'adjustmentKind'`, adjustmentKinds)}
+          and ${jsonBoolean(sql`${rule} -> 'active'`)}
+          and ${jsonInteger(sql`${rule} -> 'priority'`, 0, 2_147_483_647)}
+          and ${optionalJsonStringIn(rule, "serviceCode", catalogueServiceCodes)}
+          and ${optionalJsonStringIn(rule, "itemTypeCode", catalogueItemTypeCodes)}
+          and ${optionalJsonStringIn(rule, "conditionBandCode", commercialConditionBandCodes)}
+          and ${optionalJsonStringIn(rule, "issueCode", catalogueIssueCodes)}
+          and ${optionalJsonStringIn(rule, "addonCode", catalogueAddonCodes)}
+          and ${optionalJsonStringIn(rule, "suggestedAddonCode", catalogueAddonCodes)}
+          and ${optionalJsonStringIn(rule, "riskFlagCode", catalogueRiskCodes)}
+          and ${optionalJsonStringIn(rule, "travelZoneCode", travelZoneCodes)}
+          and ${optionalJsonStringIn(rule, "timingCategoryCode", timingCategoryCodes)}
+          and ${optionalJsonStringIn(rule, "billingUnit", billingUnits)}
+          and ${optionalJsonInteger(rule, "amountMinorUnits", Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonInteger(rule, "percentageBasisPoints", Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonInteger(rule, "measurementMinHundredths", 0, Number.MAX_SAFE_INTEGER)}
+          and ${optionalNullableJsonInteger(rule, "measurementMaxHundredths", 0, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonBoolean(rule, "manualAssessmentRequired")}
+          and ${optionalJsonBoolean(rule, "declineOrReferRequired")}
+          and ${optionalJsonString(rule, "notes", 4000)}
+        )
+      )
+    else false
+  end`;
+}
+
+function durationRulesAreWellFormed(value: SQL): SQL {
+  const rule = sql.raw("duration_config_rule.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 1000
+      and jsonb_array_length(${value}) = (
+        select count(distinct unique_duration_rule.value ->> 'id')
+        from jsonb_array_elements(${value}) unique_duration_rule(value)
+      )
+      and not exists (
+        select 1
+        from jsonb_array_elements(${value}) duration_config_rule(value)
+        where not (
+          ${jsonObjectWithAllowedKeys(
+            rule,
+            ["id", "type", "label", "active", "priority"],
+            [
+              "serviceCode", "itemTypeCode", "conditionBandCode", "issueCode",
+              "addonCode", "riskFlagCode", "fibreMaterialCode",
+              "treatmentLevelCode", "billingUnit", "minutes",
+              "multiplierBasisPoints", "productivityHundredthsM2PerHour",
+              "manualAssessmentRequired", "declineOrReferRequired", "notes",
+            ],
+          )}
+          and ${jsonString(sql`${rule} -> 'id'`, 160)}
+          and ${jsonStringIn(sql`${rule} -> 'type'`, durationRuleTypes)}
+          and ${jsonString(sql`${rule} -> 'label'`, 255)}
+          and ${jsonBoolean(sql`${rule} -> 'active'`)}
+          and ${jsonInteger(sql`${rule} -> 'priority'`, 0, 2_147_483_647)}
+          and ${optionalJsonStringIn(rule, "serviceCode", catalogueServiceCodes)}
+          and ${optionalJsonStringIn(rule, "itemTypeCode", catalogueItemTypeCodes)}
+          and ${optionalJsonStringIn(rule, "conditionBandCode", commercialConditionBandCodes)}
+          and ${optionalJsonStringIn(rule, "issueCode", catalogueIssueCodes)}
+          and ${optionalJsonStringIn(rule, "addonCode", catalogueAddonCodes)}
+          and ${optionalJsonStringIn(rule, "riskFlagCode", catalogueRiskCodes)}
+          and ${optionalJsonStringIn(rule, "fibreMaterialCode", catalogueFibreCodes)}
+          and ${optionalJsonStringIn(rule, "treatmentLevelCode", catalogueTreatmentCodes)}
+          and ${optionalJsonStringIn(rule, "billingUnit", billingUnits)}
+          and ${optionalJsonInteger(rule, "minutes", 0, 1_000_000)}
+          and ${optionalJsonInteger(rule, "multiplierBasisPoints", 0, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonInteger(rule, "productivityHundredthsM2PerHour", 1, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonBoolean(rule, "manualAssessmentRequired")}
+          and ${optionalJsonBoolean(rule, "declineOrReferRequired")}
+          and ${optionalJsonString(rule, "notes", 4000)}
+        )
+      )
+    else false
+  end`;
+}
+
+function priceConfigurationIsWellFormed(
+  configuration: SQL,
+  priceBook: SQL,
+  estimateInput: SQL,
+): SQL {
+  const vat = sql`${configuration} -> 'vatConfiguration'`;
+  return sql`(
+    ${exactJsonObject(configuration, [
+      "id", "code", "name", "currency", "market", "customerSegment",
+      "version", "status", "effectiveFrom", "effectiveUntil", "priceBasis",
+      "vatConfiguration", "provisional", "approvedForPublication", "active",
+      "rules",
+    ])}
+    and ${jsonString(sql`${configuration} -> 'id'`, 160)}
+    and ${configuration} -> 'id' = ${priceBook} -> 'id'
+    and ${configuration} -> 'code' = ${priceBook} -> 'code'
+    and ${configuration} -> 'version' = ${priceBook} -> 'version'
+    and ${configuration} -> 'status' = ${priceBook} -> 'status'
+    and ${configuration} -> 'provisional' = ${priceBook} -> 'provisional'
+    and ${configuration} -> 'approvedForPublication'
+      = ${priceBook} -> 'approvedForPublication'
+    and ${jsonString(sql`${configuration} -> 'name'`, 255)}
+    and (${configuration} ->> 'currency') = 'EUR'
+    and (${configuration} ->> 'market') = 'SOFIA'
+    and ${configuration} -> 'customerSegment'
+      = ${estimateInput} -> 'customerSegment'
+    and ${jsonStringIn(sql`${configuration} -> 'priceBasis'`, priceBases)}
+    and ${nullableJsonString(sql`${configuration} -> 'effectiveFrom'`, 64)}
+    and ${nullableJsonString(sql`${configuration} -> 'effectiveUntil'`, 64)}
+    and ${jsonBoolean(sql`${configuration} -> 'active'`)}
+    and ${exactJsonObject(vat, ["mode", "rateBasisPoints"])}
+    and ${jsonStringIn(sql`${vat} -> 'mode'`, vatModes)}
+    and ${jsonInteger(sql`${vat} -> 'rateBasisPoints'`, 0, 10_000)}
+    and ${priceRulesAreWellFormed(sql`${configuration} -> 'rules'`)}
+  )`;
+}
+
+function durationConfigurationIsWellFormed(
+  configuration: SQL,
+  durationModel: SQL,
+): SQL {
+  return sql`(
+    ${exactJsonObject(configuration, [
+      "id", "code", "name", "market", "version", "status", "effectiveFrom",
+      "effectiveUntil", "provisional", "active", "rules",
+    ])}
+    and ${configuration} -> 'id' = ${durationModel} -> 'id'
+    and ${configuration} -> 'code' = ${durationModel} -> 'code'
+    and ${configuration} -> 'version' = ${durationModel} -> 'version'
+    and ${configuration} -> 'status' = ${durationModel} -> 'status'
+    and ${configuration} -> 'provisional' = ${durationModel} -> 'provisional'
+    and ${jsonString(sql`${configuration} -> 'name'`, 255)}
+    and (${configuration} ->> 'market') = 'SOFIA'
+    and ${nullableJsonString(sql`${configuration} -> 'effectiveFrom'`, 64)}
+    and ${nullableJsonString(sql`${configuration} -> 'effectiveUntil'`, 64)}
+    and ${jsonBoolean(sql`${configuration} -> 'active'`)}
+    and ${durationRulesAreWellFormed(sql`${configuration} -> 'rules'`)}
+  )`;
+}
+
+function serviceAreaIsWellFormed(value: SQL, estimateInput: SQL): SQL {
+  const name = sql`${value} -> 'name'`;
+  return sql`case
+    when jsonb_typeof(${value}) = 'null' then true
+    when jsonb_typeof(${value}) = 'object' then
+      ${exactJsonObject(value, [
+        "code", "name", "active", "serviceEligible",
+        "minimumOrderOverrideMinorUnits", "estimatedBaseTravelMinutes",
+        "manualConfirmationRequired", "geographicMetadata", "notes",
+      ])}
+      and ${value} -> 'code' = ${estimateInput} -> 'travelZoneCode'
+      and ${exactJsonObject(name, ["bg", "en"])}
+      and ${jsonString(sql`${name} -> 'bg'`, 255)}
+      and ${jsonString(sql`${name} -> 'en'`, 255)}
+      and ${jsonBoolean(sql`${value} -> 'active'`)}
+      and ${jsonBoolean(sql`${value} -> 'serviceEligible'`)}
+      and ${jsonInteger(sql`${value} -> 'minimumOrderOverrideMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
+      and ${jsonInteger(sql`${value} -> 'estimatedBaseTravelMinutes'`, 0, 1_000_000, true)}
+      and ${jsonBoolean(sql`${value} -> 'manualConfirmationRequired'`)}
+      and jsonb_typeof(${value} -> 'geographicMetadata') in ('null', 'object')
+      and ${jsonString(sql`${value} -> 'notes'`, 4000)}
+    else false
+  end`;
+}
+
+function schedulingPolicyIsWellFormed(value: SQL): SQL {
+  return sql`(
+    ${exactJsonObject(value, [
+      "code", "name", "version", "status", "effectiveFrom", "effectiveUntil",
+      "provisional", "active", "candidateIntervalMinutes",
+      "interJobBufferMinutes", "largeJobReviewThresholdMinutes",
+    ])}
+    and ${jsonString(sql`${value} -> 'code'`, 96)}
+    and ${jsonString(sql`${value} -> 'name'`, 255)}
+    and ${jsonInteger(sql`${value} -> 'version'`, 1, 2_147_483_647)}
+    and ${jsonStringIn(sql`${value} -> 'status'`, priceBookStatuses)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveFrom'`, 64)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveUntil'`, 64)}
+    and ${jsonBoolean(sql`${value} -> 'provisional'`)}
+    and ${jsonBoolean(sql`${value} -> 'active'`)}
+    and ${jsonInteger(sql`${value} -> 'candidateIntervalMinutes'`, 1, 1_440)}
+    and ${jsonInteger(sql`${value} -> 'interJobBufferMinutes'`, 0, 1_440)}
+    and ${jsonInteger(sql`${value} -> 'largeJobReviewThresholdMinutes'`, 1, 1_000_000)}
+  )`;
+}
+
+function travelProfileRulesAreWellFormed(value: SQL): SQL {
+  const rule = sql.raw("travel_profile_rule.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 1000
+      and not exists (
+        select 1 from jsonb_array_elements(${value}) travel_profile_rule(value)
+        where not (
+          ${exactJsonObject(rule, [
+            "id", "originZoneCode", "destinationZoneCode",
+            "estimatedTravelMinutes", "bidirectional", "sameDistrictOnly",
+            "manualAssessmentRequired", "priority", "active", "notes",
+          ])}
+          and ${jsonString(sql`${rule} -> 'id'`, 160)}
+          and ${jsonStringIn(sql`${rule} -> 'originZoneCode'`, travelZoneCodes)}
+          and ${jsonStringIn(sql`${rule} -> 'destinationZoneCode'`, travelZoneCodes)}
+          and ${jsonInteger(sql`${rule} -> 'estimatedTravelMinutes'`, 0, 1_000_000, true)}
+          and ${jsonBoolean(sql`${rule} -> 'bidirectional'`)}
+          and ${jsonBoolean(sql`${rule} -> 'sameDistrictOnly'`)}
+          and ${jsonBoolean(sql`${rule} -> 'manualAssessmentRequired'`)}
+          and ${jsonInteger(sql`${rule} -> 'priority'`, 0, 2_147_483_647)}
+          and ${jsonBoolean(sql`${rule} -> 'active'`)}
+          and ${jsonString(sql`${rule} -> 'notes'`, 4000)}
+        )
+      )
+    else false
+  end`;
+}
+
+function travelProfileIsWellFormed(value: SQL): SQL {
+  return sql`(
+    ${exactJsonObject(value, [
+      "id", "code", "name", "market", "version", "status", "effectiveFrom",
+      "effectiveUntil", "defaultTravelMinutes", "interJobBufferMinutes",
+      "provisional", "active", "rules",
+    ])}
+    and ${jsonString(sql`${value} -> 'id'`, 160)}
+    and ${jsonString(sql`${value} -> 'code'`, 96)}
+    and ${jsonString(sql`${value} -> 'name'`, 255)}
+    and (${value} ->> 'market') = 'SOFIA'
+    and ${jsonInteger(sql`${value} -> 'version'`, 1, 2_147_483_647)}
+    and ${jsonStringIn(sql`${value} -> 'status'`, priceBookStatuses)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveFrom'`, 64)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveUntil'`, 64)}
+    and ${jsonInteger(sql`${value} -> 'defaultTravelMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${value} -> 'interJobBufferMinutes'`, 0, 1_440)}
+    and ${jsonBoolean(sql`${value} -> 'provisional'`)}
+    and ${jsonBoolean(sql`${value} -> 'active'`)}
+    and ${travelProfileRulesAreWellFormed(sql`${value} -> 'rules'`)}
+  )`;
+}
+
+function workingHourRulesAreWellFormed(value: SQL): SQL {
+  const rule = sql.raw("working_hour_rule.value");
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 100
+      and not exists (
+        select 1 from jsonb_array_elements(${value}) working_hour_rule(value)
+        where not (
+          ${exactJsonObject(rule, [
+            "id", "weekday", "startMinute", "endMinute", "enabled", "teamCode",
+          ])}
+          and ${jsonString(sql`${rule} -> 'id'`, 160)}
+          and ${jsonInteger(sql`${rule} -> 'weekday'`, 1, 7)}
+          and ${jsonInteger(sql`${rule} -> 'startMinute'`, 0, 1_439)}
+          and ${jsonInteger(sql`${rule} -> 'endMinute'`, 1, 1_440)}
+          and (${rule} -> 'endMinute') > (${rule} -> 'startMinute')
+          and ${jsonBoolean(sql`${rule} -> 'enabled'`)}
+          and (jsonb_typeof(${rule} -> 'teamCode') = 'null'
+            or ${jsonStringIn(sql`${rule} -> 'teamCode'`, operationsTeamCodes)})
+        )
+      )
+    else false
+  end`;
+}
+
+function workingHourPolicyIsWellFormed(value: SQL): SQL {
+  return sql`(
+    ${exactJsonObject(value, [
+      "id", "code", "name", "timeZone", "version", "status", "effectiveFrom",
+      "effectiveUntil", "provisional", "active", "rules",
+    ])}
+    and ${jsonString(sql`${value} -> 'id'`, 160)}
+    and ${jsonString(sql`${value} -> 'code'`, 96)}
+    and ${jsonString(sql`${value} -> 'name'`, 255)}
+    and (${value} ->> 'timeZone') = 'Europe/Sofia'
+    and ${jsonInteger(sql`${value} -> 'version'`, 1, 2_147_483_647)}
+    and ${jsonStringIn(sql`${value} -> 'status'`, priceBookStatuses)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveFrom'`, 64)}
+    and ${nullableJsonString(sql`${value} -> 'effectiveUntil'`, 64)}
+    and ${jsonBoolean(sql`${value} -> 'provisional'`)}
+    and ${jsonBoolean(sql`${value} -> 'active'`)}
+    and ${workingHourRulesAreWellFormed(sql`${value} -> 'rules'`)}
+  )`;
+}
+
+function appointmentWindowsAreWellFormed(value: SQL): SQL {
+  const window = sql.raw("appointment_window.value");
+  const name = sql`${window} -> 'name'`;
+  return sql`case
+    when jsonb_typeof(${value}) = 'array'
+    then jsonb_array_length(${value}) between 1 and 100
+      and not exists (
+        select 1 from jsonb_array_elements(${value}) appointment_window(value)
+        where not (
+          ${exactJsonObject(window, [
+            "id", "profileCode", "version", "status", "windowCode", "name",
+            "startMinute", "endMinute", "provisional", "active",
+          ])}
+          and ${jsonString(sql`${window} -> 'id'`, 160)}
+          and ${jsonString(sql`${window} -> 'profileCode'`, 96)}
+          and ${jsonInteger(sql`${window} -> 'version'`, 1, 2_147_483_647)}
+          and ${jsonStringIn(sql`${window} -> 'status'`, priceBookStatuses)}
+          and ${jsonStringIn(sql`${window} -> 'windowCode'`, appointmentWindowCodes)}
+          and ${exactJsonObject(name, ["bg", "en"])}
+          and ${jsonString(sql`${name} -> 'bg'`, 255)}
+          and ${jsonString(sql`${name} -> 'en'`, 255)}
+          and ${jsonInteger(sql`${window} -> 'startMinute'`, 0, 1_439)}
+          and ${jsonInteger(sql`${window} -> 'endMinute'`, 1, 1_440)}
+          and (${window} -> 'endMinute') > (${window} -> 'startMinute')
+          and ${jsonBoolean(sql`${window} -> 'provisional'`)}
+          and ${jsonBoolean(sql`${window} -> 'active'`)}
+        )
+      )
+    else false
+  end`;
+}
+
+function availabilityConfigurationIsWellFormed(
+  configuration: SQL,
+  estimateInput: SQL,
+  result: SQL,
+): SQL {
+  const serviceArea = sql`${configuration} -> 'serviceArea'`;
+  const schedulingPolicy = sql`${configuration} -> 'schedulingPolicy'`;
+  return sql`(
+    ${exactJsonObject(configuration, [
+      "serviceArea", "schedulingPolicy", "travelTimeProfile",
+      "workingHourPolicy", "appointmentWindows",
+    ])}
+    and ${serviceAreaIsWellFormed(serviceArea, estimateInput)}
+    and ${schedulingPolicyIsWellFormed(schedulingPolicy)}
+    and ${travelProfileIsWellFormed(sql`${configuration} -> 'travelTimeProfile'`)}
+    and ${workingHourPolicyIsWellFormed(sql`${configuration} -> 'workingHourPolicy'`)}
+    and ${appointmentWindowsAreWellFormed(sql`${configuration} -> 'appointmentWindows'`)}
+    and ${result} -> 'serviceEligible' = case
+      when jsonb_typeof(${serviceArea}) = 'null' then 'null'::jsonb
+      else ${serviceArea} -> 'serviceEligible'
+    end
+    and ${result} -> 'manualConfirmationRequired' = case
+      when jsonb_typeof(${serviceArea}) = 'null' then 'true'::jsonb
+      else ${serviceArea} -> 'manualConfirmationRequired'
+    end
+    and ${result} -> 'schedulingConfigurationReady'
+      = ${schedulingPolicy} -> 'active'
+  )`;
+}
+
+function jsonbScalar(value: SQL): SQL {
+  return sql`coalesce(to_jsonb(${value}), 'null'::jsonb)`;
+}
+
+function jsonInstantMatchesTimestamp(value: SQL, timestamp: SQL): SQL {
+  return sql`case
+    when ${jsonIsoInstant(value)}
+    then (${value} #>> '{}')::timestamptz = ${timestamp}
+    else false
+  end`;
+}
+
+function priceTotalsAreConsistent(result: SQL): SQL {
+  const minimum = sql`${result} -> 'minimumVisitAdjustmentMinorUnits'`;
+  const net = sql`${result} -> 'netAmountMinorUnits'`;
+  const vat = sql`${result} -> 'vatAmountMinorUnits'`;
+  const gross = sql`${result} -> 'grossTotalMinorUnits'`;
+  return sql`case
+    when ${result} -> 'manualAssessmentRequired' = 'true'::jsonb
+    then jsonb_typeof(${minimum}) = 'null'
+      and jsonb_typeof(${net}) = 'null'
+      and jsonb_typeof(${vat}) = 'null'
+      and jsonb_typeof(${gross}) = 'null'
+    when ${result} -> 'manualAssessmentRequired' = 'false'::jsonb
+      and jsonb_typeof(${minimum}) = 'number'
+      and jsonb_typeof(${net}) = 'number'
+      and jsonb_typeof(${vat}) = 'number'
+      and jsonb_typeof(${gross}) = 'number'
+      and (${net} #>> '{}') ~ '^[0-9]+$'
+      and (${vat} #>> '{}') ~ '^[0-9]+$'
+      and (${gross} #>> '{}') ~ '^[0-9]+$'
+    then (${gross} #>> '{}')::numeric
+      = (${net} #>> '{}')::numeric + (${vat} #>> '{}')::numeric
+    else false
+  end`;
+}
+
+function durationTotalsAreConsistent(result: SQL): SQL {
+  const components = [
+    "setupMinutes",
+    "inspectionMinutes",
+    "baseCleaningMinutes",
+    "modifierMinutes",
+    "addonMinutes",
+    "cleanupMinutes",
+  ] as const;
+  const componentChecks = sql.join(
+    components.map(
+      (key) => sql`(${result} ->> ${key}) ~ '^[0-9]+$'`,
+    ),
+    sql` and `,
+  );
+  const componentSum = sql.join(
+    components.map((key) => sql`(${result} ->> ${key})::numeric`),
+    sql` + `,
+  );
+  return sql`case
+    when ${componentChecks}
+      and (${result} ->> 'partialEstimatedMinutes') ~ '^[0-9]+$'
+    then (${result} ->> 'partialEstimatedMinutes')::numeric = ${componentSum}
+      and case
+        when ${result} -> 'manualAssessmentRequired' = 'true'::jsonb
+        then jsonb_typeof(${result} -> 'totalEstimatedMinutes') = 'null'
+        when ${result} -> 'manualAssessmentRequired' = 'false'::jsonb
+        then ${result} -> 'totalEstimatedMinutes'
+          = ${result} -> 'partialEstimatedMinutes'
+        else false
+      end
+    else false
+  end`;
+}
+
+export function completeEstimateEvidenceSql(evidence: {
+  inputSnapshot: SQL;
+  priceSnapshot: SQL;
+  durationSnapshot: SQL;
+  availabilitySnapshot: SQL;
+  warnings: SQL;
+  reviewReasonCodes: SQL;
+  status: SQL;
+  priceBookCode: SQL;
+  priceBookVersion: SQL;
+  durationModelCode: SQL;
+  durationModelVersion: SQL;
+  netAmountMinorUnits: SQL;
+  vatRateBasisPoints: SQL;
+  vatAmountMinorUnits: SQL;
+  grossTotalMinorUnits: SQL;
+  currency: SQL;
+  estimatedServiceMinutes: SQL;
+  estimatedTravelMinutes: SQL;
+  manualAssessmentRequired: SQL;
+  declineOrReferRequired: SQL;
+  calculatedAt: SQL;
+}): SQL {
+  const input = evidence.inputSnapshot;
+  const price = evidence.priceSnapshot;
+  const priceBook = sql`${price} -> 'priceBook'`;
+  const priceConfiguration = sql`${price} -> 'configuration'`;
+  const priceInput = sql`${price} -> 'input'`;
+  const priceResult = sql`${price} -> 'result'`;
+  const duration = evidence.durationSnapshot;
+  const durationModel = sql`${duration} -> 'durationModel'`;
+  const durationConfiguration = sql`${duration} -> 'configuration'`;
+  const durationInput = sql`${duration} -> 'input'`;
+  const durationResult = sql`${duration} -> 'result'`;
+  const availability = evidence.availabilitySnapshot;
+  const availabilityConfiguration = sql`${availability} -> 'configuration'`;
+  const availabilityResult = sql`${availability} -> 'result'`;
+
+  return sql`(
+    ${exactJsonObject(input, [
+      "customerSegment",
+      "items",
+      "conditionBandCode",
+      "travelZoneCode",
+      "governanceReviewReasonCodes",
+      "timingCategoryCode",
+    ])}
+    and ${jsonStringIn(sql`${input} -> 'customerSegment'`, customerSegments)}
+    and ${estimateInputItemsAreWellFormed(sql`${input} -> 'items'`)}
+    and ${jsonStringIn(sql`${input} -> 'conditionBandCode'`, commercialConditionBandCodes)}
+    and ${jsonStringIn(sql`${input} -> 'travelZoneCode'`, travelZoneCodes)}
+    and ${jsonStringArrayIn(
+      sql`${input} -> 'governanceReviewReasonCodes'`,
+      10,
+      estimateGovernanceReviewReasonCodes,
+    )}
+    and ${jsonStringIn(sql`${input} -> 'timingCategoryCode'`, timingCategoryCodes)}
+
+    and ${exactJsonObject(price, [
+      "schemaVersion", "calculatedAt", "priceBook", "configuration", "input", "result",
+    ])}
+    and (${price} -> 'schemaVersion') = '1'::jsonb
+    and ${jsonIsoInstant(sql`${price} -> 'calculatedAt'`)}
+    and ${exactJsonObject(priceBook, [
+      "id", "code", "version", "status", "provisional", "approvedForPublication",
+    ])}
+    and ${jsonString(sql`${priceBook} -> 'id'`, 160)}
+    and ${jsonString(sql`${priceBook} -> 'code'`, 96)}
+    and ${jsonInteger(sql`${priceBook} -> 'version'`, 1, 2_147_483_647)}
+    and ${jsonStringIn(sql`${priceBook} -> 'status'`, priceBookStatuses)}
+    and ${jsonBoolean(sql`${priceBook} -> 'provisional'`)}
+    and ${jsonBoolean(sql`${priceBook} -> 'approvedForPublication'`)}
+    and ${priceConfigurationIsWellFormed(
+      priceConfiguration,
+      priceBook,
+      input,
+    )}
+    and ${priceInput} = jsonb_build_object(
+      'items', ${input} -> 'items',
+      'conditionBandCode', ${input} -> 'conditionBandCode',
+      'travelZoneCode', ${input} -> 'travelZoneCode',
+      'timingCategoryCode', ${input} -> 'timingCategoryCode'
+    )
+    and ${exactJsonObject(priceResult, [
+      "lines", "subtotalMinorUnits", "minimumVisitAdjustmentMinorUnits",
+      "netAmountMinorUnits", "vatRateBasisPoints", "vatAmountMinorUnits",
+      "grossTotalMinorUnits", "currency", "warnings", "manualAssessmentRequired",
+      "declineOrReferRequired", "appliedRuleIds",
+    ])}
+    and ${priceLinesAreWellFormed(sql`${priceResult} -> 'lines'`)}
+    and ${jsonInteger(sql`${priceResult} -> 'subtotalMinorUnits'`, 0, Number.MAX_SAFE_INTEGER)}
+    and ${jsonInteger(sql`${priceResult} -> 'minimumVisitAdjustmentMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
+    and ${jsonInteger(sql`${priceResult} -> 'netAmountMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
+    and ${jsonInteger(sql`${priceResult} -> 'vatRateBasisPoints'`, 0, 10_000)}
+    and ${jsonInteger(sql`${priceResult} -> 'vatAmountMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
+    and ${jsonInteger(sql`${priceResult} -> 'grossTotalMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
+    and (${priceResult} ->> 'currency') = 'EUR'
+    and ${jsonStringArray(sql`${priceResult} -> 'warnings'`, 100, 1000)}
+    and ${jsonBoolean(sql`${priceResult} -> 'manualAssessmentRequired'`)}
+    and ${jsonBoolean(sql`${priceResult} -> 'declineOrReferRequired'`)}
+    and ${jsonStringArray(sql`${priceResult} -> 'appliedRuleIds'`, 1000, 160)}
+    and not (
+      (${priceResult} -> 'declineOrReferRequired') = 'true'::jsonb
+      and (${priceResult} -> 'manualAssessmentRequired') <> 'true'::jsonb
+    )
+    and ${priceTotalsAreConsistent(priceResult)}
+    and ${priceLineEvidenceIsConsistent(
+      sql`${priceResult} -> 'lines'`,
+      priceResult,
+      priceConfiguration,
+    )}
+    and ${priceBook} -> 'code' = ${jsonbScalar(evidence.priceBookCode)}
+    and ${priceBook} -> 'version' = ${jsonbScalar(evidence.priceBookVersion)}
+    and ${priceResult} -> 'netAmountMinorUnits'
+      = ${jsonbScalar(evidence.netAmountMinorUnits)}
+    and ${priceResult} -> 'vatRateBasisPoints'
+      = ${jsonbScalar(evidence.vatRateBasisPoints)}
+    and ${priceResult} -> 'vatAmountMinorUnits'
+      = ${jsonbScalar(evidence.vatAmountMinorUnits)}
+    and ${priceResult} -> 'grossTotalMinorUnits'
+      = ${jsonbScalar(evidence.grossTotalMinorUnits)}
+    and ${priceResult} -> 'currency' = ${jsonbScalar(evidence.currency)}
+
+    and ${exactJsonObject(duration, [
+      "schemaVersion", "calculatedAt", "durationModel", "configuration", "input", "result",
+    ])}
+    and (${duration} -> 'schemaVersion') = '1'::jsonb
+    and ${jsonIsoInstant(sql`${duration} -> 'calculatedAt'`)}
+    and ${exactJsonObject(durationModel, [
+      "id", "code", "version", "status", "provisional",
+    ])}
+    and ${jsonString(sql`${durationModel} -> 'id'`, 160)}
+    and ${jsonString(sql`${durationModel} -> 'code'`, 96)}
+    and ${jsonInteger(sql`${durationModel} -> 'version'`, 1, 2_147_483_647)}
+    and ${jsonStringIn(sql`${durationModel} -> 'status'`, priceBookStatuses)}
+    and ${jsonBoolean(sql`${durationModel} -> 'provisional'`)}
+    and ${durationConfigurationIsWellFormed(
+      durationConfiguration,
+      durationModel,
+    )}
+    and ${durationInput} = jsonb_build_object(
+      'items', ${input} -> 'items',
+      'conditionBandCode', ${input} -> 'conditionBandCode'
+    )
+    and ${exactJsonObject(durationResult, [
+      "lines", "setupMinutes", "inspectionMinutes", "baseCleaningMinutes",
+      "modifierMinutes", "addonMinutes", "cleanupMinutes", "partialEstimatedMinutes",
+      "totalEstimatedMinutes", "warnings", "manualAssessmentRequired",
+      "declineOrReferRequired", "appliedRuleIds",
+    ])}
+    and ${durationLinesAreWellFormed(sql`${durationResult} -> 'lines'`)}
+    and ${jsonInteger(sql`${durationResult} -> 'setupMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'inspectionMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'baseCleaningMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'modifierMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'addonMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'cleanupMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'partialEstimatedMinutes'`, 0, 1_000_000)}
+    and ${jsonInteger(sql`${durationResult} -> 'totalEstimatedMinutes'`, 0, 1_000_000, true)}
+    and ${jsonStringArray(sql`${durationResult} -> 'warnings'`, 100, 1000)}
+    and ${jsonBoolean(sql`${durationResult} -> 'manualAssessmentRequired'`)}
+    and ${jsonBoolean(sql`${durationResult} -> 'declineOrReferRequired'`)}
+    and ${jsonStringArray(sql`${durationResult} -> 'appliedRuleIds'`, 1000, 160)}
+    and not (
+      (${durationResult} -> 'declineOrReferRequired') = 'true'::jsonb
+      and (${durationResult} -> 'manualAssessmentRequired') <> 'true'::jsonb
+    )
+    and ${durationTotalsAreConsistent(durationResult)}
+    and ${durationLineEvidenceIsConsistent(
+      sql`${durationResult} -> 'lines'`,
+      durationResult,
+      durationConfiguration,
+    )}
+    and ${durationModel} -> 'code'
+      = ${jsonbScalar(evidence.durationModelCode)}
+    and ${durationModel} -> 'version'
+      = ${jsonbScalar(evidence.durationModelVersion)}
+    and ${durationResult} -> 'totalEstimatedMinutes'
+      = ${jsonbScalar(evidence.estimatedServiceMinutes)}
+
+    and ${exactJsonObject(availability, [
+      "schemaVersion", "calculatedAt", "configuration", "result",
+    ])}
+    and (${availability} -> 'schemaVersion') = '1'::jsonb
+    and ${jsonIsoInstant(sql`${availability} -> 'calculatedAt'`)}
+    and ${exactJsonObject(availabilityResult, [
+      "serviceEligible", "manualConfirmationRequired", "schedulingConfigurationReady",
+    ])}
+    and jsonb_typeof(${availabilityResult} -> 'serviceEligible') in ('null', 'boolean')
+    and ${jsonBoolean(sql`${availabilityResult} -> 'manualConfirmationRequired'`)}
+    and ${jsonBoolean(sql`${availabilityResult} -> 'schedulingConfigurationReady'`)}
+    and ${availabilityConfigurationIsWellFormed(
+      availabilityConfiguration,
+      input,
+      availabilityResult,
+    )}
+
+    and ${price} -> 'calculatedAt' = ${duration} -> 'calculatedAt'
+    and ${price} -> 'calculatedAt' = ${availability} -> 'calculatedAt'
+    and ${jsonInstantMatchesTimestamp(
+      sql`${price} -> 'calculatedAt'`,
+      evidence.calculatedAt,
+    )}
+    and ${jsonStringArray(evidence.warnings, 200, 1000)}
+    and ${jsonStringArrayIn(
+      evidence.reviewReasonCodes,
+      100,
+      estimateReviewReasonCodes,
+    )}
+    and ${evidence.warnings} = (${priceResult} -> 'warnings')
+      || (${durationResult} -> 'warnings') || ${evidence.reviewReasonCodes}
+    and ${evidence.manualAssessmentRequired} = (
+      ${priceResult} -> 'manualAssessmentRequired' = 'true'::jsonb
+      or ${durationResult} -> 'manualAssessmentRequired' = 'true'::jsonb
+      or case when jsonb_typeof(${evidence.reviewReasonCodes}) = 'array'
+        then jsonb_array_length(${evidence.reviewReasonCodes}) > 0
+        else false
+      end
+    )
+    and ${evidence.declineOrReferRequired} = (
+      ${priceResult} -> 'declineOrReferRequired' = 'true'::jsonb
+      or ${durationResult} -> 'declineOrReferRequired' = 'true'::jsonb
+      or ${availabilityResult} -> 'serviceEligible' = 'false'::jsonb
+    )
+    and ${evidence.status} = case
+      when ${evidence.declineOrReferRequired} then 'DECLINE_OR_REFER'
+      when ${evidence.manualAssessmentRequired} then 'REVIEW_REQUIRED'
+      else 'CALCULATED'
+    end
+    and ${evidence.estimatedTravelMinutes} is null
+  )`;
 }
 
 function requestItemsParameter(items: readonly RequestItemInput[]): string {
@@ -786,7 +1964,12 @@ export async function loadStaffRequestRecord(
         where item.request_id = request.id
       ), '[]'::jsonb) as items,
       coalesce((
-        select jsonb_agg(to_jsonb(estimate) order by estimate.estimate_version)
+        select jsonb_agg(
+          to_jsonb(estimate) || jsonb_build_object(
+            'price_snapshot_sha256',
+            ${priceSnapshotSha256Sql(sql`estimate.price_snapshot`)}
+          ) order by estimate.estimate_version
+        )
         from ${requestEstimates} estimate
         where estimate.request_id = request.id
       ), '[]'::jsonb) as estimates,
@@ -2878,7 +4061,7 @@ export async function createQuoteDraftRecord(
         from commercial_context, travel_context
       ),
       selected_estimate as materialized (
-        select estimate.id, estimate.input_snapshot
+        select estimate.id, estimate.input_snapshot, estimate.price_snapshot
         from ${requestEstimates} estimate
         where estimate.id = ${input.estimateId}::uuid
           and estimate.request_id = ${input.requestId}::uuid
@@ -2958,6 +4141,12 @@ export async function createQuoteDraftRecord(
             or not exists (select 1 from commercial_context)
             or not exists (select 1 from selected_estimate)
             or not (select valid from line_validation)
+            or (${jsonParameter(input.commercialSnapshot)}::jsonb
+                #>> '{sourceEstimate,priceSnapshotSha256}')
+              is distinct from (
+                select ${priceSnapshotSha256Sql(sql`selected_estimate.price_snapshot`)}
+                from selected_estimate
+              )
             then 'INVALID_REFERENCE'
           when not exists (
             select 1
@@ -3102,7 +4291,7 @@ export async function updateQuoteDraftRecord(
       from commercial_context, travel_context
     ),
     selected_estimate as materialized (
-      select estimate.id, estimate.input_snapshot
+      select estimate.id, estimate.input_snapshot, estimate.price_snapshot
       from ${requestEstimates} estimate
       join target on target.request_id = estimate.request_id
       where estimate.id = ${input.estimateId}::uuid
@@ -3177,7 +4366,14 @@ export async function updateQuoteDraftRecord(
           then 'INVALID_TRANSITION'
         when not exists (select 1 from commercial_context)
           or not exists (select 1 from selected_estimate)
-          or not (select valid from line_validation) then 'INVALID_REFERENCE'
+          or not (select valid from line_validation)
+          or (${jsonParameter(input.commercialSnapshot)}::jsonb
+              #>> '{sourceEstimate,priceSnapshotSha256}')
+            is distinct from (
+              select ${priceSnapshotSha256Sql(sql`selected_estimate.price_snapshot`)}
+              from selected_estimate
+            )
+          then 'INVALID_REFERENCE'
         when not exists (
           select 1
           from current_estimate_semantics, selected_estimate
@@ -3292,7 +4488,20 @@ export async function issueQuoteRecord(
           request.version as request_version,
           quote_record.source_request_version,
           quote_record.estimate_id,
+          quote_record.customer_id as quote_customer_id,
+          quote_record.property_id as quote_property_id,
+          request.customer_resolution_status,
           request.customer_id, request.property_id,
+          request.preferred_date, request.preferred_window_code,
+          request.customer_notes as request_customer_notes,
+          quote_record.currency, quote_record.price_basis,
+          quote_record.net_amount_minor_units,
+          quote_record.vat_rate_basis_points,
+          quote_record.vat_amount_minor_units,
+          quote_record.gross_total_minor_units,
+          quote_record.estimated_duration_minutes,
+          quote_record.commercial_snapshot, quote_record.terms_snapshot,
+          quote_record.customer_notes as quote_customer_notes,
           quote_record.valid_from,
           quote_record.valid_until
         from ${quotes} quote_record
@@ -3302,8 +4511,24 @@ export async function issueQuoteRecord(
         for update of request, quote_record
       ),
       commercial_context as materialized (
-        select customer.id as customer_id, property.id as property_id,
-          property.service_zone_id,
+        select customer.id as customer_id,
+          customer.display_name as customer_display_name,
+          customer.preferred_locale as customer_preferred_locale,
+          customer.customer_type, customer.status as customer_status,
+          customer.version as customer_version,
+          property.id as property_id,
+          property.customer_id as property_customer_id,
+          property.property_type, property.label as property_label,
+          property.city as property_city,
+          property.district as property_district,
+          property.street_address as property_street_address,
+          property.postal_code as property_postal_code,
+          property.latitude as property_latitude,
+          property.longitude as property_longitude,
+          property.access_notes as property_access_notes,
+          property.parking_notes as property_parking_notes,
+          property.service_zone_id, property.status as property_status,
+          property.version as property_version,
           ${commercialCustomerSegmentSql(sql`customer.customer_type`)} as customer_segment
         from target
         join ${customers} customer
@@ -3316,7 +4541,17 @@ export async function issueQuoteRecord(
         for share of customer, property
       ),
       travel_context as materialized (
-        select zone.code as travel_zone_code
+        select zone.id as travel_zone_id, zone.code as travel_zone_code,
+          zone.active as travel_zone_active,
+          zone.default_parking_policy_id,
+          zone.distance_threshold_hundredths_km,
+          zone.travel_time_threshold_minutes,
+          zone.boundary_notes, zone.service_eligible,
+          zone.minimum_order_override_minor_units,
+          zone.estimated_base_travel_minutes,
+          zone.manual_confirmation_required,
+          zone.geographic_metadata,
+          zone.updated_at as travel_zone_updated_at
         from commercial_context
         join ${travelZoneRecords} zone
           on zone.id = commercial_context.service_zone_id
@@ -3332,13 +4567,115 @@ export async function issueQuoteRecord(
         from commercial_context, travel_context
       ),
       selected_estimate as materialized (
-        select estimate.input_snapshot
+        select estimate.id as estimate_id,
+          estimate.request_id as estimate_request_id,
+          estimate.source_request_version as estimate_source_request_version,
+          estimate.estimate_version, estimate.status as estimate_status,
+          estimate.price_book_id, estimate.price_book_code,
+          estimate.price_book_version, estimate.duration_model_id,
+          estimate.duration_model_code, estimate.duration_model_version,
+          estimate.input_snapshot, estimate.price_snapshot,
+          estimate.duration_snapshot, estimate.availability_snapshot,
+          estimate.net_amount_minor_units as estimate_net_amount_minor_units,
+          estimate.vat_rate_basis_points as estimate_vat_rate_basis_points,
+          estimate.vat_amount_minor_units as estimate_vat_amount_minor_units,
+          estimate.gross_total_minor_units as estimate_gross_total_minor_units,
+          estimate.currency as estimate_currency,
+          estimate.estimated_service_minutes,
+          estimate.estimated_travel_minutes,
+          estimate.manual_assessment_required,
+          estimate.decline_or_refer_required,
+          estimate.warnings, estimate.review_reason_codes,
+          estimate.calculated_at
         from target
         join ${requestEstimates} estimate
           on estimate.id = target.estimate_id
          and estimate.request_id = target.request_id
          and estimate.source_request_version = target.request_version
          and estimate.decline_or_refer_required = false
+        for share of estimate
+      ),
+      estimate_evidence_integrity as materialized (
+        select 1 as valid
+        from selected_estimate
+        where ${completeEstimateEvidenceSql({
+          inputSnapshot: sql`selected_estimate.input_snapshot`,
+          priceSnapshot: sql`selected_estimate.price_snapshot`,
+          durationSnapshot: sql`selected_estimate.duration_snapshot`,
+          availabilitySnapshot: sql`selected_estimate.availability_snapshot`,
+          warnings: sql`selected_estimate.warnings`,
+          reviewReasonCodes: sql`selected_estimate.review_reason_codes`,
+          status: sql`selected_estimate.estimate_status`,
+          priceBookCode: sql`selected_estimate.price_book_code`,
+          priceBookVersion: sql`selected_estimate.price_book_version`,
+          durationModelCode: sql`selected_estimate.duration_model_code`,
+          durationModelVersion: sql`selected_estimate.duration_model_version`,
+          netAmountMinorUnits: sql`selected_estimate.estimate_net_amount_minor_units`,
+          vatRateBasisPoints: sql`selected_estimate.estimate_vat_rate_basis_points`,
+          vatAmountMinorUnits: sql`selected_estimate.estimate_vat_amount_minor_units`,
+          grossTotalMinorUnits: sql`selected_estimate.estimate_gross_total_minor_units`,
+          currency: sql`selected_estimate.estimate_currency`,
+          estimatedServiceMinutes: sql`selected_estimate.estimated_service_minutes`,
+          estimatedTravelMinutes: sql`selected_estimate.estimated_travel_minutes`,
+          manualAssessmentRequired: sql`selected_estimate.manual_assessment_required`,
+          declineOrReferRequired: sql`selected_estimate.decline_or_refer_required`,
+          calculatedAt: sql`selected_estimate.calculated_at`,
+        })}
+      ),
+      request_item_source_rows as materialized (
+        select request_item.id, request_item.service_id,
+          request_item.cleaning_item_type_id, request_item.cleaning_asset_id,
+          request_item.measurement_mode_id,
+          request_item.customer_reported_condition_level_id,
+          request_item.normalized_condition_level_id,
+          request_item.reported_fibre_material_id,
+          request_item.normalized_fibre_material_id,
+          request_item.reported_surface_construction_id,
+          request_item.normalized_surface_construction_id,
+          request_item.customer_description,
+          request_item.normalized_description, request_item.quantity,
+          request_item.area_hundredths_m2, request_item.seat_count,
+          request_item.sides, request_item.sort_order, request_item.version
+        from target
+        join ${serviceRequestItems} request_item
+          on request_item.request_id = target.request_id
+        for share of request_item
+      ),
+      request_issue_source_rows as materialized (
+        select selected_issue.request_item_id, selected_issue.issue_type_id,
+          selected_issue.customer_reported, selected_issue.staff_confirmed,
+          selected_issue.notes
+        from request_item_source_rows request_item
+        join ${serviceRequestItemIssues} selected_issue
+          on selected_issue.request_item_id = request_item.id
+        for share of selected_issue
+      ),
+      request_addon_source_rows as materialized (
+        select selected_addon.request_item_id, selected_addon.addon_id,
+          selected_addon.customer_requested, selected_addon.staff_included,
+          selected_addon.notes
+        from request_item_source_rows request_item
+        join ${serviceRequestItemAddons} selected_addon
+          on selected_addon.request_item_id = request_item.id
+        for share of selected_addon
+      ),
+      quote_item_source_rows as materialized (
+        select quote_item.id, quote_item.request_item_id,
+          quote_item.service_id, quote_item.cleaning_item_type_id,
+          quote_item.measurement_mode_id, quote_item.description_bg,
+          quote_item.description_en, quote_item.quantity,
+          quote_item.measurement_snapshot,
+          quote_item.base_amount_minor_units,
+          quote_item.modifier_amount_minor_units,
+          quote_item.addon_amount_minor_units,
+          quote_item.net_amount_minor_units,
+          quote_item.vat_rate_basis_points,
+          quote_item.vat_amount_minor_units,
+          quote_item.gross_total_minor_units,
+          quote_item.calculation_snapshot, quote_item.sort_order
+        from target
+        join ${quoteItems} quote_item on quote_item.quote_id = target.id
+        for share of quote_item
       ),
       request_item_count as materialized (
         select count(*)::integer as value
@@ -3523,6 +4860,215 @@ export async function issueQuoteRecord(
         select max(quote_version) as value
         from request_quote_versions
       ),
+      issued_source_snapshot as materialized (
+        select jsonb_build_object(
+          'schemaVersion', 1,
+          'quote', jsonb_build_object(
+            'id', target.id,
+            'quoteReference', target.quote_reference,
+            'quoteVersion', target.quote_version,
+            'recordVersion', target.record_version + 1,
+            'status', 'ISSUED',
+            'requestId', target.request_id,
+            'sourceRequestVersion', target.source_request_version,
+            'customerId', target.quote_customer_id,
+            'propertyId', target.quote_property_id,
+            'estimateId', target.estimate_id,
+            'currency', target.currency,
+            'priceBasis', target.price_basis,
+            'netAmountMinorUnits', target.net_amount_minor_units,
+            'vatRateBasisPoints', target.vat_rate_basis_points,
+            'vatAmountMinorUnits', target.vat_amount_minor_units,
+            'grossTotalMinorUnits', target.gross_total_minor_units,
+            'estimatedDurationMinutes', target.estimated_duration_minutes,
+            'commercialSnapshot', target.commercial_snapshot,
+            'termsSnapshot', target.terms_snapshot,
+            'customerNotes', target.quote_customer_notes,
+            'validFrom', target.valid_from,
+            'validUntil', target.valid_until,
+            'issuedAt', now()
+          ),
+          'request', jsonb_build_object(
+            'id', target.request_id,
+            'status', 'QUOTED',
+            'version', target.request_version + 1,
+            'sourceRequestVersion', target.source_request_version,
+            'customerResolutionStatus', target.customer_resolution_status,
+            'customerId', target.customer_id,
+            'propertyId', target.property_id,
+            'preferredDate', target.preferred_date,
+            'preferredWindowCode', target.preferred_window_code,
+            'customerNotes', target.request_customer_notes,
+            'items', coalesce((
+              select jsonb_agg(
+                jsonb_build_object(
+                  'id', request_item.id,
+                  'version', request_item.version,
+                  'serviceId', request_item.service_id,
+                  'cleaningItemTypeId', request_item.cleaning_item_type_id,
+                  'cleaningAssetId', request_item.cleaning_asset_id,
+                  'measurementModeId', request_item.measurement_mode_id,
+                  'customerReportedConditionLevelId',
+                    request_item.customer_reported_condition_level_id,
+                  'normalizedConditionLevelId',
+                    request_item.normalized_condition_level_id,
+                  'reportedFibreMaterialId',
+                    request_item.reported_fibre_material_id,
+                  'normalizedFibreMaterialId',
+                    request_item.normalized_fibre_material_id,
+                  'reportedSurfaceConstructionId',
+                    request_item.reported_surface_construction_id,
+                  'normalizedSurfaceConstructionId',
+                    request_item.normalized_surface_construction_id,
+                  'customerDescription', request_item.customer_description,
+                  'normalizedDescription', request_item.normalized_description,
+                  'quantity', request_item.quantity,
+                  'areaHundredthsM2', request_item.area_hundredths_m2,
+                  'seatCount', request_item.seat_count,
+                  'sides', request_item.sides,
+                  'sortOrder', request_item.sort_order,
+                  'issues', coalesce((
+                    select jsonb_agg(
+                      jsonb_build_object(
+                        'issueTypeId', selected_issue.issue_type_id,
+                        'customerReported', selected_issue.customer_reported,
+                        'staffConfirmed', selected_issue.staff_confirmed,
+                        'notes', selected_issue.notes
+                      ) order by selected_issue.issue_type_id
+                    )
+                    from request_issue_source_rows selected_issue
+                    where selected_issue.request_item_id = request_item.id
+                  ), '[]'::jsonb),
+                  'addons', coalesce((
+                    select jsonb_agg(
+                      jsonb_build_object(
+                        'addonId', selected_addon.addon_id,
+                        'customerRequested', selected_addon.customer_requested,
+                        'staffIncluded', selected_addon.staff_included,
+                        'notes', selected_addon.notes
+                      ) order by selected_addon.addon_id
+                    )
+                    from request_addon_source_rows selected_addon
+                    where selected_addon.request_item_id = request_item.id
+                  ), '[]'::jsonb)
+                ) order by request_item.sort_order, request_item.id
+              )
+              from request_item_source_rows request_item
+            ), '[]'::jsonb)
+          ),
+          'estimate', jsonb_build_object(
+            'id', selected_estimate.estimate_id,
+            'requestId', selected_estimate.estimate_request_id,
+            'sourceRequestVersion',
+              selected_estimate.estimate_source_request_version,
+            'estimateVersion', selected_estimate.estimate_version,
+            'status', selected_estimate.estimate_status,
+            'priceBookId', selected_estimate.price_book_id,
+            'priceBookCode', selected_estimate.price_book_code,
+            'priceBookVersion', selected_estimate.price_book_version,
+            'durationModelId', selected_estimate.duration_model_id,
+            'durationModelCode', selected_estimate.duration_model_code,
+            'durationModelVersion', selected_estimate.duration_model_version,
+            'inputSnapshot', selected_estimate.input_snapshot,
+            'priceSnapshot', selected_estimate.price_snapshot,
+            'durationSnapshot', selected_estimate.duration_snapshot,
+            'availabilitySnapshot', selected_estimate.availability_snapshot,
+            'netAmountMinorUnits',
+              selected_estimate.estimate_net_amount_minor_units,
+            'vatRateBasisPoints',
+              selected_estimate.estimate_vat_rate_basis_points,
+            'vatAmountMinorUnits',
+              selected_estimate.estimate_vat_amount_minor_units,
+            'grossTotalMinorUnits',
+              selected_estimate.estimate_gross_total_minor_units,
+            'currency', selected_estimate.estimate_currency,
+            'estimatedServiceMinutes',
+              selected_estimate.estimated_service_minutes,
+            'estimatedTravelMinutes',
+              selected_estimate.estimated_travel_minutes,
+            'manualAssessmentRequired',
+              selected_estimate.manual_assessment_required,
+            'declineOrReferRequired',
+              selected_estimate.decline_or_refer_required,
+            'warnings', selected_estimate.warnings,
+            'reviewReasonCodes', selected_estimate.review_reason_codes,
+            'calculatedAt', selected_estimate.calculated_at
+          ),
+          'customer', jsonb_build_object(
+            'id', commercial_context.customer_id,
+            'displayName', commercial_context.customer_display_name,
+            'preferredLocale', commercial_context.customer_preferred_locale,
+            'customerType', commercial_context.customer_type,
+            'status', commercial_context.customer_status,
+            'version', commercial_context.customer_version
+          ),
+          'property', jsonb_build_object(
+            'id', commercial_context.property_id,
+            'customerId', commercial_context.property_customer_id,
+            'propertyType', commercial_context.property_type,
+            'label', commercial_context.property_label,
+            'city', commercial_context.property_city,
+            'district', commercial_context.property_district,
+            'streetAddress', commercial_context.property_street_address,
+            'postalCode', commercial_context.property_postal_code,
+            'latitude', commercial_context.property_latitude,
+            'longitude', commercial_context.property_longitude,
+            'accessNotes', commercial_context.property_access_notes,
+            'parkingNotes', commercial_context.property_parking_notes,
+            'serviceZoneId', commercial_context.service_zone_id,
+            'status', commercial_context.property_status,
+            'version', commercial_context.property_version
+          ),
+          'travelZone', jsonb_build_object(
+            'id', travel_context.travel_zone_id,
+            'code', travel_context.travel_zone_code,
+            'active', travel_context.travel_zone_active,
+            'defaultParkingPolicyId',
+              travel_context.default_parking_policy_id,
+            'distanceThresholdHundredthsKm',
+              travel_context.distance_threshold_hundredths_km,
+            'travelTimeThresholdMinutes',
+              travel_context.travel_time_threshold_minutes,
+            'boundaryNotes', travel_context.boundary_notes,
+            'serviceEligible', travel_context.service_eligible,
+            'minimumOrderOverrideMinorUnits',
+              travel_context.minimum_order_override_minor_units,
+            'estimatedBaseTravelMinutes',
+              travel_context.estimated_base_travel_minutes,
+            'manualConfirmationRequired',
+              travel_context.manual_confirmation_required,
+            'geographicMetadata', travel_context.geographic_metadata,
+            'updatedAt', travel_context.travel_zone_updated_at
+          ),
+          'quoteItems', coalesce((
+            select jsonb_agg(
+              jsonb_build_object(
+                'id', quote_item.id,
+                'requestItemId', quote_item.request_item_id,
+                'serviceId', quote_item.service_id,
+                'cleaningItemTypeId', quote_item.cleaning_item_type_id,
+                'measurementModeId', quote_item.measurement_mode_id,
+                'descriptionBg', quote_item.description_bg,
+                'descriptionEn', quote_item.description_en,
+                'quantity', quote_item.quantity,
+                'measurementSnapshot', quote_item.measurement_snapshot,
+                'baseAmountMinorUnits', quote_item.base_amount_minor_units,
+                'modifierAmountMinorUnits',
+                  quote_item.modifier_amount_minor_units,
+                'addonAmountMinorUnits', quote_item.addon_amount_minor_units,
+                'netAmountMinorUnits', quote_item.net_amount_minor_units,
+                'vatRateBasisPoints', quote_item.vat_rate_basis_points,
+                'vatAmountMinorUnits', quote_item.vat_amount_minor_units,
+                'grossTotalMinorUnits', quote_item.gross_total_minor_units,
+                'calculationSnapshot', quote_item.calculation_snapshot,
+                'sortOrder', quote_item.sort_order
+              ) order by quote_item.sort_order, quote_item.id
+            )
+            from quote_item_source_rows quote_item
+          ), '[]'::jsonb)
+        ) as value
+        from target, commercial_context, travel_context, selected_estimate
+      ),
       decision as materialized (
         select case
           when not exists (select 1 from target) then 'NOT_FOUND_OR_FORBIDDEN'
@@ -3535,6 +5081,11 @@ export async function issueQuoteRecord(
           when (select source_request_version from target)
             <> (select request_version from target)
             then 'CONFLICT'
+          when (select quote_customer_id from target)
+              is distinct from (select customer_id from target)
+            or (select quote_property_id from target)
+              is distinct from (select property_id from target)
+            then 'CONFLICT'
           when (select status from target) <> 'DRAFT'
             or (select request_status from target) not in ('READY_TO_QUOTE', 'QUOTED')
             then 'INVALID_TRANSITION'
@@ -3544,7 +5095,15 @@ export async function issueQuoteRecord(
           when (select customer_id from target) is null
             or not exists (select 1 from commercial_context)
             or not exists (select 1 from selected_estimate)
+            or not exists (select 1 from estimate_evidence_integrity)
             or not exists (select 1 from current_request_graph)
+            or not exists (select 1 from issued_source_snapshot)
+            or (select commercial_snapshot
+                  #>> '{sourceEstimate,priceSnapshotSha256}' from target)
+              is distinct from (
+                select ${priceSnapshotSha256Sql(sql`selected_estimate.price_snapshot`)}
+                from selected_estimate
+              )
             then 'INVALID_REFERENCE'
           when not exists (
             select 1
@@ -3572,10 +5131,11 @@ export async function issueQuoteRecord(
       issued as (
         update ${quotes} quote_record
         set status = 'ISSUED', issued_at = now(),
+          acceptance_source_snapshot = issued_source_snapshot.value,
           record_version = quote_record.record_version + 1,
           updated_at = now(),
           updated_by_profile_id = ${actorProfileId}::uuid
-        from decision
+        from decision, issued_source_snapshot
         where quote_record.id = ${input.quoteId}::uuid
           and quote_record.status = 'DRAFT'
           and quote_record.record_version = ${input.expectedRecordVersion}

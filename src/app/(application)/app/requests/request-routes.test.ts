@@ -78,7 +78,8 @@ describe("Phase 3D protected route boundary", () => {
       /staffNotes|actorProfileId|commercialSnapshot|calculationSnapshot|internalNotes/,
     );
     expect(customerRoutes).not.toContain('status === "DRAFT"');
-    expect(customerRoutes).toContain("content.self.noAcceptance");
+    expect(customerRoutes).toContain("CustomerQuoteAcceptanceForm");
+    expect(customerRoutes).toContain("previewMyQuoteAcceptance");
   });
 
   it("renders only the immutable customer description in customer request detail", () => {

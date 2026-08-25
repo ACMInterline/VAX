@@ -4,6 +4,7 @@ export type AuthAttemptScope =
   | "PASSWORD_RESET"
   | "EMAIL_VERIFICATION"
   | "ADMIN_MUTATION"
+  | "BOOKING_MUTATION"
   | "PUBLIC_REQUEST";
 
 export type AuthRateLimitResult =
@@ -23,6 +24,7 @@ const scopePolicies: Record<
   PASSWORD_RESET: { limit: 3, windowMilliseconds: 60 * 60 * 1000 },
   EMAIL_VERIFICATION: { limit: 5, windowMilliseconds: 15 * 60 * 1000 },
   ADMIN_MUTATION: { limit: 20, windowMilliseconds: 5 * 60 * 1000 },
+  BOOKING_MUTATION: { limit: 10, windowMilliseconds: 5 * 60 * 1000 },
   PUBLIC_REQUEST: { limit: 5, windowMilliseconds: 60 * 60 * 1000 },
 };
 

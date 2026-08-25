@@ -10,11 +10,14 @@ records deliberately separate:
    known at that time.
 3. A **quote** records one staff-reviewed commercial offer, frozen as an issued
    version.
-4. A future **booking** will record acceptance and an operational commitment.
+4. A Phase 3E **quote acceptance** records explicit agreement to one immutable
+   issued quote, and its **booking** records the resulting operational
+   commitment.
 
-This phase ends at authenticated access to an issued quote. It creates no
-booking, acceptance, payment, invoice, work order, occupancy, reservation,
-message, notification or document file.
+Phase 3D ends at authenticated access to an issued quote. Phase 3E consumes
+that exact issued record without changing the request/estimate/quote contract.
+Neither phase creates a payment, invoice, work order, message, notification or
+document file.
 
 ## Request sources and identity
 
@@ -155,6 +158,14 @@ manual-review decision, but Phase 3D does not calculate or persist candidate
 slots. It creates no occupancy, hold, reservation or booking. A review-required
 or unavailable result must never be presented as a bookable slot.
 
+Phase 3E does not convert that advisory evidence into a fabricated appointment.
+The accepted Booking starts `PENDING_SCHEDULING` / `REVIEW_REQUIRED`, retains
+the preferred date/window as a preference, and leaves exact times and team
+assignment empty. Current availability may be revalidated only by a later
+authorized scheduling operation using frozen, reviewed operational inputs. It
+must not refresh request normalization, duration or commercial evidence to make
+a slot appear valid.
+
 ## Quote lifecycle and versions
 
 Quotes use random customer-safe references and integer EUR minor units. A quote
@@ -171,6 +182,38 @@ changed offer requires a new draft with the next quote version. Issuing a new
 version supersedes the previous issued version atomically. A request-row lock,
 optimistic checks, unique version keys and the single-active-issued invariant
 prevent conflicting concurrent issues.
+
+Phase 3E extends that issuance statement with a database-built, nullable
+`acceptance_source_snapshot`. New issues freeze the exact quote and quote
+items, expected post-issue request/preferences and raw reported-versus-
+normalized item graph, complete selected estimate, allowlisted CRM/property
+presentation and mutable travel-zone semantics under row locks. The caller
+cannot supply this snapshot. Nullable compatibility keeps earlier issued quote
+history readable; a legacy `NULL` is never backfilled at acceptance and must
+fail closed to staff review.
+
+Before freezing it, issuance validates the complete selected estimate against
+the Phase 3D evidence contract, including canonical engine inputs, versioned
+configuration, timestamps, money/duration arithmetic, relational scalars,
+review flags/status and warning provenance. The same validation is repeated at
+acceptance. Line sums must reproduce monetary and duration components, rule
+references must belong to the exact frozen configuration, and the quote's
+database-supplied SHA-256 must match the persisted canonical JSONB price
+snapshot. Invalid or internally inconsistent evidence cannot be repaired or
+recalculated by either transition.
+
+Phase 3E deliberately leaves the accepted quote `ISSUED` and its request
+`QUOTED`. The immutable, unique `quote_acceptances` relation—not a new quote or
+request status—is the acceptance authority. Acceptance rechecks the issued
+validity window as `[valid_from, valid_until)`, exact quote/request/estimate
+versions, CRM ownership, price/duration snapshots, totals and line graph in one
+transaction. It also rebuilds the canonical source object under locks and
+requires exact JSONB equality with the issued source snapshot. Booking content
+is extracted only from the issued snapshot; current rows are validation input,
+not a refresh source. It neither updates, renormalizes nor recalculates any
+source record. Any inconsistency returns staff review and writes no partial
+acceptance or booking.
+See `docs/BOOKING_ENGINE.md`.
 
 Safe replacement is explicit: normalize if needed, append a fresh estimate for
 the current request version, create the latest quote draft from that estimate,
@@ -200,9 +243,11 @@ the exact customer reached through their current active identity link. Drafts,
 staff notes, internal metrics, actor identifiers and unrelated database IDs are
 excluded from the customer projection. Superseded, expired and withdrawn
 versions remain readable history once issued. There is no anonymous secret-link
-access and no acceptance control in this phase. Customer request details render
-the immutable customer description; the staff-normalized interpretation does
-not cross the customer projection.
+access. Phase 3D has no acceptance control; Phase 3E adds acceptance only for
+the currently authorized, eligible issued quote and requires explicit
+acknowledgement. Customer request details render the immutable customer
+description; the staff-normalized interpretation does not cross the customer
+projection.
 
 Staff list/read operations require both `CUSTOMER_RECORDS_READ` and
 `OPERATIONS_READ`; mutations require both manage permissions. These checks are
@@ -239,7 +284,7 @@ compliance.
 
 ## Deferred decisions
 
-Before production or Phase 3E, the owner must review:
+Before confirmed scheduling or production, the owner must review:
 
 - activation and publication of price books and duration models;
 - quote validity defaults and controlled terms;
@@ -248,9 +293,12 @@ Before production or Phase 3E, the owner must review:
 - shared abuse controls, monitoring, recovery and retention automation;
 - custom SMTP and request/quote notification events;
 - anonymous quote access token design, if ever required;
-- the exact quote-acceptance evidence, expiry and concurrency contract;
+- approved scheduling configuration and the frozen operational-requirements
+  contract used after acceptance;
 - document/PDF rendering, storage and version retention.
 
-Phase 3E must create a Booking only from an authorized, still-valid accepted
-issued quote and copy its frozen commercial snapshot. It must not recalculate
-today's price as the accepted contract.
+Phase 3E creates a Booking only from an authorized, still-valid issued quote,
+records a unique immutable acceptance and copies the frozen commercial
+and full issued-source snapshots. It never recalculates today's price,
+renormalizes the request, refreshes CRM/estimate values or silently repairs
+provenance as the accepted contract.

@@ -81,8 +81,6 @@ function expectSelectedEstimateSemanticFreshness(sqlText: string): void {
     "'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS', 'OUTSIDE_SOFIA'",
   );
   expect(sqlText).not.toContain("'UNCLASSIFIED'");
-  expect(sqlText).not.toContain("customer.version");
-  expect(sqlText).not.toContain("property.version");
   const freshnessDecision = sqlBetween(
     sqlText,
     "from current_estimate_semantics, selected_estimate",
@@ -247,6 +245,8 @@ describe("request/quote SQL authorization", () => {
     );
     expect(query.sql).toContain('as "auditTimeline"');
     expect(query.sql).toContain('request.staff_notes as "staffNotes"');
+    expect(query.sql).toContain("'price_snapshot_sha256'");
+    expect(query.sql).toContain("encode(sha256(convert_to");
     expect(query.sql).toContain(
       "'reportedFibreMaterialId', item.reported_fibre_material_id",
     );
@@ -727,6 +727,8 @@ describe("quote lifecycle, concurrency and customer projection", () => {
     expect(query.sql).toContain("property.customer_id = customer.id");
     expect(query.sql).toContain("estimate.source_request_version");
     expect(query.sql).toContain("estimate.decline_or_refer_required = false");
+    expect(query.sql).toContain("priceSnapshotSha256");
+    expect(query.sql).toContain("encode(sha256(convert_to");
     expectSelectedEstimateSemanticFreshness(query.sql);
     expect(query.sql).toContain("source_request_version");
     expect(query.sql).toContain('insert into "quote_items"');
@@ -830,6 +832,8 @@ describe("quote lifecycle, concurrency and customer projection", () => {
       "estimate.source_request_version = target.request_version",
     );
     expect(query.sql).toContain("estimate.decline_or_refer_required = false");
+    expect(query.sql).toContain("priceSnapshotSha256");
+    expect(query.sql).toContain("encode(sha256(convert_to");
     expectSelectedEstimateSemanticFreshness(query.sql);
     expect(query.sql).toContain(
       "source_request_version = target.request_version",
@@ -874,6 +878,38 @@ describe("quote lifecycle, concurrency and customer projection", () => {
     expectSelectedEstimateSemanticFreshness(query.sql);
     expect(query.sql).toContain("commercial_context as materialized");
     expect(query.sql).toContain("for share of customer, property");
+    expect(query.sql).toContain("for share of estimate");
+    expect(query.sql).toContain("estimate_evidence_integrity as materialized");
+    expect(query.sql).toContain(
+      "not exists (select 1 from estimate_evidence_integrity)",
+    );
+    expect(query.sql).toContain("jsonb_object_keys");
+    expect(query.sql).toContain("jsonb_array_elements");
+    expect(query.sql).toContain("'schedulingConfigurationReady'");
+    expect(query.sql).toContain("pg_input_is_valid");
+    expect(query.sql).toContain("price_config_rule");
+    expect(query.sql).toContain("duration_config_rule");
+    expect(query.sql).toContain("price_evidence_line");
+    expect(query.sql).toContain("price_minimum_line");
+    expect(query.sql).toContain("duration_evidence_line");
+    expect(query.sql).toContain("unique_price_rule");
+    expect(query.sql).toContain("unique_duration_rule");
+    expect(query.sql).toContain("encode(sha256(convert_to");
+    expect(query.sql).toContain("estimated_travel_minutes is null");
+    expect(query.sql).not.toContain("jsonb_object_length");
+    expect(query.sql).toContain("issued_source_snapshot as materialized");
+    expect(query.sql).toContain(
+      "acceptance_source_snapshot = issued_source_snapshot.value",
+    );
+    expect(query.sql).toContain("customer.version as customer_version");
+    expect(query.sql).toContain("property.version as property_version");
+    expect(query.sql).toContain("request_item.customer_description");
+    expect(query.sql).toContain("request_item.normalized_description");
+    expect(query.sql).toContain("selected_estimate.price_snapshot");
+    expect(query.sql).toContain("selected_estimate.duration_snapshot");
+    expect(query.sql).toContain("quote_item_source_rows as materialized");
+    expect(query.sql).toContain("for share of quote_item");
+    expect(query.sql).toContain("'quoteItems', coalesce");
     expect(query.sql).toContain("customer.status = 'ACTIVE'");
     expect(query.sql).toContain("property.status = 'ACTIVE'");
     expect(query.sql).toContain("current_catalogue_items as materialized");

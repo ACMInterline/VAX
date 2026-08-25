@@ -1,6 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUserPermission } from "@/auth/authorization-service";
@@ -786,9 +785,14 @@ function selectAuthoritativeEstimate(
 
   const id = uuid.safeParse(selected.id);
   const snapshot = storedPriceSnapshotSchema.safeParse(selected.price_snapshot);
+  const priceSnapshotSha256 = z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .safeParse(selected.price_snapshot_sha256);
   if (
     !id.success ||
     !snapshot.success ||
+    !priceSnapshotSha256.success ||
     selected.decline_or_refer_required !== false ||
     selected.price_book_code !== snapshot.data.priceBook.code ||
     selected.price_book_version !== snapshot.data.priceBook.version
@@ -828,9 +832,7 @@ function selectAuthoritativeEstimate(
       estimateId: id.data,
       estimateVersion: selectedVersion,
       sourceRequestVersion,
-      priceSnapshotSha256: createHash("sha256")
-        .update(JSON.stringify(snapshot.data))
-        .digest("hex"),
+      priceSnapshotSha256: priceSnapshotSha256.data,
       priceBook: {
         code: snapshot.data.priceBook.code,
         version: snapshot.data.priceBook.version,

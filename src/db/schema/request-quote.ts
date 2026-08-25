@@ -478,6 +478,7 @@ export const quotes = pgTable(
       .$type<JsonObject>()
       .notNull(),
     termsSnapshot: jsonb("terms_snapshot").$type<JsonObject>().notNull(),
+    acceptanceSourceSnapshot: jsonb("acceptance_source_snapshot").$type<JsonObject>(),
     validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
     validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
     staffNotes: text("staff_notes"),
@@ -497,6 +498,12 @@ export const quotes = pgTable(
     uniqueIndex("quotes_request_version_unique").on(
       table.requestId,
       table.quoteVersion,
+    ),
+    uniqueIndex("quotes_booking_provenance_unique").on(
+      table.id,
+      table.requestId,
+      table.customerId,
+      table.propertyId,
     ),
     uniqueIndex("quotes_active_issued_request_unique")
       .on(table.requestId)

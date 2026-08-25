@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { ApplicationStatusBadge } from "@/components/application/status-badge";
+import { CustomerQuoteAcceptanceForm } from "@/components/booking/booking-forms";
 import { PrintQuoteButton } from "@/components/request-quote/print-quote-button";
+import { bookingContent } from "@/content/booking";
 import { requestQuoteContent } from "@/content/request-quote";
 import type { JsonObject } from "@/modules/request-quote/types";
+import { acceptMyQuoteAction } from "../../bookings/actions";
+import { createBookingPageService } from "../../bookings/_lib/booking-page";
 import {
   createRequestQuotePageService,
   loadCustomerQuoteOrNotFound,
@@ -42,12 +46,18 @@ export default async function MyQuoteDetailPage({
 }) {
   const { actor, locale } = await requireCustomerRequestReadPageContext();
   const { quoteReference } = await parseCustomerQuoteRouteParams(params);
-  const quote = await loadCustomerQuoteOrNotFound(
-    createRequestQuotePageService(),
-    actor,
-    quoteReference,
-  );
+  const [quote, acceptance] = await Promise.all([
+    loadCustomerQuoteOrNotFound(
+      createRequestQuotePageService(),
+      actor,
+      quoteReference,
+    ),
+    createBookingPageService().previewMyQuoteAcceptance(actor, {
+      quoteReference,
+    }),
+  ]);
   const content = requestQuoteContent[locale];
+  const bookingCopy = bookingContent[locale];
   const money = new Intl.NumberFormat(locale === "bg" ? "bg-BG" : "en-IE", {
     style: "currency",
     currency: "EUR",
@@ -98,7 +108,30 @@ export default async function MyQuoteDetailPage({
         )}
         {quote.customerNotes ? <p>{quote.customerNotes}</p> : null}
       </section>
-      <p className="crm-form__notice">{content.self.noAcceptance}</p>
+      {acceptance.state === "ELIGIBLE" ? (
+        <CustomerQuoteAcceptanceForm
+          action={acceptMyQuoteAction}
+          expectedQuoteVersion={quote.quoteVersion}
+          locale={locale}
+          quoteReference={quote.quoteReference}
+        />
+      ) : acceptance.state === "EXISTING" && acceptance.bookingReference ? (
+        <section className="crm-management-card" aria-labelledby="accepted-booking-heading">
+          <h2 id="accepted-booking-heading">
+            {bookingCopy.acceptance.existing}
+          </h2>
+          <Link
+            className="crm-button"
+            href={`/app/my-bookings/${acceptance.bookingReference}`}
+          >
+            {acceptance.bookingReference}
+          </Link>
+        </section>
+      ) : (
+        <p className="crm-form__notice">
+          {bookingCopy.acceptance.reviewRequired}
+        </p>
+      )}
     </article>
   );
 }

@@ -45,4 +45,16 @@ describe("authentication rate-limit boundary", () => {
       limiter.consume("PUBLIC_REQUEST", "anonymous-source"),
     ).resolves.toMatchObject({ allowed: false });
   });
+
+  it("bounds booking mutations on their own protected scope", async () => {
+    const limiter = new InMemoryAuthRateLimiter();
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await expect(
+        limiter.consume("BOOKING_MUTATION", "actor-key"),
+      ).resolves.toEqual({ allowed: true });
+    }
+    await expect(
+      limiter.consume("BOOKING_MUTATION", "actor-key"),
+    ).resolves.toMatchObject({ allowed: false });
+  });
 });

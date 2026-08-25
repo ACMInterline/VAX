@@ -44,6 +44,7 @@ introduced.
 | src/modules/identity-access | Stable roles, permissions, authorization and navigation policy | Next.js, provider SDKs, sessions or credentials |
 | src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
 | src/modules/request-quote | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports | Provider identities, browser authority, booking acceptance, payments or occupancy |
+| src/modules/booking-engine | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation | Provider identities, request renormalization, repricing, Job execution or payments |
 | src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
@@ -102,6 +103,15 @@ manage permissions. Customer reads and submissions require the own-record
 permission plus the exact active identity/customer link. Request, staff and
 customer projections remain distinct so original contact facts, staff notes,
 draft quotes and internal estimate details cannot cross the wrong boundary.
+
+Phase 3E adds `src/modules/booking-engine`. Customer and staff transports call
+provider-neutral Booking policy and use cases; the PostgreSQL repository
+rechecks permissions, current identity links and the entire immutable
+quote/request/estimate/CRM provenance graph. The acceptance write never calls
+normalization, pricing, duration or CRM repair. It atomically inserts
+acceptance, Booking, copied items and Booking audit evidence, or fails closed
+with no partial state. Scheduling remains a separate later command and must use
+database-backed occupancy constraints rather than trusting a preview.
 
 ## Public website boundary
 
@@ -192,8 +202,10 @@ assumption. Provider selection and credentials remain deferred.
 The Phase 2A duration total already includes setup, inspection, cleaning,
 cleanup and handover. Availability adds only neighbouring travel, one
 independent buffer per transition and explicit caller-provided parking time.
-No scheduling block or reservation is persisted. The future occupancy contract
-defines the immutable scheduling provenance a later booking adapter must supply.
+Phase 2B persists no scheduling block or reservation. Phase 3E adds a separate
+durable occupancy schema and adapter contract, but acceptance writes no
+occupancy because approved scheduling configuration and frozen operational
+requirements are absent.
 
 `/internal/availability-lab` follows the same Server/Client split and exposure
 rules as the pricing lab. It is a local browser calculator with no mutation,
@@ -233,6 +245,35 @@ exact customer only; they cannot read drafts, internal estimates or staff
 notes. Phase 3D has no acceptance command, booking, payment, invoice,
 notification, document generation, occupancy or reservation. The complete
 contract is in `docs/REQUEST_AND_QUOTE.md`.
+
+## Quote acceptance and Booking boundary
+
+Phase 3E extends the chain without changing Phase 3D source authority:
+
+> immutable issued Quote → immutable Quote Acceptance → Booking
+
+Acceptance revalidates lifecycle, `[valid_from, valid_until)` validity,
+authorization, customer/property ownership, request/estimate versions,
+commercial snapshot identities and digest, exact totals and the quote-item
+graph in one locked database operation. It does not reinterpret reported data,
+renormalize staff scope, recalculate price/duration or silently substitute
+mutable CRM facts into source provenance. Any inconsistency fails closed to
+staff review.
+
+The quote remains `ISSUED` and the request remains `QUOTED`; the unique
+acceptance relation is authoritative. A successful operation atomically writes
+acceptance, `PENDING_SCHEDULING` / `REVIEW_REQUIRED` Booking, copied item
+snapshots and two audit events. Preferred window is not an exact slot, and no
+team, equipment, time or occupancy is fabricated.
+
+The `booking_occupancies` persistence seam supports one team, optional
+equipment and append-oriented policy/travel/availability evidence. PostgreSQL
+GiST exclusion constraints use half-open `[)` operational ranges and block
+concurrent overlap for the same team or equipment while status is `PENDING` or
+`CONFIRMED`. Cancellation retains the row but releases capacity by changing it
+to `CANCELLED`. Future scheduling and rescheduling must append audited snapshot
+versions, preserve prior occupancy and never alter accepted commercial
+evidence. See `docs/BOOKING_ENGINE.md`.
 
 ## Database boundary
 
@@ -282,6 +323,14 @@ allowlisted request/estimate/quote changes; it does not replace
 operation for it. Database-level append-only grants and reviewed production
 least privilege remain a deployment gate.
 
+Phase 3E acceptance, Booking, item, occupancy and Booking-audit rows are runtime
+transaction data and are never seeded. Restrictive composite foreign keys and
+unique constraints preserve exact issued-quote provenance and idempotency.
+`btree_gist` exclusion constraints are the final concurrent-writer boundary for
+team/equipment overlap. The acceptance flow creates no occupancy or confirmed
+slot; a later scheduling adapter must supply reviewed immutable operational
+snapshots and remain transactionally guarded.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
@@ -320,10 +369,10 @@ depends on `AuthenticatedUser`, `Session`, `UserId`, privileged capability
 contracts and permission policy; provider session, Admin API and token shapes
 stay inside `src/auth/neon-provider.ts` and its projection helper.
 Provider-managed `neon_auth`, application `user_profiles`, and CRM customer
-records are separate ownership boundaries. Implemented customer, request and
-quote authorization remains application-owned and never changes the provider
-schema. See `docs/IDENTITY_AND_ACCESS.md` and
-`docs/REQUEST_AND_QUOTE.md`.
+records are separate ownership boundaries. Implemented customer, request,
+quote, acceptance and Booking authorization remains application-owned and
+never changes the provider schema. See `docs/IDENTITY_AND_ACCESS.md`,
+`docs/REQUEST_AND_QUOTE.md` and `docs/BOOKING_ENGINE.md`.
 
 ### Object storage
 
@@ -344,8 +393,10 @@ validated internal commands.
 - Authorize every protected use case, not only navigation.
 - Use UTC instants for stored events and explicit local zones for scheduling.
 - Record critical state changes and privileged actions in their owning audit
-  stream; Phase 3D covers material request, estimate and quote events.
-- Design idempotency before adding bookings, payments, messages, or webhooks.
+  stream; Phase 3D covers request/estimate/quote events and Phase 3E covers
+  acceptance, Booking creation and cancellation.
+- Preserve the implemented Booking idempotency boundary and design idempotency
+  before adding payments, messages, notifications or webhooks.
 - Avoid irreversible deletes for records that contribute to service history.
 - Implement accessible, responsive loading, empty, error, and recovery states.
 
