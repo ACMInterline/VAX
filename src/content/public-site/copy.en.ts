@@ -32,13 +32,13 @@ export const englishPublicSiteCopy = {
       explore: "Explore",
       contact: "Contact",
       assessmentNotice: "Service details and timing remain subject to assessment.",
-      prototypeNotice: "No booking or payment is created by this website prototype.",
+      prototypeNotice: "Submitting a request creates no quote, booking or payment.",
     },
     defaultCta: {
       eyebrow: "Start with the surface",
       title: "Tell us what needs care.",
       description:
-        "Share the material, condition, access and preferred timing. This prototype validates your information but does not create a booking.",
+        "Share the material, condition, access and preferred timing. The team will review the request; no quote or booking is created automatically.",
     },
     serviceCard: { onSite: "On-site care", explore: "Explore service" },
     serviceDetail: {
@@ -275,7 +275,7 @@ export const englishPublicSiteCopy = {
         title: "A professional process should feel clear before it feels technical.",
         description:
           "The customer explains the situation. The cleaner assesses the material and risk. Together, those inputs create a practical treatment plan.",
-        primaryAction: "Try the request prototype",
+        primaryAction: "Submit a service request",
       },
       breadcrumbs: { home: "Home", current: "How it works" },
       stepsIntro: {
@@ -393,7 +393,7 @@ export const englishPublicSiteCopy = {
         {
           label: "Current intended coverage",
           title: "Sofia city",
-          text: "Residential and business requests across city districts can be described through the request prototype.",
+          text: "Residential and business customers can submit service needs for staff review across Sofia districts.",
           tone: "primary",
         },
         {
@@ -435,7 +435,7 @@ export const englishPublicSiteCopy = {
         eyebrow: "Check the route",
         title: "Tell us the district and the surfaces.",
         description:
-          "The prototype validates your description but does not check availability, calculate travel or create an appointment.",
+          "Submitting a request does not confirm availability, calculate a public travel charge or create an appointment.",
       },
     },
     about: {
@@ -477,7 +477,7 @@ export const englishPublicSiteCopy = {
         eyebrow: "Practical answers",
         title: "Useful expectations before professional care.",
         description:
-          "Answers about on-site work, access, timing, stains, delicate materials and the current request-prototype boundary.",
+          "Answers about on-site work, access, timing, stains, delicate materials and the current request-review boundary.",
         primaryAction: "Describe your request",
         countLabel: "carefully framed questions",
       },
@@ -495,8 +495,8 @@ export const englishPublicSiteCopy = {
         eyebrow: "Contact and service context",
         title: "Start with the surface and the Sofia location.",
         description:
-          "Phone and email channels are not yet published. The request prototype demonstrates the information a future connected service will need.",
-        primaryAction: "Open request prototype",
+          "Phone and email channels are not yet published. The request form is the available path for submitting details for staff review.",
+        primaryAction: "Open request form",
       },
       breadcrumbs: { home: "Home", current: "Contact" },
       cards: {
@@ -517,15 +517,15 @@ export const englishPublicSiteCopy = {
           "No walk-in customer office is currently published. A future customer-facing location should appear only when it is real and approved for visits.",
         nextLabel: "Best current next step",
         nextTitle: "Describe the item, condition and preferred timing.",
-        action: "Try the prototype",
+        action: "Submit a request",
       },
     },
     request: {
       hero: {
-        eyebrow: "Frontend prototype · No booking is created",
+        eyebrow: "Service request · Staff review required",
         title: "Describe what needs professional care.",
         description:
-          "This form validates information in your browser. It does not transmit, store, price, schedule or confirm anything.",
+          "This form sends your information to VAX for staff review. It does not create an automatic quote, appointment, booking or payment.",
         checklistTitle: "Before you start",
         checklist: [
           "Know the Sofia area",
@@ -534,16 +534,16 @@ export const englishPublicSiteCopy = {
           "Choose a preferred time period",
         ],
       },
-      breadcrumbs: { home: "Home", current: "Request prototype" },
+      breadcrumbs: { home: "Home", current: "Service request" },
       intro: {
         eyebrow: "What happens here",
         title: "Validation, not reservation.",
         description:
-          "The browser checks whether required fields are complete and well formed. A valid result is an interface demonstration only.",
+          "The server validates the required fields and records a request reference. Staff review is the next step.",
       },
-      boundaryLabel: "Prototype boundary",
+      boundaryLabel: "Request boundary",
       boundaryItems: [
-        "No database write",
+        "A request record for staff review",
         "No file upload",
         "No availability check",
         "No quote or price",
@@ -561,10 +561,10 @@ export const englishPublicSiteCopy = {
   requestForm: {
     notices: {
       errorTitle: "Check the highlighted details.",
-      errorText: "No information was sent or stored.",
-      successTitle: "Your details pass the prototype validation.",
+      errorText: "The request was not recorded. Check the fields and try again.",
+      successTitle: "Your request was received.",
       successText:
-        "No booking was created and nothing was sent or stored. Online request connectivity will be activated in a later phase.",
+        "Keep the request reference. Staff will review the details; no quote, appointment or booking has been confirmed.",
     },
     sections: {
       contact: "Your contact details",
@@ -596,7 +596,7 @@ export const englishPublicSiteCopy = {
         "Choose every surface or item you want to describe. Final scope is confirmed after assessment.",
       estimatedQuantity: "Estimated quantity",
       quantityPlaceholder: "For example, 1 sofa and 6 chairs",
-      quantityHint: "An estimate is enough for this prototype.",
+      quantityHint: "A rough quantity is enough for the initial staff review.",
       approximateArea: "Approximate area",
       areaPlaceholder: "For example, around 30 m²",
       areaHint: "Useful for carpets and larger commercial surfaces.",
@@ -628,9 +628,9 @@ export const englishPublicSiteCopy = {
       button: "Add photos — coming later",
     },
     submit: {
-      label: "Prototype only",
-      text: "Validation happens in this browser. Nothing is transmitted.",
-      button: "Validate request details",
+      label: "Request for staff review",
+      text: "Submitting stores the validated details. It does not create a quote or booking.",
+      button: "Submit request",
     },
     validation: {
       nameRequired: "Enter your name.",

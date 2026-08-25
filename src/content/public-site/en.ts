@@ -74,7 +74,7 @@ export const englishPublicContent = {
     request: {
       title: "Describe your cleaning request",
       description:
-        "Use the Phase 1 prototype to describe carpet, rug, upholstery or mattress cleaning needs without creating a booking.",
+        "Submit carpet, rug, upholstery or mattress cleaning needs for staff review without creating a quote or booking.",
     },
   },
   services: [

@@ -158,10 +158,11 @@ permissions; customer self-service is linked-only and read-only. UUID asset
 identity is the future Cleaning Passport attachment point without fabricated
 inspection, treatment or completed-job history.
 
-The public request remains non-persistent. No quote, booking, payment, invoice,
-file, message, notification, occupancy or deployment is introduced. Production
-least-privilege/RLS, final retention/data-subject workflows, duplicate/merge
-policy and a general business audit stream remain explicit gates.
+At the Phase 3C gate the public request was still non-persistent and no quote
+was introduced. Booking, payment, invoice, file, message, notification,
+occupancy and deployment also remained outside that phase. Production
+least-privilege/RLS, final retention/data-subject workflows and duplicate/merge
+policy remained explicit gates.
 
 Gate: reviewed additive development migration, record-level authorization and
 IDOR tests, sensitive projection review, archive/delete integrity, bilingual
@@ -169,15 +170,29 @@ responsive accessibility, full validation and protected-main CI.
 
 ### Phase 3D — Persistent Request → Estimate → Quote
 
-Next recommended phase: introduce authenticated/policy-controlled request
-capture, estimate and quote records that reference the Phase 3C customer,
-property and cleaning-asset foundation. Preserve immutable pricing and duration
-provenance and keep booking creation outside the phase until quote acceptance
-semantics are separately reviewed.
+Implemented persistent anonymous, linked-customer and staff-created request
+capture with immutable original-submission provenance and separately normalized
+structured scope. Staff workflows use the conjunction of CRM and operations
+permissions for inbox/detail review, CRM resolution, lifecycle, append-only
+price/duration estimates and versioned draft/issued quotes. Linked customers can
+submit own requests and read only their own issued quote history.
+
+Estimate versions preserve complete price and duration snapshots from the
+provisional engines and remain manual-review gated. Quote issue freezes reviewed
+scope, bilingual lines, exact EUR values, terms, validity and estimate
+provenance; optimistic versions, request locks and unique active-issued state
+protect concurrent writes. A separate allowlisted business-event stream records
+material changes without reusing authentication audit history.
+
+No acceptance, booking, appointment, occupancy, reservation, payment, invoice,
+file, message, notification, job execution, production migration, deployment or
+Neon Auth schema change is part of Phase 3D. Availability preview remains a
+staff-only ephemeral advisory. See `docs/REQUEST_AND_QUOTE.md`.
 
 Gate: request ownership and public-intake abuse/privacy design, immutable
-commercial provenance, concurrency/idempotency, auditability and explicit
-acceptance boundaries.
+commercial provenance, concurrency/idempotency, auditability, bilingual
+accessible public/staff/customer flows, development-only migration verification,
+full validation, protected-main CI and explicit acceptance boundaries.
 
 ### Phase 3E — Quote acceptance → Booking
 
@@ -217,8 +232,9 @@ customer acknowledgement, and audited amendments.
 
 ## Phase 10 — Customer portal
 
-Implement secure customer access to requests, appointments, properties,
-documents, messages, and relevant service status.
+Expand the secure customer surface beyond Phase 3D's request submission and
+issued-quote read access to appointments, documents, messages and relevant
+service status.
 
 Gate: object-level authorization, privacy review, responsive accessibility,
 empty and error states, and account-recovery behavior.

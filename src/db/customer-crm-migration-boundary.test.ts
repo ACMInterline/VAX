@@ -178,8 +178,11 @@ describe("Phase 3C CRM migration boundary", () => {
         breakpoints: boolean;
       }>;
     };
-    const previous = journal.entries.at(-2);
-    const current = journal.entries.at(-1);
+    const currentIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0005_add_customer_property_crm",
+    );
+    const current = journal.entries[currentIndex];
+    const previous = journal.entries[currentIndex - 1];
 
     expect(journal).toMatchObject({ version: "7", dialect: "postgresql" });
     expect(previous).toMatchObject({

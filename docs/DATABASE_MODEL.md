@@ -163,11 +163,62 @@ job, cleaning history, payment or invoice table and does not alter
 provider-managed `neon_auth`. See `docs/CRM_AND_PRIVACY.md` for sensitive-data,
 archive and deferred retention decisions.
 
+Phase 3D adds persistent request, estimate, quote and business-audit structures
+to development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `service_requests` | Anonymous, linked-customer or staff-created request, random public reference, immutable original submission, CRM resolution, lifecycle and optimistic version |
+| `service_request_items` | Staff-normalized scope separate from the submitted description, with optional catalogue, CRM asset and measurement references |
+| `service_request_item_issues` | Relational customer-reported/staff-confirmed issue provenance |
+| `service_request_item_addons` | Relational customer-requested/staff-included add-on provenance |
+| `request_estimates` | Append-only estimate versions with complete immutable price and duration snapshots, exact model identities, searchable totals and review state |
+| `quotes` | Versioned staff-reviewed commercial offer, estimate provenance, frozen terms/totals/validity and optimistic draft version |
+| `quote_items` | Frozen bilingual line descriptions, measurements, exact integer amounts and calculation evidence |
+| `business_audit_events` | Separate append-oriented, allowlisted request/estimate/quote event stream with safe metadata |
+
+Request references carry 96 bits of random entropy and reveal no sequential
+identifier. Original submissions are retained as validated JSON snapshots;
+structured normalization does not overwrite them. Contact equality is never a
+foreign-key or ownership rule. `requesting_profile_id` records provenance only,
+while customer access is derived from the current active
+`customer_identity_links` relationship.
+
+Estimates use a unique `(request_id, estimate_version)` and are inserted rather
+than updated. Each stores the resulting optimistic `source_request_version`.
+Complete price, duration and advisory readiness input/result evidence remains
+in JSONB, while EUR minor-unit totals, VAT basis points and duration minutes
+remain searchable exact scalar values. The initial configurations are still
+provisional, inactive or unpublished, so review state is retained and no public
+automatic-price claim follows from persistence.
+
+Customer type and property travel zone are independently mutable CRM facts.
+Estimate append and quote create/update/issue rederive their effective
+commercial values under row locks and compare them with the immutable estimate
+input snapshot. This value-based freshness check invalidates semantically stale
+commercial evidence without coupling request history to unrelated CRM version
+increments.
+
+Quotes use a unique `(request_id, quote_version)`, a separate optimistic
+`record_version`, a frozen `source_request_version`, restrictive
+estimate/request provenance and a partial unique index that permits only one
+`ISSUED` version per request. Draft update and issue fail closed if request
+scope has since advanced. An issued quote has
+frozen commercial and terms snapshots and may only move to `SUPERSEDED`,
+`EXPIRED` or `WITHDRAWN`; edited commercial terms require a new draft/version.
+The schema creates no acceptance, booking, reservation, occupancy, payment,
+invoice, upload, message or notification record. Phase 3D does not alter Neon
+Auth or production. See `docs/REQUEST_AND_QUOTE.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
 
 > Customer → Property → Property Area → Cleaning Asset → future Cleaning History
+
+The implemented commercial-intake relationship is:
+
+> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → future accepted Booking
 
 Expected cardinalities:
 
@@ -213,6 +264,17 @@ and reliable session administration remain planned; see
 | property_areas | Implemented lightweight durable spaces within a property |
 | cleaning_assets | Implemented durable carpets, rugs, upholstery, mattresses, and other serviceable physical items |
 | cleaning_asset_reported_issues, cleaning_asset_reported_risk_flags | Implemented customer-described current asset profile associations |
+
+### Requests and quotes
+
+| Implemented table | Responsibility |
+| --- | --- |
+| service_requests | Persistent intake, ownership/resolution and controlled lifecycle |
+| service_request_items | Original-description-preserving structured scope with separate reported and normalized condition/material/construction facts |
+| service_request_item_issues, service_request_item_addons | Relational issue and add-on provenance |
+| request_estimates | Append-only price/duration calculation history |
+| quotes, quote_items | Versioned reviewed offer and frozen customer-visible lines |
+| business_audit_events | Safe request/estimate/quote state-change evidence |
 
 ### Service catalogue
 
@@ -282,8 +344,8 @@ objects held by a separate storage provider.
 | price_rules | Implemented versioned pricing inputs and applicability |
 | price_books | Implemented version, segment, currency, VAT and lifecycle authority |
 | duration_models, duration_rules | Implemented independent operational-estimate configuration |
-| quotes | Proposed commercial scope and validity |
-| quote_items | Itemized quoted work |
+| quotes | Implemented proposed commercial scope, version, validity and immutable issued history |
+| quote_items | Implemented itemized quoted work with frozen bilingual descriptions and exact amounts |
 | discounts | Explicit discount definitions and approvals |
 | payments | Payment intent and settlement records |
 | invoices | Invoice identity, totals, status, and document reference |
@@ -312,7 +374,8 @@ objects held by a separate storage provider.
 | equipment | Durable company equipment |
 | equipment_maintenance | Inspection, service, and repair history |
 | inventory | Consumable stock and movement basis |
-| audit_logs | Security and critical business-operation audit records |
+| business_audit_events | Implemented request/estimate/quote business events; broader business-audit coverage remains planned |
+| audit_logs | Planned broader critical business-operation audit records or a future extension of the implemented stream |
 | activity_logs | Lower-risk operational activity stream |
 
 ## Future modeling rules

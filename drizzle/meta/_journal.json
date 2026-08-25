@@ -43,6 +43,13 @@
       "when": 1787539680582,
       "tag": "0005_add_customer_property_crm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787610514575,
+      "tag": "0006_phase_3d_request_quote",
+      "breakpoints": true
     }
   ]
 }

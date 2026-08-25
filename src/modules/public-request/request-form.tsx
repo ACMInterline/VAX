@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import type { PublicLocale } from "@/config/public-site";
 import { getPublicContent } from "@/content/public-site";
 import {
@@ -10,17 +10,27 @@ import {
 } from "@/modules/service-catalogue/catalogue";
 import {
   conditionValues,
-  createPublicRequestSchema,
   preferredTimeValues,
   propertyTypeValues,
-  readPublicRequestForm,
   requestServiceValues,
   stainValues,
 } from "./request-schema";
+import {
+  initialPublicRequestActionState,
+  publicRequestStringValue,
+  publicRequestStringValues,
+  type PublicRequestFieldErrors,
+  type PublicRequestFieldName,
+  type PublicRequestFormAction,
+} from "./action-state";
 
-type FieldErrors = Record<string, string[] | undefined>;
-
-function FieldError({ errors, name }: { errors: FieldErrors; name: string }) {
+function FieldError({
+  errors,
+  name,
+}: {
+  errors: PublicRequestFieldErrors;
+  name: PublicRequestFieldName;
+}) {
   const message = errors[name]?.[0];
   return message ? (
     <p className="field-error" id={`${name}-error`}>
@@ -29,7 +39,11 @@ function FieldError({ errors, name }: { errors: FieldErrors; name: string }) {
   ) : null;
 }
 
-function describedBy(errors: FieldErrors, name: string, hintId?: string) {
+function describedBy(
+  errors: PublicRequestFieldErrors,
+  name: PublicRequestFieldName,
+  hintId?: string,
+) {
   return (
     [hintId, errors[name]?.length ? `${name}-error` : undefined]
       .filter(Boolean)
@@ -37,56 +51,115 @@ function describedBy(errors: FieldErrors, name: string, hintId?: string) {
   );
 }
 
-export function RequestForm({ locale }: { locale: PublicLocale }) {
+export function RequestForm({
+  action,
+  locale,
+}: {
+  action: PublicRequestFormAction;
+  locale: PublicLocale;
+}) {
   const copy = getPublicContent(locale).requestForm;
-  const schema = createPublicRequestSchema(locale);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [isValidated, setIsValidated] = useState(false);
-  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const [state, formAction, pending] = useActionState(
+    action,
+    initialPublicRequestActionState,
+  );
+  const responseRef = useRef<HTMLDivElement>(null);
+  const errors =
+    state.status === "ERROR" ? (state.fieldErrors ?? {}) : {};
+  const selectedServices = new Set(
+    publicRequestStringValues(state, "services"),
+  );
+  const value = (name: PublicRequestFieldName, fallback = "") =>
+    publicRequestStringValue(state, name, fallback);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsValidated(false);
-
-    const result = schema.safeParse(
-      readPublicRequestForm(new FormData(event.currentTarget)),
-    );
-
-    if (!result.success) {
-      setErrors(result.error.flatten().fieldErrors);
-      requestAnimationFrame(() => errorSummaryRef.current?.focus());
-      return;
+  // Action-state identity distinguishes consecutive server responses even
+  // when their status and localized message are the same.
+  useEffect(() => {
+    if (state.status !== "IDLE") {
+      responseRef.current?.focus();
     }
+  }, [state]);
 
-    setErrors({});
-    setIsValidated(true);
-  }
-
-  const hasErrors = Object.values(errors).some((messages) => messages?.length);
+  const summaryFields = [
+    ["name", copy.fields.name],
+    ["email", copy.fields.email],
+    ["phone", copy.fields.phone],
+    ["district", copy.fields.district],
+    ["propertyType", copy.fields.propertyType],
+    ["services", copy.sections.services],
+    ["estimatedQuantity", copy.fields.estimatedQuantity],
+    ["approximateArea", copy.fields.approximateArea],
+    ["condition", copy.fields.condition],
+    ["stainsPresent", copy.fields.stains],
+    ["preferredDate", copy.fields.preferredDate],
+    ["preferredTime", copy.fields.preferredTime],
+    ["notes", copy.fields.notes],
+  ] as const satisfies readonly (readonly [PublicRequestFieldName, string])[];
 
   return (
-    <form className="request-form" onSubmit={handleSubmit} noValidate>
-      {hasErrors ? (
+    <form
+      action={formAction}
+      aria-busy={pending}
+      className="request-form"
+      noValidate
+    >
+      {state.status === "ERROR" ? (
         <div
           className="form-notice form-notice--error"
           role="alert"
+          aria-live="polite"
+          aria-atomic="true"
           tabIndex={-1}
-          ref={errorSummaryRef}
+          ref={responseRef}
         >
-          <strong>{copy.notices.errorTitle}</strong>
-          <p>{copy.notices.errorText}</p>
+          <div>
+            <strong>{copy.notices.errorTitle}</strong>
+            <p>{state.message ?? copy.notices.errorText}</p>
+            {summaryFields.some(([name]) => errors[name]?.length) ? (
+              <ul>
+                {summaryFields.flatMap(([name, label]) =>
+                  (errors[name] ?? []).map((message, index) => (
+                    <li key={`${name}:${index}`}>
+                      <a href={`#${name}`}>
+                        {label}: {message}
+                      </a>
+                    </li>
+                  )),
+                )}
+              </ul>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
-      {isValidated ? (
-        <div className="form-notice form-notice--success" role="status">
+      {state.status === "SUCCESS" ? (
+        <div
+          className="form-notice form-notice--success"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          tabIndex={-1}
+          ref={responseRef}
+        >
           <span aria-hidden="true">✓</span>
           <div>
             <strong>{copy.notices.successTitle}</strong>
             <p>{copy.notices.successText}</p>
+            <code>{state.requestReference}</code>
           </div>
         </div>
       ) : null}
+
+      <div className="sr-only" inert>
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          autoComplete="off"
+          tabIndex={-1}
+        />
+      </div>
 
       <fieldset className="form-section">
         <legend>
@@ -100,6 +173,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               id="name"
               name="name"
               autoComplete="name"
+              defaultValue={value("name")}
+              maxLength={100}
               aria-invalid={Boolean(errors.name?.length)}
               aria-describedby={describedBy(errors, "name")}
               required
@@ -114,6 +189,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               type="email"
               autoComplete="email"
               inputMode="email"
+              defaultValue={value("email")}
+              maxLength={254}
               aria-invalid={Boolean(errors.email?.length)}
               aria-describedby={describedBy(errors, "email")}
               required
@@ -128,6 +205,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               type="tel"
               autoComplete="tel"
               inputMode="tel"
+              defaultValue={value("phone")}
+              maxLength={32}
               aria-invalid={Boolean(errors.phone?.length)}
               aria-describedby={describedBy(errors, "phone")}
               required
@@ -150,6 +229,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               name="district"
               autoComplete="address-level2"
               placeholder={copy.fields.districtPlaceholder}
+              defaultValue={value("district")}
+              maxLength={100}
               aria-invalid={Boolean(errors.district?.length)}
               aria-describedby={describedBy(errors, "district")}
               required
@@ -161,7 +242,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
             <select
               id="propertyType"
               name="propertyType"
-              defaultValue=""
+              defaultValue={value("propertyType")}
               aria-invalid={Boolean(errors.propertyType?.length)}
               aria-describedby={describedBy(errors, "propertyType")}
               required
@@ -189,12 +270,18 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
           {copy.fields.servicesHint}
         </p>
         <div
+          id="services"
           className="service-selector"
           aria-describedby={describedBy(errors, "services", "services-hint")}
         >
           {requestServiceValues.map((value) => (
             <label key={value}>
-              <input type="checkbox" name="services" value={value} />
+              <input
+                type="checkbox"
+                name="services"
+                value={value}
+                defaultChecked={selectedServices.has(value)}
+              />
               <span aria-hidden="true" />
               {getCatalogueLabel(getCleaningItemType(value), locale)}
             </label>
@@ -210,11 +297,19 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               id="estimatedQuantity"
               name="estimatedQuantity"
               placeholder={copy.fields.quantityPlaceholder}
-              aria-describedby="quantity-hint"
+              defaultValue={value("estimatedQuantity")}
+              maxLength={120}
+              aria-invalid={Boolean(errors.estimatedQuantity?.length)}
+              aria-describedby={describedBy(
+                errors,
+                "estimatedQuantity",
+                "quantity-hint",
+              )}
             />
             <p className="field-hint" id="quantity-hint">
               {copy.fields.quantityHint}
             </p>
+            <FieldError errors={errors} name="estimatedQuantity" />
           </div>
           <div className="field-group">
             <label htmlFor="approximateArea">
@@ -224,11 +319,19 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
               id="approximateArea"
               name="approximateArea"
               placeholder={copy.fields.areaPlaceholder}
-              aria-describedby="area-hint"
+              defaultValue={value("approximateArea")}
+              maxLength={120}
+              aria-invalid={Boolean(errors.approximateArea?.length)}
+              aria-describedby={describedBy(
+                errors,
+                "approximateArea",
+                "area-hint",
+              )}
             />
             <p className="field-hint" id="area-hint">
               {copy.fields.areaHint}
             </p>
+            <FieldError errors={errors} name="approximateArea" />
           </div>
         </div>
       </fieldset>
@@ -244,7 +347,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
             <select
               id="condition"
               name="condition"
-              defaultValue=""
+              defaultValue={value("condition")}
               aria-invalid={Boolean(errors.condition?.length)}
               aria-describedby={describedBy(errors, "condition")}
               required
@@ -265,7 +368,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
             <select
               id="stainsPresent"
               name="stainsPresent"
-              defaultValue=""
+              defaultValue={value("stainsPresent")}
               aria-invalid={Boolean(errors.stainsPresent?.length)}
               aria-describedby={describedBy(errors, "stainsPresent")}
               required
@@ -283,7 +386,11 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
           </div>
         </div>
         <label className="material-checkbox">
-          <input type="checkbox" name="delicateMaterial" />
+          <input
+            type="checkbox"
+            name="delicateMaterial"
+            defaultChecked={value("delicateMaterial") === "on"}
+          />
           <span aria-hidden="true" />
           <span>
             <strong>{copy.fields.delicateTitle}</strong>
@@ -300,14 +407,24 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
         <div className="form-grid form-grid--two">
           <div className="field-group">
             <label htmlFor="preferredDate">{copy.fields.preferredDate}</label>
-            <input id="preferredDate" name="preferredDate" type="date" />
+            <input
+              id="preferredDate"
+              name="preferredDate"
+              type="date"
+              defaultValue={value("preferredDate")}
+              aria-invalid={Boolean(errors.preferredDate?.length)}
+              aria-describedby={describedBy(errors, "preferredDate")}
+            />
+            <FieldError errors={errors} name="preferredDate" />
           </div>
           <div className="field-group">
             <label htmlFor="preferredTime">{copy.fields.preferredTime}</label>
             <select
               id="preferredTime"
               name="preferredTime"
-              defaultValue="flexible"
+              defaultValue={value("preferredTime", "flexible")}
+              aria-invalid={Boolean(errors.preferredTime?.length)}
+              aria-describedby={describedBy(errors, "preferredTime")}
             >
               {preferredTimeValues.map((value) => (
                 <option key={value} value={value}>
@@ -315,6 +432,7 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
                 </option>
               ))}
             </select>
+            <FieldError errors={errors} name="preferredTime" />
           </div>
         </div>
         <div className="field-group form-grid--spaced">
@@ -324,6 +442,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
             name="notes"
             rows={6}
             placeholder={copy.fields.notesPlaceholder}
+            defaultValue={value("notes")}
+            maxLength={1500}
             aria-invalid={Boolean(errors.notes?.length)}
             aria-describedby={describedBy(errors, "notes", "notes-hint")}
           />
@@ -350,8 +470,8 @@ export function RequestForm({ locale }: { locale: PublicLocale }) {
           <strong>{copy.submit.label}</strong>
           <p>{copy.submit.text}</p>
         </div>
-        <button className="submit-button" type="submit">
-          {copy.submit.button}
+        <button className="submit-button" type="submit" disabled={pending}>
+          {pending ? `${copy.submit.button}…` : copy.submit.button}
           <span aria-hidden="true">↗</span>
         </button>
       </div>

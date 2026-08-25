@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A–3C decision
+## Phase 3A–3D decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -16,8 +16,8 @@ The integration is deliberately split into three concepts:
 2. **Application profile and authorization** answer whether that identity may
    use VAX and which application actions it may perform.
 3. **Business ownership** answers which implemented customer, property, area
-   and cleaning-asset records that actor may access; future requests, quotes,
-   bookings and jobs will extend this boundary.
+   and cleaning-asset records that actor may access. Phase 3D extends the same
+   boundary to requests and issued quotes; bookings and jobs remain future.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
 and a `CUSTOMER` role alone never proves ownership of a business record.
@@ -171,6 +171,32 @@ database relationships and repeats current actor status, permission, parent and
 link checks at the operation boundary. Missing and cross-customer identifiers
 produce the same safe external result. Archive state is used for normal
 deactivation; link revocation does not delete CRM data.
+
+## Phase 3D request and quote authorization
+
+The existing permission vocabulary is sufficient; Phase 3D adds no role or
+permission. Staff request/quote reads require the conjunction of
+`CUSTOMER_RECORDS_READ` and `OPERATIONS_READ`. Staff creation, normalization,
+CRM linking, lifecycle, estimate and quote mutations require both
+`CUSTOMER_RECORDS_MANAGE` and `OPERATIONS_MANAGE`. Policy evaluates permissions,
+not role labels; current mappings admit Owner, Admin and Dispatcher while
+excluding unrestricted Technician access.
+
+Customer-portal request submission requires `OWN_CUSTOMER_DATA_UPDATE` and an
+exact active identity/customer link. Own-request and issued-quote reads require
+`OWN_CUSTOMER_DATA_READ` and the same current link. The repository also checks
+that any property and cleaning asset belong to that exact active customer
+graph. `requesting_profile_id` is submission provenance, not enduring access
+authority. Submitted email or phone never creates a customer, profile, role or
+link and is never used to authorize a read.
+
+Anonymous public intake creates an unresolved request only. Staff and customer
+routes use different projections; customers cannot read draft quotes, internal
+estimates, staff notes, actor identifiers or unrelated IDs. Once issued, a
+customer-authorized historical quote may remain visible after supersession,
+expiry or withdrawal, but there is no quote acceptance control in Phase 3D.
+Every identifier is treated as untrusted and missing/forbidden results remain
+indistinguishable. See `docs/REQUEST_AND_QUOTE.md`.
 
 ## Central authorization
 
@@ -368,12 +394,13 @@ end-to-end delivery; no paid email provider is selected here.
 `/app` is the authenticated operational/customer namespace. Its initial page
 shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
-Permission-aware navigation exposes staff Customers and linked-customer My
-Properties destinations. `/app/customers` and nested routes repeat staff
-authorization on the server; `/app/my-properties` always uses linked-only
-scope. Authorized identities additionally see Administration → Users. The root
-document language and skip-link copy are derived from the validated
-application-profile locale.
+Permission-aware navigation exposes staff Customers and Requests plus
+linked-customer My Properties, My Requests and My Quotes destinations.
+`/app/customers` and `/app/requests` repeat their respective permission checks
+on the server; own-record routes always derive linked-only scope. Draft quotes
+and estimate internals have no customer route. Authorized identities
+additionally see Administration → Users. The root document language and
+skip-link copy are derived from the validated application-profile locale.
 
 `/internal/pricing-lab` and `/internal/availability-lab` remain separate local
 development tools. Their existing production `notFound()` gate is unchanged;
@@ -381,13 +408,13 @@ authentication does not convert them into deployable internal pages.
 
 ## Rate limiting
 
-Login, signup, reset, verification and privileged-mutation Server Actions use
-an in-memory bounded limiter for loopback/local development. Keys are one-way
-hashes of the submitted account/actor key and available forwarded address and
-are not logged. Process-local memory is not reliable across production
-instances, so the production adapter denies all attempts until a
-shared/provider-backed limiter is selected and tested. This is an intentional
-deployment blocker, not a production implementation.
+Login, signup, reset, verification, anonymous request intake and privileged
+mutation Server Actions use bounded in-memory limiting for loopback/local
+development. Auth keys are one-way hashes of the submitted account/actor key
+and available forwarded address; public intake uses an address-scoped constant
+instead of contact details. Keys are not logged. Process-local memory is not
+reliable across production instances, so production remains blocked until a
+shared/provider-backed limiter is selected and tested.
 
 ## Audit events
 
@@ -404,16 +431,23 @@ fabricate change events. Database-level append-only grants and immutability are
 still a production least-privilege gate; ordinary operators receive no audit
 editing UI.
 
+Phase 3D does not add request/quote vocabulary to this security stream.
+`business_audit_events` separately records allowlisted request, estimate and
+quote lifecycle changes and never stores provider subjects, contact details,
+addresses, notes, tokens or secrets. That separation prevents business history
+from weakening or overloading authentication audit policy.
+
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
 belong only on Neon `development`; production accounts and sessions are outside
-this phase. Phase 3B uses no synthetic identity and makes no Neon mutation.
-Migration `0004_add_identity_access.sql` is additive, creates only
-application-owned public tables and never names `neon_auth`. Production remains
-unmigrated. Migration and owner-bootstrap commands additionally require an
-explicit development label and exact approved database hostname before opening
-the database client.
+this phase. Migration `0004_add_identity_access.sql` is additive, creates only
+application-owned public tables and never names `neon_auth`. Phase 3D adds only
+application-owned public-schema request/quote tables on development and does
+not query or mutate Auth-managed tables. Production remains unmigrated.
+Migration and owner-bootstrap commands additionally require an explicit
+development label and exact approved database hostname before opening the
+database client.
 
 The inspected development branch currently has the Neon Data API enabled while
 the new application tables do not have reviewed row-level security policies.
@@ -428,11 +462,11 @@ load ignored development-only configuration and must never print it.
 
 ## Future organization readiness
 
-VAX initially represents one cleaning business and does not add `tenant_id` to
-every identity table. Provider identity, application profile and future CRM
-customer are separate, so an organization membership or business-ownership
-layer can be introduced later without changing provider subjects into business
-records. Organization scope must be designed before persistent CRM data.
+VAX represents one cleaning business and does not add `tenant_id` to every
+identity or transaction table. Provider identity, application profile and CRM
+customer are separate, so a future organization membership or
+business-ownership layer need not turn provider subjects into business records.
+Organization scope must be designed before VAX becomes multi-organization.
 
 ## Production blockers and later work
 
@@ -446,8 +480,8 @@ Deployment remains blocked until at least:
   dependency tree are re-reviewed;
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
-- a distributed or provider-backed shared rate limiter for authentication and
-  privileged mutations is selected and tested;
+- a distributed or provider-backed shared rate limiter for authentication,
+  anonymous request intake and privileged mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
@@ -466,7 +500,10 @@ Deployment remains blocked until at least:
 
 Phase 3C implements the initial Customer and Property CRM with application
 identity separate from explicit CRM ownership and server-side per-record
-authorization. Direct browser database access remains prohibited. Organization
-scope, reviewed production least-privilege/RLS, final privacy/retention policy,
-data-subject workflows and a general business audit log remain production or
-future-phase gates; see `docs/CRM_AND_PRIVACY.md`.
+authorization. Phase 3D applies that boundary to persistent requests and issued
+quotes, with a separate scoped business-event stream. Direct browser database
+access remains prohibited. Organization scope, reviewed production
+least-privilege/RLS and append-only grants, final privacy/retention policy,
+data-subject workflows and broader business-audit coverage remain production or
+future-phase gates; see `docs/CRM_AND_PRIVACY.md` and
+`docs/REQUEST_AND_QUOTE.md`.

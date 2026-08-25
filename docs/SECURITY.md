@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3C
+## Security posture through Phase 3D
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -116,18 +116,22 @@ Validation does not replace authorization. Every protected use case must verify
 actor, action, resource ownership, and relevant organization scope on the
 server.
 
-## Phase 1 public request and content claims
+## Phase 1 historical request prototype and current public intake
 
-The public request form is a frontend-only prototype. It prevents native
-submission, has no action or server mutation, writes no database record and
-uploads no file. Its acknowledgement explicitly states that nothing was sent,
-stored, priced, scheduled or booked. Zod validation demonstrates the future
-input contract but is not a server security boundary.
+Phase 1's public request form was a frontend-only prototype with no action or
+persistence. Phase 3D replaces that historical boundary with a Server Action
+that revalidates allowlisted fields, applies bounded anonymous-intake abuse
+controls and calls the application-owned request use case. It stores a request
+for staff review and returns only a random customer-safe reference. It still
+uploads no file and creates no public price, quote, appointment, booking or
+payment.
 
-Before request persistence is added, complete a focused threat and privacy
-review covering server-side validation, rate and abuse controls, consent,
-retention, logging, duplicate submission, idempotency, file metadata, object
-storage and operational acknowledgements.
+Anonymous contact details never authenticate a caller, infer an existing CRM
+customer or create an Auth/profile/role/link record. Original validated facts
+are preserved separately from staff normalization. Contact details, addresses
+and notes stay out of URLs, logs and safe audit metadata. Local rate limiting is
+not production-distributed; final retention, consent/notice, duplicate handling,
+monitoring and recovery remain deployment gates.
 
 Public hygiene, stain, acoustic, timing and product-performance claims are also
 a trust boundary. `src/content/public-site/claims.ts` classifies important
@@ -139,8 +143,9 @@ review remains required; a passing pattern test is not evidence for a marketing
 claim.
 
 The language selector uses deterministic public URLs and stores no locale
-preference. Both locale versions preserve the same non-persistent request-form
-boundary and must not import server environment or database code.
+preference. Both locale versions expose the same persistent-review boundary;
+the Client Component imports no server environment or database code and reaches
+persistence only through the localized Server Action.
 
 ## Phase 2 catalogue safeguards
 
@@ -297,8 +302,8 @@ Detailed roles, sessions, audit events and remaining production blockers are in
 - Ownership and canonical foreign keys restrict deletion. Normal lifecycle
   changes archive or deactivate records, and revoking an identity link cannot
   cascade into customer/property/asset loss.
-- The public request form remains client-only: no action endpoint, database
-  adapter or persistence was added. CRM creation is authenticated staff-only.
+- At the Phase 3C gate the public request form remained client-only; Phase 3D
+  replaces that historical boundary without making CRM creation public.
 - Direct browser SQL/Data API access remains prohibited. Application record
   policy is server-mediated; production least-privilege grants and fully
   reviewed RLS are still mandatory deployment gates, not partially implemented
@@ -308,13 +313,71 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   export, erasure, merge and data-subject workflows remain unresolved and are
   documented in `docs/CRM_AND_PRIVACY.md`.
 
+## Phase 3D request, estimate and quote safeguards
+
+- Public intake revalidates strict field and collection limits on the server,
+  uses an address-scoped local limiter plus a honeypot, returns a generic safe
+  result and never reveals CRM matches. Production requires a shared abuse
+  control, monitoring and approved retention/notices.
+- Request references and quote references use non-sequential random values.
+  They are selectors, not bearer credentials; every protected read repeats
+  actor, permission and ownership checks.
+- Staff reads require both `CUSTOMER_RECORDS_READ` and `OPERATIONS_READ`;
+  mutations require both corresponding manage permissions. Customer submission
+  requires `OWN_CUSTOMER_DATA_UPDATE`; own-request/issued-quote reads require
+  `OWN_CUSTOMER_DATA_READ`. Customer operations also require the exact current
+  active identity/customer link and authorized CRM graph.
+- Contact email/phone and `requesting_profile_id` are provenance only. They
+  never infer a customer, authorize access or create an Auth identity/profile.
+- The immutable original submission is separate from staff normalization.
+  It preserves exact authenticated property/asset selections, while distinct
+  reported and normalized condition/material/construction fields prevent staff
+  interpretation from rewriting source facts. Zod allowlists normalized values
+  and the database rechecks active catalogue, customer, property and asset
+  relationships. Issues and add-ons are relational rather than uncontrolled
+  identifier arrays. Repeated normalization uses disjoint retained/omitted sets
+  so staff-only associations are not deleted and updated in the same statement,
+  while customer-origin provenance rows are never removed.
+- Estimates are append-only versions with complete price and duration input and
+  result snapshots. Provisional, incomplete, specialist and unsupported inputs
+  fail closed to staff review; no internal calculation is shown as an automatic
+  public price. Estimate append and every quote draft/issue boundary lock and
+  rederive the current CRM customer segment and canonical travel zone, then
+  compare those values with the immutable estimate input snapshot. Stale,
+  missing, inactive, null or unsupported commercial context fails closed.
+- Quote drafts are staff-only. Issue freezes customer-visible lines, totals,
+  terms, validity and estimate provenance. A replacement is a new version;
+  request-row locking, optimistic record versions, unique version constraints
+  and one-active-issued enforcement prevent conflicting concurrent issue.
+- Customer projections include only previously issued quote history for the
+  exact linked customer. Drafts, estimate internals, staff notes, actor IDs and
+  staff-normalized free text and unrelated database IDs are excluded. Customer
+  quote text passes the canonical evidence/claim boundary before persistence;
+  comparison-only NFKC, semantic percent normalization, default-ignorable
+  removal and bounded separator-tolerant semantic views prevent punctuation,
+  whitespace, compatibility-symbol, combining-mark and invisible-mark variants
+  from bypassing that policy without rewriting the reviewed text or joining
+  unrelated ordinary words.
+  Missing and forbidden identifiers have the same safe outcome, limiting IDOR
+  disclosure.
+- `business_audit_events` is separate from Auth audit and accepts only
+  controlled request/estimate/quote events with allowlisted safe metadata.
+  Ordinary application code has no update/delete operation; database-level
+  append-only grants remain a production gate.
+- No browser Data API/SQL access, provider Auth schema mutation, anonymous
+  quote link, acceptance, booking, occupancy, payment, invoice, upload, message,
+  notification or deployment is added. See `docs/REQUEST_AND_QUOTE.md`.
+
 ## Auditability
 
-Critical future operations must create durable audit records, including:
+Phase 3D records material request, estimate and quote lifecycle changes in its
+business stream. Authentication and role/status events remain in
+`auth_audit_events`. Broader sensitive-read and future-domain operations still
+require durable audit coverage, including:
 
 - role and permission changes;
 - access to sensitive customer information;
-- quote, discount, invoice, and payment state changes;
+- quote acceptance, discount, invoice and payment state changes;
 - booking, assignment, and job-status overrides;
 - inspection, damage, treatment, and claim changes;
 - exports, deletions, and retention actions;
@@ -329,8 +392,10 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 
 - Reconfirm CSRF and cookie policy if social/OAuth or cross-site embedding is added
 - Safe output encoding and content security policy
-- Distributed rate and abuse controls for quote, booking, authentication, and messaging paths
-- Idempotency for bookings, payments, notifications, and webhooks
+- Distributed rate and abuse controls for request, quote, booking,
+  authentication and messaging paths
+- An approved duplicate/replay policy for public request intake, plus
+  idempotency for bookings, payments, notifications and webhooks
 - File type, size, malware, and authorization controls for uploads
 - Encryption in transit and provider-supported encryption at rest
 - Dependency and lockfile review

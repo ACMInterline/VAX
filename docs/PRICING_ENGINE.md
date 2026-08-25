@@ -2,16 +2,19 @@
 
 ## Purpose and boundary
 
-Phase 2A provides a versioned calculation foundation for future quoting,
-booking, scheduling, invoicing and contribution analysis. It does not create or
-persist a quote, booking, customer, appointment, payment or invoice. All seeded
-commercial values are development-only assumptions and are not approved for
-publication or production use.
+Phase 2A provides the versioned calculation foundation. Phase 3D now uses that
+foundation to persist staff-only estimate versions and staff-reviewed quote
+versions. It does not create quote acceptance, a booking, appointment,
+occupancy, payment or invoice. All seeded commercial values remain
+development-only assumptions and are not approved for automatic public pricing
+or production use.
 
 The provider-neutral pure engine lives in `src/modules/commercial-engine`.
 Drizzle tables persist versioned commercial configuration, and
 `src/db/seed-commercial-engine.ts` inserts the initial development records.
 The engine accepts plain data and imports neither Next.js, Drizzle nor Neon.
+The Phase 3D orchestration and persistence contract is documented in
+`docs/REQUEST_AND_QUOTE.md`.
 
 ## Hard invariants
 
@@ -28,8 +31,10 @@ The engine accepts plain data and imports neither Next.js, Drizzle nor Neon.
 - Treatment level is a technical concept and is not a price tier.
 - Any incomplete or assessment-led scope suppresses the automatic final total
   while retaining explainable known lines.
-- A future accepted quote or booking must persist an immutable calculation
-  snapshot; recalculating later against the current price book is forbidden.
+- Each Phase 3D estimate persists complete immutable price and duration
+  snapshots. An issued quote freezes its reviewed commercial provenance, and a
+  future accepted booking must copy that evidence; recalculating historical
+  value against the current price book is forbidden.
 
 ## Price books and lifecycle
 
@@ -234,6 +239,11 @@ A manual price/duration result suppresses automatic slot offering and becomes
 per occupied team-hour is available as an analytical helper; no payroll,
 consumable or travel cost is invented.
 
+Phase 3D may show this composition only as a staff advisory preview when enough
+normalized request context exists. It retains only service-area and scheduling-
+configuration readiness in the estimate snapshot; it does not persist a
+candidate slot, create a hold or expose a customer-bookable slot.
+
 ## Manual assessment
 
 Manual assessment is required when any configured item, condition, issue,
@@ -242,13 +252,27 @@ rule exists. Known calculation lines remain available for explanation, but
 final price and/or total duration are null. Decline/referral is an additional
 explicit flag and never becomes an automatic service offer.
 
-## Immutable future snapshots
+Public and customer request submission never runs this engine as a price
+promise. Staff must normalize the submitted facts, review every warning and
+issue the customer-facing quote deliberately. Draft, provisional, inactive or
+unpublished configuration always keeps the workflow review-gated.
 
-`FuturePriceSnapshot` defines the future persistence contract: price-book ID,
-code and version; applied rule IDs; normalized inputs; calculation lines; tax
-data; total; currency; calculation timestamp; and manual-assessment state.
-Future quote and booking rows must store this immutable snapshot at acceptance.
-They must not display a later recalculation as the historical quoted price.
+## Persistent estimate and quote snapshots
+
+Phase 3D estimate rows store a complete versioned wrapper for both engines:
+configuration identity and version, calculation time, normalized input, all
+result lines, applied rule IDs, minimum-visit adjustment, tax treatment,
+component minutes, totals, warnings and manual/decline state. Searchable EUR
+minor-unit and duration columns must agree with those immutable snapshots.
+Recalculation advances the request version and inserts the next estimate with
+that `source_request_version` instead of updating history.
+
+An issued quote freezes the reviewed estimate provenance, bilingual item
+descriptions, measurement/calculation evidence, exact line and aggregate
+amounts, terms and validity. Issued commercial data is never edited in place;
+a revised offer is a new quote version. A future Booking must copy the accepted
+issued evidence rather than display a later recalculation as the historical
+quoted price.
 
 ## Contribution foundation
 
@@ -276,7 +300,8 @@ reviewed bootstrap. Commercial rows in PostgreSQL own effective, versioned
 values. After an authenticated admin surface exists, routine price changes
 must create database versions without requiring a code deployment. Admin work
 requires role-based authorization, approval, validation, immutable history and
-audit logs; none is implemented here.
+audit logs. Phase 3D records estimate creation and quote lifecycle events, but
+it does not implement commercial-rule administration, activation or approval.
 
 ## Commercial calibration decisions
 
