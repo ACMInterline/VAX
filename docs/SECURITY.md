@@ -1,11 +1,12 @@
 # Security
 
-## Security posture through Phase 3G
+## Security posture through Phase 3H
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
 rate limiting, email delivery, trusted origins, monitoring, recovery and
-production data governance remain gated.
+production data governance remain gated. The finance foundation adds no claim
+of legal, fiscal, tax, accounting or payment-provider security readiness.
 
 ## Time-bound framework advisory
 
@@ -100,6 +101,15 @@ event types. It must preserve migration 0007's partial uniqueness and GiST
 overlap constraints, never rewrite prior Booking/occupancy data or name
 `neon_auth`, and may be applied only to Neon development after SQL/checksum
 review.
+
+The additive `0010_phase_3h_finance_invoicing.sql` migration creates only
+application-owned customer billing, seller/configuration, Invoice/item,
+Payment, allocation, reversal and finance-audit structures plus the exact
+provenance indexes and database
+integrity functions they require. It seeds no legal seller, VAT, bank, billing,
+invoice policy or numbering value, never names `neon_auth`, and is authorized
+only for Neon development after SQL/checksum review. Production remains
+unmigrated and separately gated.
 
 The current migration and owner-bootstrap commands refuse production mode,
 non-development mutation labels and unexpected database hostnames before
@@ -566,6 +576,70 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   deployment and production migration remain prohibited. See
   `docs/SCHEDULING_AND_DISPATCH.md`.
 
+## Phase 3H finance and invoicing safeguards
+
+- Invoice draft creation and issue consume only the immutable accepted
+  Quote/Booking chain. The repository locks and revalidates exact acceptance,
+  Booking, Quote, item, customer/property, approved billing, seller and policy
+  relationships. It never accepts browser totals/VAT/customer scope or invokes
+  normalization, repricing, duration recalculation or CRM repair. Any mismatch
+  fails closed to finance review.
+- Exact integer minor units, basis points, line/aggregate arithmetic checks,
+  generated balances and restrictive composite foreign keys guard amount, VAT
+  and source-snapshot substitution. Issue repeats the complete source/item/sum
+  checks instead of trusting the earlier draft decision.
+- `READY_TO_ISSUE` is not issue authority. A policy with
+  `draft_eligibility=JOB_COMPLETED` creates no draft before exact completion. A
+  Booking-eligible/Job-required policy may create only an immutable `DRAFT`
+  whose sole reason is `JOB_COMPLETION_REQUIRED`; later issue must reprove the
+  complete source/item/configuration/Job graph and cannot clear another reason
+  or refresh the snapshot. Issue also requires current `FINANCE_READ` +
+  `INVOICE_ISSUE`, an expected version, explicit confirmation and a locked
+  numbering sequence. Production rejects provisional policy/numbering. Unique
+  number/sequence constraints are the final duplicate-issue boundary.
+- Issued Invoice headers, snapshots and items cannot be edited or cancelled.
+  Later settlement may update only the controlled paid balance/status. Future
+  correction requires a credit-note/replacement history rather than destructive
+  mutation.
+- Payment entry creates only `RECORDED`; it does not claim provider or bank
+  verification. A separate authorized confirmation is required before
+  allocation. The manual card method does not process card data, and free-text
+  notes must never contain credentials, account secrets or payment-card data.
+- Allocation locks Payment before Invoice, rechecks `PAYMENT_RECORD`, requires
+  the same customer and currency, and refuses unconfirmed/reversed payments,
+  non-payable invoices, Payment over-allocation and Invoice overpayment. Client
+  values cannot derive balances or status.
+- Reversal requires the finance-manage and payment-record permission
+  conjunction, uses the same deterministic lock order, appends one reversal
+  fact and compensating allocation rows, and restores every affected Invoice
+  atomically. It deletes no financial history and sends no money.
+- Payment recording, allocation and reversal use payload-bound idempotency.
+  Optimistic versions, unique keys and row locks prevent conflicting retries,
+  stale actions, duplicate number allocation and allocation/reversal races.
+- Staff mutations authenticate, authorize and apply the existing bounded
+  `FINANCE_MUTATION` limiter before strict allowlist parsing. Production still
+  requires a distributed/provider-backed limiter and finance-specific
+  monitoring/recovery.
+- Staff finance, customer Invoice and printable projections are distinct.
+  Customers require `OWN_CUSTOMER_DATA_READ` plus the exact active identity/
+  customer link and can see only their own issued/settled documents. Drafts,
+  review state, internal notes, commercial/provenance internals, staff audit,
+  Payment records and other customers remain excluded. Dispatcher and
+  Technician receive no finance permissions.
+- Customer-visible payment instructions come only from an approved seller
+  snapshot. The schema and seed contain no real seller, company, VAT or bank
+  data. Sensitive billing, company/VAT identifiers and external payment
+  references must not enter logs, URLs or audit metadata.
+- `finance_audit_events`, allocations and reversals are append-oriented with
+  allowlisted metadata. Database immutability guards protect the migration's
+  critical history, while production least-privilege roles, RLS and append-only
+  grants remain mandatory defense in depth.
+- There is no browser Data API/SQL, live payment gateway, card processing, bank
+  API, webhook, refund, fiscal-device integration, accounting export,
+  production migration or deployment. This phase makes no Bulgarian legal,
+  VAT, invoice, cash-receipt, fiscal or accounting compliance claim. See
+  `docs/FINANCE_AND_INVOICING.md`.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
@@ -574,13 +648,15 @@ cancellation. Phase 3G extends the Booking stream with scheduling,
 rescheduling, team/equipment assignment, review and occupancy-release evidence.
 Phase 3F separately records Job lifecycle, assignment,
 inspection, treatment, review, completion and Passport creation.
+Phase 3H separately records Invoice readiness/issue/cancellation, Payment
+recording/confirmation/allocation/reversal and settlement changes.
 Authentication and role/status events remain in `auth_audit_events`. Broader
 sensitive-read and future-domain operations still require durable audit
 coverage, including:
 
 - role and permission changes;
 - access to sensitive customer information;
-- discount, invoice and payment state changes;
+- discounts, future Invoice/Payment correction and exceptional reconciliation;
 - multi-team assignment and exceptional job/schedule overrides beyond the
   implemented ordinary Phase 3G scheduling history;
 - inspection, damage, treatment, Passport amendments and claim changes;
@@ -597,10 +673,10 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 - Reconfirm CSRF and cookie policy if social/OAuth or cross-site embedding is added
 - Safe output encoding and content security policy
 - Distributed rate and abuse controls for request, quote, Booking/scheduling,
-  Job, authentication and messaging paths
+  Job, finance, authentication and messaging paths
 - An approved duplicate/replay policy for public request intake, preservation
-  of Booking idempotency, plus idempotency for payments, notifications and
-  webhooks
+  of Booking and finance idempotency, plus idempotency for notifications and
+  provider webhooks
 - File type, size, malware, and authorization controls for uploads
 - Encryption in transit and provider-supported encryption at rest
 - Dependency and lockfile review

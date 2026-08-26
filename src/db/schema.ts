@@ -27,3 +27,4 @@ export * from "./schema/customer-crm";
 export * from "./schema/request-quote";
 export * from "./schema/booking-engine";
 export * from "./schema/job-execution";
+export * from "./schema/finance-invoicing";

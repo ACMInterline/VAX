@@ -384,6 +384,11 @@ export const jobItems = pgTable(
       foreignColumns: [cleaningAssets.id, cleaningAssets.propertyId],
     }).onDelete("restrict"),
     uniqueIndex("job_items_id_job_unique").on(table.id, table.jobId),
+    uniqueIndex("job_items_id_job_booking_item_unique").on(
+      table.id,
+      table.jobId,
+      table.bookingItemId,
+    ),
     uniqueIndex("job_items_id_job_asset_unique").on(
       table.id,
       table.jobId,

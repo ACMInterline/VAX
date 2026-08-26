@@ -71,6 +71,13 @@
       "when": 1787728113695,
       "tag": "0009_phase_3g_scheduling_dispatch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787749892829,
+      "tag": "0010_phase_3h_finance_invoicing",
+      "breakpoints": true
     }
   ]
 }

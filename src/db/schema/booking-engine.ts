@@ -202,6 +202,14 @@ export const bookings = pgTable(
       table.customerId,
       table.propertyId,
     ),
+    uniqueIndex("bookings_id_commercial_provenance_unique").on(
+      table.id,
+      table.requestId,
+      table.quoteId,
+      table.quoteAcceptanceId,
+      table.customerId,
+      table.propertyId,
+    ),
     index("bookings_customer_status_idx").on(
       table.customerId,
       table.status,
@@ -305,6 +313,11 @@ export const bookingItems = pgTable(
     uniqueIndex("booking_items_id_booking_unique").on(
       table.id,
       table.bookingId,
+    ),
+    uniqueIndex("booking_items_id_booking_quote_item_unique").on(
+      table.id,
+      table.bookingId,
+      table.quoteItemId,
     ),
     index("booking_items_booking_idx").on(table.bookingId),
     check(

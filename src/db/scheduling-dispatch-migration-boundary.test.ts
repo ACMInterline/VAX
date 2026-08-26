@@ -100,12 +100,12 @@ describe("Phase 3G scheduling and dispatch migration boundary", () => {
       }>;
     };
     expect(journal).toMatchObject({ version: "7", dialect: "postgresql" });
-    expect(journal.entries.at(-2)).toMatchObject({
+    expect(journal.entries[8]).toMatchObject({
       idx: 8,
       tag: "0008_phase_3f_job_execution",
       breakpoints: true,
     });
-    expect(journal.entries.at(-1)).toMatchObject({
+    expect(journal.entries[9]).toMatchObject({
       idx: 9,
       tag: "0009_phase_3g_scheduling_dispatch",
       breakpoints: true,

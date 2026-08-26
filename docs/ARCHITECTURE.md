@@ -47,6 +47,7 @@ introduced.
 | src/modules/booking-engine | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation | Provider identities, request renormalization, repricing, Job execution or payments |
 | src/modules/scheduling-dispatch | Staff-reviewed scheduling eligibility, candidate ranking, Sofia time conversion, dispatch readiness, capacity projections and atomic occupancy revision ports | Repricing, request renormalization, CRM repair, user-team membership, provider credentials or Job execution |
 | src/modules/job-execution | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments |
+| src/modules/finance-invoicing | Accepted-commercial invoice eligibility, immutable financial snapshots, finance authorization, exact settlement, payment-allocation and reversal ports | Repricing, request/CRM repair, provider payment processing, tax advice or accounting export |
 | src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
@@ -134,6 +135,16 @@ an occupancy, update the Booking and write audit evidence. It consumes frozen
 operational requirements derived exclusively from immutable Booking and
 issued-Quote evidence and never calls normalization, pricing, duration or CRM
 repair. Staff, technician and customer schedule projections remain separate.
+
+Phase 3H adds `src/modules/finance-invoicing`. Staff and linked-customer
+transports call provider-neutral finance policy and use cases; the PostgreSQL
+repository repeats current profile, permission, customer-link, lifecycle,
+configuration and exact provenance checks. Invoice creation copies the accepted
+Quote/Booking commercial and line evidence without invoking normalization,
+pricing or CRM repair. Issue revalidates that entire graph and serializes the
+approved numbering counter. Payment recording remains separate from explicit
+confirmation, and allocation/reversal use an append-oriented, database-guarded
+ledger. Customer and staff projections remain distinct.
 
 ## Public website boundary
 
@@ -369,6 +380,48 @@ appointment but never team workload, equipment or travel internals. All Sofia
 local scheduling input is converted to an absolute instant under explicit DST
 rules. See `docs/SCHEDULING_AND_DISPATCH.md`.
 
+## Finance and invoicing boundary
+
+Phase 3H adds a settlement layer without changing the authority of the earlier
+commercial and operational records:
+
+> immutable accepted Quote/Booking evidence → review-gated Invoice → issued
+> financial snapshot → confirmed Payment → append-oriented allocation
+
+An invoice is neither a recalculated Quote nor an editable Job total. Draft
+creation and issue lock and validate the exact Quote Acceptance, Booking,
+Booking items, issued Quote and Quote items. Current customer billing, seller,
+numbering and invoice-policy records are independently versioned approval
+gates. They cannot change accepted amounts. If source provenance, billing/VAT
+state, configuration or a completion-required Job differs, the operation fails
+closed to finance review rather than refreshing or repairing it.
+
+Job-completed draft eligibility creates no Invoice before completion. A policy
+that allows the draft at Booking acceptance but requires completion for issue
+may preserve only an immutable completion-waiting draft; later issue must
+revalidate the full graph and cannot clear unrelated review state or refresh
+the snapshot.
+
+Money stays in integer EUR minor units and VAT in integer basis points. Invoice
+items preserve frozen bilingual descriptions, measurement and source-item
+relationships. Issue allocates one non-reusable number through the locked
+environment-specific counter. Issued documents and their commercial/legal
+snapshots are immutable; settlement changes only through payment allocations.
+`OVERDUE` is a date-derived display state, not a background rewrite.
+
+A payment is a manual record of an external event, not provider verification.
+It must move from `RECORDED` to explicitly `CONFIRMED` before allocation. The
+ledger prevents cross-customer/currency and over-allocation writes, supports
+partial/full settlement and leaves excess value unapplied. Reversal appends a
+payment-reversal fact plus compensating allocations and restores invoice
+balances atomically; it does not delete history or execute a refund.
+
+Staff finance/dashboard and linked-customer invoice routes use separate
+permission and projection boundaries. There is no live gateway, card
+processing, bank API, fiscal-device automation, accounting export, full
+credit-note/refund workflow or compliance claim. See
+`docs/FINANCE_AND_INVOICING.md`.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -380,10 +433,10 @@ src/db/client.ts is the single connection construction point. It:
 - prevents provider setup from spreading into business modules.
 
 The current Neon HTTP adapter supports the bounded transactions used by the
-CRM, request/Quote, Booking and Job repositories. Transactional invariants stay
-in the database adapter rather than the domain policy. If a later workflow
-requires interactive session semantics that the HTTP transport cannot provide,
-the adapter may change without changing domain rules.
+CRM, request/Quote, Booking, Job and finance repositories. Transactional
+invariants stay in the database adapter rather than the domain policy. If a
+later workflow requires interactive session semantics that the HTTP transport
+cannot provide, the adapter may change without changing domain rules.
 
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
@@ -391,7 +444,8 @@ workflow. Code-controlled catalogue rows are upserted deterministically after
 migration. Versioned commercial books/rules and versioned availability
 profiles/rules use insert-only seed behavior so existing versions are not
 rewritten. The seed contains no customers, quotes, bookings, jobs, payments,
-invoices, actual product claims or production records.
+invoices, seller legal identity, customer billing identity, bank details,
+actual product claims or production records.
 
 Phase 3A canonical roles, permissions and mappings are also code-controlled and
 deterministically seeded. Application profiles, role assignments and sanitized
@@ -434,6 +488,17 @@ append-oriented; ordinary application code exposes no update/delete path for
 them. Reviewed production grants, RLS and database-level append-only
 enforcement remain a deployment gate.
 
+Phase 3H customer-billing, seller, invoice-policy, numbering, Invoice, item,
+Payment, allocation, reversal and finance-audit rows are application-owned.
+Configuration is versioned and environment-scoped; runtime financial records
+are never seeded. Composite restrictive keys preserve the exact
+Quote/Acceptance/Booking/Job and customer/currency graph. Unique counters,
+optimistic versions, row locks, arithmetic checks and append-oriented ledger
+facts protect issue and settlement races. Issued Invoice/item history, approved
+configuration used by history, allocations, reversals and finance audit are not
+ordinary mutable records. Production runtime grants, RLS and append-only
+enforcement remain a separate deployment gate.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
@@ -473,10 +538,11 @@ contracts and permission policy; provider session, Admin API and token shapes
 stay inside `src/auth/neon-provider.ts` and its projection helper.
 Provider-managed `neon_auth`, application `user_profiles`, and CRM customer
 records are separate ownership boundaries. Implemented customer, request,
-quote, acceptance, Booking, Job and Cleaning Passport authorization remains
-application-owned and never changes the provider schema. See
+quote, acceptance, Booking, Job, Cleaning Passport and finance authorization
+remains application-owned and never changes the provider schema. See
 `docs/IDENTITY_AND_ACCESS.md`, `docs/REQUEST_AND_QUOTE.md`,
-`docs/BOOKING_ENGINE.md` and `docs/JOB_EXECUTION.md`.
+`docs/BOOKING_ENGINE.md`, `docs/JOB_EXECUTION.md` and
+`docs/FINANCE_AND_INVOICING.md`.
 
 ### Object storage
 
@@ -488,7 +554,8 @@ Storage access must be mediated through an application-owned port.
 
 Email, SMS, mapping, and payment providers must follow the same adapter rule.
 Provider-specific webhooks terminate at transport adapters and are converted to
-validated internal commands.
+validated internal commands. Phase 3H implements no payment adapter or webhook;
+its `CARD_MANUAL_REFERENCE` value records only a staff-entered external fact.
 
 ## Cross-cutting requirements
 
@@ -501,9 +568,10 @@ validated internal commands.
   acceptance, Booking creation and cancellation. Phase 3G extends the Booking
   stream with reviewed scheduling, rescheduling, assignments, review and
   occupancy-release evidence. Phase 3F separately covers Job lifecycle,
-  inspection, treatment, completion and Cleaning Passport creation.
-- Preserve the implemented Booking idempotency boundary and design idempotency
-  before adding payments, messages, notifications or webhooks.
+  inspection, treatment, completion and Cleaning Passport creation. Phase 3H
+  separately covers Invoice, Payment, allocation, reversal and settlement.
+- Preserve the implemented Booking and finance idempotency boundaries and
+  design idempotency before adding messages, notifications or provider webhooks.
 - Avoid irreversible deletes for records that contribute to service history.
 - Implement accessible, responsive loading, empty, error, and recovery states.
 
@@ -514,7 +582,7 @@ The following remain deliberately undecided:
 - production authentication email, trusted-origin and distributed rate-limit configuration;
 - object-storage provider;
 - hosting platform;
-- payment, live-routing, email, and SMS providers;
+- live-payment, live-routing, email, and SMS providers;
 - privileged identity administration and organization scope;
 - customer merge/shared-household/company authority and production CRM retention workflows;
 - final commercial identity and owner-approved content workflow;
@@ -522,6 +590,8 @@ The following remain deliberately undecided:
 - analytics stack;
 - production service-zone, working-hour, travel, team-capacity and equipment
   approval;
-- backup, recovery, and retention targets.
+- backup, recovery, and retention targets; and
+- qualified accountant/legal approval of seller/VAT, numbering, invoice,
+  credit-note, refund, cash/fiscal-device and accounting-export policy.
 
 Resolve each decision in its owning phase with a documented acceptance gate.

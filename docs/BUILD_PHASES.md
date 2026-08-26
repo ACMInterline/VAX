@@ -296,6 +296,58 @@ no-partial-state proofs, direct development-database overlap tests, bilingual
 responsive accessibility, reviewed additive development-only migration, full
 validation and protected-main CI.
 
+### Phase 3H — Finance, Invoice and Payment Allocation foundation
+
+Implements a controlled financial settlement layer without changing Phase
+3D–3G authority. Invoice draft creation consumes the exact immutable issued-
+Quote Acceptance/Booking/item chain and never reruns normalization, pricing,
+duration or CRM repair. Versioned customer billing, seller legal, Invoice
+policy and transaction-safe numbering configuration are separate approval
+gates. Missing/stale provenance, unresolved VAT/billing/seller state, a
+completion-required Job difference or manual adjustment remains
+`FINANCE_REVIEW_REQUIRED` rather than being recalculated.
+
+`draft_eligibility=JOB_COMPLETED` blocks draft creation until exact completion.
+`BOOKING_ACCEPTED` draft eligibility combined with `JOB_COMPLETED` issue
+eligibility may create an immutable `DRAFT` with only
+`JOB_COMPLETION_REQUIRED`; later issue revalidates the complete source, item,
+configuration and Job graph and never refreshes its snapshots.
+
+Standard Invoices preserve integer EUR net/VAT/gross amounts, accepted B2C/B2B
+basis, frozen bilingual lines and issue-time customer/seller/terms/provenance
+snapshots. Issue serializes a non-reusable environment-scoped number and makes
+the financial document/items immutable. Unissued drafts may be cancelled;
+issued corrections require a future credit-note/replacement path. `OVERDUE` is
+derived from due date and outstanding balance.
+
+Payments are manual external-event records, not processing. They require an
+explicit `RECORDED → CONFIRMED` transition before allocation. The append-
+oriented allocation ledger supports multiple partial/full settlements, blocks
+cross-customer/currency and over-allocation, leaves excess value unapplied and
+uses compensating rows for audited reversal. There is no customer-credit asset,
+money-out refund or automatic overpayment policy.
+
+Phase 3H adds only `FINANCE_READ`, `FINANCE_MANAGE`, `INVOICE_ISSUE` and
+`PAYMENT_RECORD`, mapped to Owner/Admin; no Accountant role is invented.
+Linked customers can read only their own issued/settled Invoice projection.
+Staff receive a small finance dashboard, Invoice/payment operations and
+print-friendly detail—not a general ledger, profitability system or legal PDF
+service. See `docs/FINANCE_AND_INVOICING.md`.
+
+No live gateway/card/bank integration, payment webhook, Bulgarian fiscal-device
+automation, accounting export, full credit-note/refund workflow, real legal or
+bank seed, production migration or deployment is included. The implementation
+makes no VAT, invoice, cash-receipt, fiscal, accounting or legal compliance
+claim.
+
+Gate: immutable accepted-commercial provenance, exact integer arithmetic,
+B2C/B2B and VAT snapshot tests, issue/numbering immutability and concurrency,
+payment confirmation/allocation/reversal and race safety, permission/IDOR/mass-
+assignment/projection review, append-oriented audit/ledger integrity, synthetic
+development fixture cleanup, reviewed additive development-only migration,
+full validation, protected-main CI and explicit accountant/legal production
+configuration gates.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,
@@ -335,8 +387,10 @@ multi-visit scenario tests.
 
 ## Phase 12 — Payments/invoices
 
-Implement payment-provider adapters, payment and refund state, invoices,
-discount approvals, reconciliation, webhooks, and customer documents.
+Expand Phase 3H with approved payment-provider adapters, verified webhooks,
+money-out refunds, legally reviewed credit notes/replacement documents,
+discount approvals, exceptional reconciliation, immutable generated documents
+and accountant-approved exports.
 
 Gate: exact money handling, idempotent webhook processing, reconciliation,
 permission controls, audit logs, and financial review.

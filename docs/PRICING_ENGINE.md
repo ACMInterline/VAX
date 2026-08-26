@@ -5,10 +5,11 @@
 Phase 2A provides the versioned calculation foundation. Phase 3D now uses that
 foundation to persist staff-only estimate versions and staff-reviewed quote
 versions. Phase 3E records acceptance of one immutable issued quote and copies
-its commercial evidence into a Booking without invoking this engine. It does
-not create a confirmed appointment, payment or invoice. All seeded commercial
-values remain development-only assumptions and are not approved for automatic
-public pricing or production use.
+its commercial evidence into a Booking without invoking this engine. Phase 3H
+copies that accepted evidence into an Invoice without invoking this engine or
+creating a second rounding calculation. All seeded commercial values remain
+development-only assumptions and are not approved for automatic public
+pricing, legal invoicing or production use.
 
 The provider-neutral pure engine lives in `src/modules/commercial-engine`.
 Drizzle tables persist versioned commercial configuration, and
@@ -36,6 +37,9 @@ The Phase 3D orchestration and persistence contract is documented in
   snapshots. An issued quote freezes its reviewed commercial provenance, and a
   Phase 3E accepted Booking copies that evidence; recalculating historical value
   against the current price book is forbidden.
+- A Phase 3H Invoice copies exact accepted Quote/Booking line and aggregate
+  amounts. Current rules, CRM changes, Job observations and invoice-time policy
+  must never silently reprice or reround that commercial history.
 
 ## Price books and lifecycle
 
@@ -72,7 +76,9 @@ The calculation context supports `VAT_REGISTERED` and
 The residential development book uses a gross basis and a provisional 20%
 reference VAT rate. This is a development assumption, not a statement about
 the company's registration. VAT registration, legal display, invoice and
-rounding policy remain owner/accountant-controlled.
+rounding policy remain owner/accountant-controlled. Phase 3H therefore blocks
+issue when approved seller VAT state is missing or contradicts the accepted
+snapshot; it does not treat this development rate as legal authority.
 
 Phase 2A rounds each calculated line to the nearest cent using integer
 half-up arithmetic. Area duration rounds up to a whole minute for conservative
@@ -288,6 +294,30 @@ the accepted issued evidence into the acceptance, Booking and booking items
 rather than displaying a later recalculation or CRM refresh as historical
 truth. The quote remains `ISSUED`; the unique acceptance relation is the
 acceptance authority.
+
+## Invoice relationship
+
+Phase 3H does not turn an Invoice into another pricing output. Invoice draft
+creation locks and verifies the issued Quote, acceptance, Booking, Quote items
+and Booking items, then copies their exact integer net, VAT and gross values,
+bilingual descriptions, measurements and calculation evidence. Invoice issue
+repeats line-count, item-relationship and sum equality checks. It never calls
+the current price book, duration model, request normalization or CRM repair.
+
+Invoice-time seller, customer billing, numbering and payment-term policies are
+separately versioned approval/provenance gates. They may block issue, but they
+cannot change the accepted commercial amounts. If the accepted evidence and
+current gate cannot coexist exactly—for example unresolved seller VAT or a
+completion-required Job scope difference—the Invoice stays review-required.
+Staff must resolve the commercial/legal decision through an explicit future
+workflow; VAX does not silently reprice or round a replacement.
+
+Phase 3H stores EUR minor units and VAT basis points exactly as frozen. It does
+not introduce invoice-level allocation of an aggregate rounding remainder. The
+existing invariant that the frozen line sums reproduce Quote and Invoice totals
+is mandatory. A later legally reviewed credit note or replacement Invoice must
+also retain its own source and rounding provenance rather than edit the issued
+record. See `docs/FINANCE_AND_INVOICING.md`.
 
 ## Contribution foundation
 
