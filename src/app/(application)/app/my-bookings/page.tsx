@@ -18,6 +18,7 @@ export default async function MyBookingsPage() {
   });
   const date = new Intl.DateTimeFormat(locale === "bg" ? "bg-BG" : "en-GB", {
     dateStyle: "medium",
+    timeZone: "Europe/Sofia",
   });
 
   return (

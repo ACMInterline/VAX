@@ -7,6 +7,11 @@ Job. It records professional observations, the confirmed treatment decision,
 the work actually performed, actual duration, completion, and an append-only
 Cleaning Passport entry for a linked cleaning asset.
 
+Phase 3G adds upstream exact scheduling, daily dispatch and a technician-today
+view without changing Job scope authority or execution states. Scheduling
+consumes the immutable Booking/issued-Quote chain and cannot reinterpret the
+Job plan.
+
 This phase does not add payments, invoices, fiscal documents, uploads,
 messaging, automated notifications, route optimisation, payroll, inventory,
 recurring-maintenance automation, offline synchronisation, production
@@ -48,8 +53,10 @@ technician.
 
 The Phase 3F assignment operation may only bind a Job to the exact current
 confirmed Booking occupancy. It does not reschedule a Booking or silently
-substitute another team. General rescheduling and occupancy replacement remain
-future work.
+substitute another team. Phase 3G implements ordinary Booking rescheduling as a
+separate scheduling command, but it fails closed while a `READY` Job is bound
+to the current occupancy rather than silently rebinding the Job. Jobs that have
+entered field execution are never moved by the scheduling command.
 
 Every subsequent executable mutation freshly re-proves that same occupancy
 identity/version, Booking schedule, active team capabilities, and any active,
@@ -57,6 +64,11 @@ effectively assigned equipment. Operational revocation produces no requested
 workflow write and returns the Job to staff review. A technician whose exact
 team membership is absent or expired is denied without revealing another
 team's Job.
+
+`/app/jobs/today` applies the same repository scope to the current Sofia civil
+date. It is not a broad dispatch view: a technician sees only assigned-team
+Jobs and the time, customer/address/access and readiness facts needed for the
+visit. Team workload, commercial details and another team's work remain hidden.
 
 ## Lifecycle
 
@@ -187,9 +199,10 @@ substitute for that production database gate.
 
 ## Future operational work
 
-Later phases may add explicit Booking rescheduling and occupancy replacement,
-split/multi-visit Jobs, amendments to completed work, customer handover or
-signature policy, notifications, uploads, offline/mobile synchronisation,
-route optimisation, inventory/product-consumption details, recurring
-maintenance automation, payments, and invoicing. None is implied by the Phase
-3F schema or UI.
+Phase 3G supplies ordinary Booking scheduling and append-oriented occupancy
+replacement without changing this execution model. Later phases may add
+exceptional post-readiness overrides, split/multi-visit Jobs, amendments to
+completed work, customer handover or signature policy, notifications, uploads,
+offline/mobile synchronisation, route optimisation,
+inventory/product-consumption details, recurring maintenance automation,
+payments and invoicing. None is implied by the Phase 3F/3G schema or UI.

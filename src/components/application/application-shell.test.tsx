@@ -86,8 +86,8 @@ describe("protected application shell", () => {
   );
 
   it.each([
-    ["bg", "Заявки", "Моите заявки", "Моите оферти", "Моите резервации", "Резервации"],
-    ["en", "Requests", "My requests", "My quotes", "My bookings", "Bookings"],
+    ["bg", "Заявки", "Моите заявки", "Моите оферти", "Моите резервации", "Резервации", "График"],
+    ["en", "Requests", "My requests", "My quotes", "My bookings", "Bookings", "Schedule"],
   ] as const)(
     "renders localized %s request, quote, and booking links only for matching permission sets",
     (
@@ -97,6 +97,7 @@ describe("protected application shell", () => {
       myQuotesLabel,
       myBookingsLabel,
       bookingsLabel,
+      scheduleLabel,
     ) => {
       const html = renderToStaticMarkup(
         <ApplicationShell
@@ -124,6 +125,8 @@ describe("protected application shell", () => {
       expect(html).toContain(myBookingsLabel);
       expect(html).toContain('href="/app/bookings"');
       expect(html).toContain(bookingsLabel);
+      expect(html).toContain('href="/app/schedule"');
+      expect(html).toContain(scheduleLabel);
 
       const operationsOnly = renderToStaticMarkup(
         <ApplicationShell
@@ -135,6 +138,7 @@ describe("protected application shell", () => {
       );
       expect(operationsOnly).not.toContain('href="/app/requests"');
       expect(operationsOnly).not.toContain('href="/app/bookings"');
+      expect(operationsOnly).not.toContain('href="/app/schedule"');
     },
   );
 });

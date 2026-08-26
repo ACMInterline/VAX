@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3F
+## Security posture through Phase 3G
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -91,6 +91,16 @@ membership, Job/item, inspection, treatment, Cleaning Passport and Job-audit
 structures. It does not rewrite migrations 0001–0007, contains no commercial,
 payment, invoice or Auth-managed table, and is authorized only for Neon
 development. Production remains untouched.
+
+Migration `0009_phase_3g_scheduling_dispatch.sql` creates no new business
+table. It adds only
+`revision_kind`, `revision_reason_category` and `revision_note` with controlled
+consistency/category/bounded-note checks and broadens allowlisted Booking audit
+event types. It must preserve migration 0007's partial uniqueness and GiST
+overlap constraints, never rewrite prior Booking/occupancy data or name
+`neon_auth`, and may be applied only to Neon development after SQL/checksum
+review.
+
 The current migration and owner-bootstrap commands refuse production mode,
 non-development mutation labels and unexpected database hostnames before
 opening a database client. Applying any migration to production requires a
@@ -429,8 +439,8 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   rejects malformed, mixed-context or arithmetically impossible snapshots.
 - Staff cancellation reauthorizes CRM/operations/schedule management, checks
   the optimistic Booking version, changes Booking and occupancy atomically and
-  appends sanitized audit evidence. Future rescheduling must append a linked
-  schedule snapshot and audit event rather than rewrite history.
+  appends sanitized audit evidence. Phase 3G rescheduling appends a linked
+  schedule snapshot and audit event rather than rewriting history.
 - Customer projections exclude staff acceptance notes, internal notes,
   operational snapshots, actor identifiers and other customers' records.
   Booking addresses, appointment times, access/parking facts and cancellation
@@ -497,11 +507,68 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   execution facts and excludes stopped, unperformed and no-observable-
   improvement outcomes from customer treatment history.
 
+## Phase 3G scheduling and dispatch safeguards
+
+- Scheduling freezes operational requirements only from the intact immutable
+  Booking, Booking items and issued-Quote acceptance snapshot. It never
+  renormalizes reported facts, recalculates price/duration, repairs CRM data or
+  silently refreshes accepted scope. Missing or inconsistent evidence remains
+  staff review.
+- Owner, Admin and Dispatcher use existing CRM/operations/schedule permissions.
+  Technician schedule-read authority does not grant administrative schedule or
+  reassignment access. Every Booking, occupancy, team, equipment, Job, customer
+  and property identifier is an untrusted selector and is reauthorized at the
+  repository boundary.
+- Mutation actions authenticate, authorize and rate-limit before parsing
+  allowlisted fields. Browsers do not control duration, end time, operational
+  interval, policy snapshots, server timestamps or audit metadata.
+- Candidate previews are advisory and bound to Booking/versioned input state.
+  Confirmation locks the Booking/current occupancy and freshly revalidates
+  current team capability, equipment activity/capability/assignment, exact
+  working-hour/travel versions and both adjacent occupancies. Stale previews
+  fail closed rather than bypassing current capacity.
+- The scheduling-specific occupancy adapter keeps service and historical
+  operational boundaries distinct. It does not add captured historical travel
+  or buffers a second time. Missing/invalid travel never becomes a silent zero;
+  deterministic fallback and manual-review state remain visible.
+- One atomic confirmation/reschedule operation updates the Booking, changes any
+  prior blocking occupancy, inserts the linked immutable replacement and
+  appends allowlisted audit evidence. PostgreSQL half-open GiST exclusions are
+  the final same-team/same-equipment race guard; an exclusion violation returns
+  a generic conflict and leaves no partial state.
+- Rescheduling uses controlled reason values and preserves old-to-new history.
+  A `READY` or later Job cannot be silently rebound or moved. Simultaneous
+  schedule, reschedule and cancellation requests are resolved under locks and
+  optimistic Booking version checks.
+- Sofia local scheduling time is converted and round-tripped on the server.
+  Nonexistent spring time and ambiguous repeated autumn time are rejected
+  rather than guessed; browser offsets and a presumed 24-hour day are not
+  trusted.
+- Staff dispatch, technician-today and customer appointment projections are
+  distinct. Technician reads require exact active time-valid team membership.
+  Customers receive only their own appointment and never team workload,
+  equipment, travel or another customer's data.
+- Capacity metrics are read-only and use persisted operational components and,
+  where shown, immutable booked gross values. They do not reprice, expose
+  cross-scope CRM data or become accounting/payroll authority.
+- Static migration tests are supplemented by guarded serialized Neon
+  development integration tests for team/equipment overlap, different-team
+  concurrency, cancelled release and no-partial-state conflicts. Synthetic
+  fixtures are cleaned up. CI remains credential-free and production is never
+  a test target.
+- DRAFT working hours, zones, travel, team capacity and equipment assignments
+  remain visibly provisional. No development result is automatically approved
+  operational knowledge. Direct browser Data API access, paid routing,
+  deployment and production migration remain prohibited. See
+  `docs/SCHEDULING_AND_DISPATCH.md`.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
 business stream. Phase 3E separately records acceptance, Booking creation and
-cancellation. Phase 3F separately records Job lifecycle, assignment,
+cancellation. Phase 3G extends the Booking stream with scheduling,
+rescheduling, team/equipment assignment, review and occupancy-release evidence.
+Phase 3F separately records Job lifecycle, assignment,
 inspection, treatment, review, completion and Passport creation.
 Authentication and role/status events remain in `auth_audit_events`. Broader
 sensitive-read and future-domain operations still require durable audit
@@ -510,7 +577,8 @@ coverage, including:
 - role and permission changes;
 - access to sensitive customer information;
 - discount, invoice and payment state changes;
-- scheduling, rescheduling, multi-team assignment and job-status overrides;
+- multi-team assignment and exceptional job/schedule overrides beyond the
+  implemented ordinary Phase 3G scheduling history;
 - inspection, damage, treatment, Passport amendments and claim changes;
 - exports, deletions, and retention actions;
 - security-setting changes; and
@@ -524,8 +592,8 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 
 - Reconfirm CSRF and cookie policy if social/OAuth or cross-site embedding is added
 - Safe output encoding and content security policy
-- Distributed rate and abuse controls for request, quote, Booking, Job,
-  authentication and messaging paths
+- Distributed rate and abuse controls for request, quote, Booking/scheduling,
+  Job, authentication and messaging paths
 - An approved duplicate/replay policy for public request intake, preservation
   of Booking idempotency, plus idempotency for payments, notifications and
   webhooks

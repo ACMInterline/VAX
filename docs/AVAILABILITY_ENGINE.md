@@ -12,6 +12,11 @@ boundary, but the acceptance flow does not create a slot or occupancy. Every
 new Booking remains review-required because approved scheduling configuration
 and a frozen operational-requirements contract are still absent.
 
+Phase 3G adds the explicit staff review, durable scheduling adapter and
+transactional confirmation around this calculator. It does not make the pure
+engine a persistence authority: previews remain advisory, exact confirmation
+revalidates current inputs, and PostgreSQL remains the final capacity guard.
+
 All initial values are inactive, provisional development assumptions. They are
 not owner-approved operating policy, legal working-hour guidance, real map
 results or customer promises. The availability module's Neon persistence is
@@ -252,8 +257,8 @@ equipment assignment empty, and creates no occupancy. This is the required
 fail-closed result while operational requirements and the draft Phase 2B
 configuration are not approved and frozen.
 
-`booking_occupancies` is now the durable adapter boundary for a later
-authorized staff scheduling command. It stores one team, optional equipment,
+`booking_occupancies` is the durable adapter boundary used by the authorized
+Phase 3G staff scheduling command. It stores one team, optional equipment,
 service and wider operational instants, policy/profile versions and full
 scheduling evidence. Only `PENDING` and `CONFIRMED` rows become Phase 2B
 blocking work; cancelled or malformed rows are never interpreted as valid
@@ -273,6 +278,46 @@ overlap for the same team or non-null equipment resource is rejected even when
 application-side previews race. Cancellation retains the occupancy snapshot
 but moves it outside the blocking predicate, releasing capacity. See
 `docs/BOOKING_ENGINE.md`.
+
+## Phase 3G scheduling and dispatch integration
+
+Phase 3G freezes staff-reviewed operational requirements only from the
+immutable Booking, Booking items and issued-Quote acceptance snapshot. It never
+reruns request normalization, pricing or duration. Exact DRAFT scheduling,
+working-hour and travel versions may be selected for development, but the
+candidate and occupancy retain visible provisional/fallback/manual-review
+labels and do not make those versions approved operating policy.
+
+The durable adapter preserves service boundaries separately from the wider
+historical operational interval. A prior occupancy's captured travel and
+buffer are not added again as if its operational end were a service end.
+Candidate feasibility explicitly evaluates:
+
+> previous service → travel/buffer → candidate service → travel/buffer → next
+> service
+
+Both adjacent jobs are considered. The server revalidates current team
+capabilities, active equipment/capability/assignment, working hours, exact
+travel profile and blocking occupancy at confirmation; a preview cannot reserve
+capacity or override a later conflict.
+
+Confirmable candidates use deterministic ordering: preferred-window fit,
+lowest safe additional travel, continuity with adjacent work, lower occupied
+workload when otherwise equal, earliest start and stable team tie-breaker.
+Review candidates remain separate and cannot be confirmed as available.
+
+Phase 3G daily capacity projections reuse the pure utilisation helpers for
+available, service, travel, buffer, occupied and idle/remaining team minutes,
+productive and occupied utilisation and travel share. They add jobs-per-day and
+may use immutable booked gross totals for revenue per occupied team-hour.
+Team-hours and labour-hours remain distinct; these projections are not payroll,
+accounting or repricing.
+
+Sofia local date/time conversion occurs outside the minute-of-day calculator.
+The adapter stores absolute instants, rejects nonexistent spring times, rejects
+ambiguous repeated autumn times rather than guessing an offset and does not
+assume a Sofia civil day is always 24 hours. See
+`docs/SCHEDULING_AND_DISPATCH.md`.
 
 ## Persisted configuration
 
@@ -308,11 +353,12 @@ working-hours and travel assumptions. The complete reviewed snapshot is
 retained with Booking provenance rather than recalculated against current
 configuration.
 
-Database exclusion constraints now solve the same-team and same-equipment
-overlap race for persisted blocking occupancy. The staff scheduling command,
-holds, dispatch overrides and audited append-only schedule revisions remain
-future work; application preview alone must never substitute for those
-transactional boundaries.
+Database exclusion constraints solve the same-team and same-equipment overlap
+race for persisted blocking occupancy. Phase 3G implements ordinary staff
+confirmation and audited append-only schedule revisions. Holds, exceptional
+post-readiness overrides and customer-controlled appointment movement remain
+future work; application preview alone never substitutes for the transactional
+boundary.
 
 ## Internal availability lab
 
@@ -344,6 +390,7 @@ Before activation or customer use, approve or measure:
 - large-job and multi-team approval/dispatch rules;
 - scheduling-policy activation, supersession and audit workflow;
 - daylight-saving, same-day, cross-midnight and holiday behavior;
-- hold expiry, scheduling idempotency and audited override rules beyond the
-  implemented occupancy overlap constraints; and
+- whether a future hold is needed, its expiry and blocking semantics;
+- exceptional override policy beyond ordinary Phase 3G confirmation and
+  rescheduling;
 - which internal assumptions, if any, may ever become public.

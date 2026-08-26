@@ -79,7 +79,7 @@ describe("server authorization policy", () => {
     );
   });
 
-  it("requires the complete staff booking read boundary", () => {
+  it("requires the complete staff booking and dispatch read boundary", () => {
     const completeBookingReader = {
       status: "ACTIVE",
       roles: new Set<ApplicationRoleCode>(),
@@ -109,14 +109,30 @@ describe("server authorization policy", () => {
             "SCHEDULE_READ",
           ],
         }),
+        expect.objectContaining({
+          code: "SCHEDULE",
+          href: "/app/schedule",
+          permissionMatch: "ALL",
+          requiredPermissions: [
+            "CUSTOMER_RECORDS_READ",
+            "OPERATIONS_READ",
+            "SCHEDULE_READ",
+          ],
+        }),
       ]),
     );
     expect(
       visibleNavigationItems(withoutScheduleRead).map((item) => item.code),
     ).not.toContain("BOOKINGS");
     expect(
+      visibleNavigationItems(withoutScheduleRead).map((item) => item.code),
+    ).not.toContain("SCHEDULE");
+    expect(
       visibleNavigationItems(context("TECHNICIAN")).map((item) => item.code),
     ).not.toContain("BOOKINGS");
+    expect(
+      visibleNavigationItems(context("TECHNICIAN")).map((item) => item.code),
+    ).not.toContain("SCHEDULE");
   });
 
   it("links staff CRM only for customer-record readers", () => {

@@ -210,8 +210,9 @@ freeze complete operational requirements. No exact slot, team, equipment or
 occupancy is fabricated. A durable occupancy schema provides PostgreSQL GiST
 half-open `[)` overlap protection for one team and optional equipment, and
 cancellation releases blocking capacity while preserving history. The actual
-schedule/assignment/reschedule command remains future and must append audited
-snapshot revisions without repricing. See `docs/BOOKING_ENGINE.md`.
+schedule/assignment/reschedule command remained future at the Phase 3E gate and
+was required to append audited snapshot revisions without repricing; Phase 3G
+implements that later boundary. See `docs/BOOKING_ENGINE.md`.
 
 No payment, invoice, Job/treatment execution, notification, production
 migration or deployment is included.
@@ -258,16 +259,42 @@ completion/Passport atomicity, safe customer versus technician projections,
 bilingual responsive accessibility, reviewed development-only migration, full
 validation and protected-main CI.
 
-## Phase 7 — Calendar, availability and dispatch
+### Phase 3G — Scheduling, dispatch and operational capacity hardening
 
-Expand the durable calendar and dispatch workflow on the Phase 2B calculation
-foundation, Phase 3E occupancy constraints and Phase 3F exact-occupancy Job
-binding: approved scheduling inputs, holds, calendar views, dispatch queues,
-general assignments, audited schedule revisions and overrides, and broader
-concurrent conflict handling.
+Implements the durable scheduling transition on the Phase 2B calculator, Phase
+3E occupancy constraints and Phase 3F exact-occupancy Job binding. Staff freeze
+operational requirements only from immutable Booking/issued-Quote evidence,
+inspect deterministically ranked current candidates and explicitly confirm an
+exact team, optional equipment and Sofia appointment. The server revalidates
+current capability, equipment, working-hour, travel and adjacent-occupancy
+state under locks; PostgreSQL GiST constraints remain the final concurrent
+capacity guard.
 
-Gate: Sofia time-zone and daylight-saving tests, concurrency rules, override
-audit logs, and dispatcher workflow validation.
+The persisted lifecycle remains `UNSCHEDULED`, `REVIEW_REQUIRED` and
+`SCHEDULED`; reschedule-required is derived readiness and no hold state is
+introduced. `booking_occupancies` remains the append-oriented revision history:
+rescheduling cancels the old blocking row, appends a linked immutable version
+and audits a controlled reason without changing price. A `READY` Job blocks
+silent rescheduling. Phase 3G also adds a bilingual/mobile staff daily board and
+queue, row-scoped technician today view, safe customer appointment, explicit
+Sofia daylight-saving behavior and read-only daily capacity metrics.
+
+All existing zone, working-hour, travel, team and equipment configuration stays
+visibly DRAFT/provisional. There is no customer-controlled occupancy, hold,
+paid routing, payment, invoice, notification, offline synchronization,
+production migration or deployment. See `docs/SCHEDULING_AND_DISPATCH.md`.
+
+Historical roadmap provenance: this capability was originally listed below
+Phase 3F as “Phase 7 — Calendar, availability and dispatch.” The Phase 3G name
+brings the implemented work into the established Phase 3 sequence; it does not
+erase or renumber the later Phase 8–18 roadmap.
+
+Gate: immutable commercial/operational provenance, exact DRAFT-version labels,
+Sofia spring/autumn daylight-saving tests, deterministic ranking and adjacent-
+travel tests, authorization/IDOR/mass-assignment checks, atomic concurrency and
+no-partial-state proofs, direct development-database overlap tests, bilingual
+responsive accessibility, reviewed additive development-only migration, full
+validation and protected-main CI.
 
 ## Phase 8 — Technician workspace
 

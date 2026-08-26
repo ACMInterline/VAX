@@ -45,6 +45,7 @@ introduced.
 | src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
 | src/modules/request-quote | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports | Provider identities, browser authority, booking acceptance, payments or occupancy |
 | src/modules/booking-engine | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation | Provider identities, request renormalization, repricing, Job execution or payments |
+| src/modules/scheduling-dispatch | Staff-reviewed scheduling eligibility, candidate ranking, Sofia time conversion, dispatch readiness, capacity projections and atomic occupancy revision ports | Repricing, request renormalization, CRM repair, user-team membership, provider credentials or Job execution |
 | src/modules/job-execution | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments |
 | src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
@@ -123,6 +124,16 @@ copies planned scope only from the Booking chain and the Quote's
 duration calculation or CRM repair. Inspection, treatment and completion keep
 planned, observed, confirmed and performed facts distinct. Completion and
 eligible Cleaning Passport creation are one atomic database operation.
+
+Phase 3G adds `src/modules/scheduling-dispatch`. Protected scheduling routes
+call provider-neutral policy and use cases; the PostgreSQL adapter locks and
+revalidates the Booking, current occupancy, team, capability, equipment,
+working-hour, travel and adjacent-occupancy boundaries. Candidate previews are
+advisory and version-bound. Only the atomic confirmation operation can append
+an occupancy, update the Booking and write audit evidence. It consumes frozen
+operational requirements derived exclusively from immutable Booking and
+issued-Quote evidence and never calls normalization, pricing, duration or CRM
+repair. Staff, technician and customer schedule projections remain separate.
 
 ## Public website boundary
 
@@ -329,6 +340,35 @@ review-required and unperformed work creates no treatment history. Customer-
 safe history and staff operational history remain separate projections. See
 `docs/JOB_EXECUTION.md`.
 
+## Scheduling and dispatch boundary
+
+Phase 3G completes the first operational schedule transition without changing
+commercial or execution authority:
+
+> accepted Booking → explicit operational review → candidate preview → exact
+> confirmed occupancy → dispatch readiness → eligible Job
+
+The persisted Booking scheduling vocabulary remains `UNSCHEDULED`,
+`REVIEW_REQUIRED` and `SCHEDULED`; reschedule-required is a derived readiness
+condition. Reviewed operational requirements are frozen only from the immutable
+Booking, Booking items and issued-Quote acceptance snapshot. Exact DRAFT policy
+versions may be used in development only with visible provisional, fallback
+and manual-review labels. They do not become approved production rules.
+
+`booking_occupancies` is both the blocking capacity record and append-oriented
+schedule revision history. Rescheduling cancels the prior blocking version and
+inserts a linked replacement atomically; it does not mutate prior evidence or
+create a second calendar table. A `READY` Job prevents silent rescheduling and
+requires explicit staff review. PostgreSQL GiST constraints over half-open
+operational ranges remain the final same-team and same-equipment race guard.
+
+The staff board, technician-today and linked-customer appointment surfaces use
+different projections and authorities. Technician access still requires exact
+time-valid team membership. Customer views expose their own confirmed
+appointment but never team workload, equipment or travel internals. All Sofia
+local scheduling input is converted to an absolute instant under explicit DST
+rules. See `docs/SCHEDULING_AND_DISPATCH.md`.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -458,9 +498,10 @@ validated internal commands.
 - Use UTC instants for stored events and explicit local zones for scheduling.
 - Record critical state changes and privileged actions in their owning audit
   stream; Phase 3D covers request/estimate/quote events and Phase 3E covers
-  acceptance, Booking creation and cancellation. Phase 3F separately covers
-  Job lifecycle, inspection, treatment, completion and Cleaning Passport
-  creation.
+  acceptance, Booking creation and cancellation. Phase 3G extends the Booking
+  stream with reviewed scheduling, rescheduling, assignments, review and
+  occupancy-release evidence. Phase 3F separately covers Job lifecycle,
+  inspection, treatment, completion and Cleaning Passport creation.
 - Preserve the implemented Booking idempotency boundary and design idempotency
   before adding payments, messages, notifications or webhooks.
 - Avoid irreversible deletes for records that contribute to service history.
@@ -473,12 +514,14 @@ The following remain deliberately undecided:
 - production authentication email, trusted-origin and distributed rate-limit configuration;
 - object-storage provider;
 - hosting platform;
-- payment, mapping, email, and SMS providers;
+- payment, live-routing, email, and SMS providers;
 - privileged identity administration and organization scope;
 - customer merge/shared-household/company authority and production CRM retention workflows;
 - final commercial identity and owner-approved content workflow;
 - offline technician synchronization;
 - analytics stack;
+- production service-zone, working-hour, travel, team-capacity and equipment
+  approval;
 - backup, recovery, and retention targets.
 
 Resolve each decision in its owning phase with a documented acceptance gate.

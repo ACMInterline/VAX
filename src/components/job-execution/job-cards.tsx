@@ -13,6 +13,7 @@ function formatDateTime(value: Date, locale: AuthLocale): string {
   return new Intl.DateTimeFormat(locale === "bg" ? "bg-BG" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Europe/Sofia",
   }).format(value);
 }
 

@@ -9,6 +9,7 @@ import type {
 function formatDate(value: Date, locale: AuthLocale): string {
   return new Intl.DateTimeFormat(locale === "bg" ? "bg-BG" : "en-GB", {
     dateStyle: "medium",
+    timeZone: "Europe/Sofia",
   }).format(value);
 }
 

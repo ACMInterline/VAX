@@ -111,8 +111,13 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     code: "SCHEDULE",
     labelBg: "График",
     labelEn: "Schedule",
-    futurePath: "/app/schedule",
-    requiredPermissions: ["SCHEDULE_READ"],
+    href: "/app/schedule",
+    requiredPermissions: [
+      "CUSTOMER_RECORDS_READ",
+      "OPERATIONS_READ",
+      "SCHEDULE_READ",
+    ],
+    permissionMatch: "ALL",
     audience: "STAFF",
   },
   {

@@ -36,7 +36,11 @@ export default async function BookingDetailPage({
   });
   const dateTime = new Intl.DateTimeFormat(
     locale === "bg" ? "bg-BG" : "en-GB",
-    { dateStyle: "medium", timeStyle: "short" },
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Europe/Sofia",
+    },
   );
   const canCancel =
     booking.status !== "CANCELLED" &&

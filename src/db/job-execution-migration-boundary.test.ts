@@ -178,8 +178,11 @@ describe("Phase 3F Job execution migration boundary", () => {
         breakpoints: boolean;
       }>;
     };
-    const previous = journal.entries.at(-2);
-    const current = journal.entries.at(-1);
+    const currentIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0008_phase_3f_job_execution",
+    );
+    const previous = journal.entries[currentIndex - 1];
+    const current = journal.entries[currentIndex];
     expect(journal).toMatchObject({ version: "7", dialect: "postgresql" });
     expect(previous).toMatchObject({
       idx: 7,
