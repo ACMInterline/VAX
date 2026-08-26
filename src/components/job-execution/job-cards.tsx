@@ -13,6 +13,7 @@ function formatDateTime(value: Date, locale: AuthLocale): string {
   return new Intl.DateTimeFormat(locale === "bg" ? "bg-BG" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Europe/Sofia",
   }).format(value);
 }
 
@@ -110,6 +111,10 @@ export function TechnicianJobList({
                 <div>
                   <dt>{content.address}</dt>
                   <dd>{job.serviceAddress}</dd>
+                </div>
+                <div>
+                  <dt>{content.access}</dt>
+                  <dd>{job.accessInstructions ?? content.noAccess}</dd>
                 </div>
                 <div>
                   <dt>{content.items}</dt>

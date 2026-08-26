@@ -185,13 +185,15 @@ export function getWorkingWindowForDate(
   const date = parseDateOnly(localDate);
   const utcDay = date.getUTCDay();
   const weekday = utcDay === 0 ? 7 : utcDay;
-  const teamRule = policy.rules.find(
+  const teamRules = policy.rules.filter(
     (rule) => rule.weekday === weekday && rule.teamCode === teamCode,
   );
-  const defaultRule = policy.rules.find(
+  const defaultRules = policy.rules.filter(
     (rule) => rule.weekday === weekday && rule.teamCode === null,
   );
-  const rule = teamRule ?? defaultRule;
+  if (teamRules.length > 1) return null;
+  const rule = teamRules[0] ??
+    (defaultRules.length === 1 ? defaultRules[0] : undefined);
   if (!rule?.enabled) return null;
 
   const window = {

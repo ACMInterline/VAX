@@ -20,6 +20,7 @@ const content = {
     eyebrow: "Работа на терен",
     title: "Работни задачи",
     intro: "Планиране, изпълнение и безопасен преглед на задачите на терен.",
+    today: "Днешни посещения",
     search: "Референция, клиент или имот",
     status: "Статус",
     team: "Екип",
@@ -39,6 +40,7 @@ const content = {
     eyebrow: "Field operations",
     title: "Field jobs",
     intro: "Schedule, execute, and safely review operational field jobs.",
+    today: "Today's visits",
     search: "Reference, customer, or property",
     status: "Status",
     team: "Team",
@@ -105,6 +107,9 @@ export default async function JobsPage({
           <h1 id="jobs-heading">{text.title}</h1>
           <p>{text.intro}</p>
         </div>
+        <Link className="crm-button" href="/app/jobs/today">
+          {text.today}
+        </Link>
       </header>
       {canCreateJobs ? (
         <section className="crm-management-card">

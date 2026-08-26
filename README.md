@@ -1,11 +1,12 @@
 # Service Platform Foundation
 
 Production-oriented service-platform foundation with an isolated development
-database, a bilingual public website, a canonical service catalogue, a
-versioned development commercial engine, a non-transactional scheduling
-capacity foundation, secure identity/RBAC, customer/property CRM records and a
-persistent request-to-versioned-quote workflow for a future carpet and
-upholstery cleaning service serving Sofia, Bulgaria.
+database, a bilingual public website, a canonical service catalogue,
+versioned development commercial and availability engines, secure
+identity/RBAC, customer/property CRM records, a persistent request-to-Booking
+workflow, operational Job/Cleaning Passport
+execution and staff scheduling/dispatch for a future carpet and upholstery
+cleaning service serving Sofia, Bulgaria.
 
 The current repository contains:
 
@@ -31,15 +32,23 @@ The current repository contains:
 - bilingual staff customer/property administration plus linked-customer,
   read-only property access with server-side record ownership checks;
 - durable customer, contact, property, area and cleaning-asset records that
-  form the identity-safe Cleaning Passport attachment foundation; and
+  form the identity-safe Cleaning Passport attachment foundation;
 - separate request, normalized-item, estimate, versioned-quote and business
-  audit records with protected staff and linked-customer access; and
+  audit records with protected staff and linked-customer access;
+- immutable quote acceptance, Booking, Booking-item, occupancy and Booking-audit
+  records with linked-customer and staff views;
+- one Booking-derived operational Job with assigned-team technician access,
+  inspection, treatment, completion and append-only Cleaning Passport history;
+- a bilingual staff scheduling surface with an unscheduled queue, deterministic
+  candidate review, exact appointment confirmation, append-only rescheduling,
+  daily dispatch and privacy-scoped technician/customer appointment views; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Accepted bookings, occupancy/calendar, completed Cleaning Passport history,
-production invitations/session administration, payments, invoices, dispatch,
-object storage, final branding and deployment are not implemented.
+Production invitations/session administration, operational configuration
+approval, paid/live routing, payments, invoices, automated notifications,
+object storage, offline technician synchronization, final branding and
+deployment are not implemented.
 
 ## Requirements
 
@@ -159,6 +168,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/config | Replaceable public identity and runtime-neutral site facts |
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
 | src/modules | Provider-neutral domain vocabulary and application-facing modules |
+| src/modules/scheduling-dispatch | Scheduling authorization, validation, ranking, Sofia time, dispatch projections and persistence contract |
 | src/db | PostgreSQL schema, connection adapter, health probe, and migrator |
 | src/lib | Small cross-cutting utilities such as environment validation |
 | drizzle | Generated SQL migrations and Drizzle migration metadata |
@@ -222,6 +232,19 @@ records and server-mediated staff/customer CRM surfaces. Phase 3D adds the
 persistent public/customer/staff request workflow, provenance-preserving item
 normalization, append-only estimate versions, staff-reviewed quote versions,
 linked-customer issued-quote access and a separate business audit. It creates
-no accepted Booking, payment, invoice or occupancy, and does not migrate
-production or deploy. See [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md)
-and [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md).
+no accepted Booking, payment, invoice or occupancy. Phase 3E adds immutable
+issued-Quote acceptance, one Booking, copied items, append-oriented occupancy
+and Booking audit foundations without fabricating an exact schedule. Phase 3F
+adds Booking-derived Job execution, assigned-team technician access,
+inspection, treatment, completion and eligible append-only Cleaning Passport
+history without changing accepted commercial authority. Phase 3G adds explicit
+staff-reviewed operational requirements, deterministic candidate scheduling,
+exact team/equipment appointments, durable occupancy revisions, daily dispatch,
+technician-today and safe customer appointment views, Sofia DST handling and
+read-only capacity metrics. All current operational configuration remains
+visibly DRAFT/provisional and no phase migrates production or deploys. See
+[docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
+[docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),
+[docs/BOOKING_ENGINE.md](docs/BOOKING_ENGINE.md),
+[docs/JOB_EXECUTION.md](docs/JOB_EXECUTION.md) and
+[docs/SCHEDULING_AND_DISPATCH.md](docs/SCHEDULING_AND_DISPATCH.md).

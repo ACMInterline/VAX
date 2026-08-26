@@ -6,7 +6,7 @@ Phase 3E implements the first durable transition from reviewed commercial work
 to an operational booking:
 
 > immutable issued Quote → immutable Quote Acceptance → Booking → copied
-> Booking Items → future Scheduling Occupancy
+> Booking Items → reviewed Scheduling Occupancy
 
 The accepted issued quote is the commercial authority. Acceptance never runs a
 current price book, duration model, normalization flow or CRM repair flow. It
@@ -24,6 +24,10 @@ Phase 3F now consumes this boundary downstream without changing it. One Job may
 be created only from a provenance-valid Booking and the immutable issued-Quote
 `acceptance_source_snapshot`. Job creation never reinterprets or refreshes the
 request, estimate, Quote, acceptance or commercial evidence documented here.
+Phase 3G likewise schedules only from the immutable Booking/issued-Quote chain
+and an explicit staff-frozen operational requirements review. It never uses a
+current request normalization, estimate recalculation, mutable CRM repair or
+repricing step as schedule authority.
 
 ## Domain separation
 
@@ -35,7 +39,7 @@ request, estimate, Quote, acceptance or commercial evidence documented here.
 | `quote_acceptances` | Explicit agreement to exactly one immutable issued quote version |
 | `bookings` and booking items | The durable operational commitment and copied commercial/service evidence |
 | `booking_occupancies` | A versioned operational interval for one team and optional equipment resource |
-| `booking_audit_events` | Append-oriented acceptance, booking and cancellation evidence |
+| `booking_audit_events` | Append-oriented acceptance, booking, scheduling, rescheduling, assignment, review, cancellation and occupancy-release evidence |
 | Phase 3F `jobs` and Job items | Field execution scope copied from the immutable Booking/issued-Quote chain; never a Booking rewrite |
 
 Booking creation does not change the accepted quote into a mutable order. The
@@ -66,6 +70,28 @@ otherwise valid Booking can produce only a non-executable `PREPARED` Job with
 review reasons. Phase 3F assignment can bind that exact occupancy; it does not
 implement the general scheduling/rescheduling command deferred by Phase 3E.
 See `docs/JOB_EXECUTION.md`.
+
+## Phase 3G scheduling boundary
+
+Phase 3G implements that staff scheduling command while preserving Phase 3E
+authority. Staff review freezes service location, immutable booked duration,
+required team capabilities, optional required equipment capability and exact
+policy versions only from the intact Booking, Booking items and issued-Quote
+acceptance snapshot. If those facts cannot be reconciled without interpreting
+or repairing the source chain, the Booking remains `REVIEW_REQUIRED`.
+
+Candidate preview reuses current availability, but it is neither a hold nor an
+occupancy. Exact confirmation locks and revalidates Booking version, preview
+inputs, current team/equipment/capability state, working hours, travel and both
+adjacent occupancies before it writes. One transaction appends the occupancy,
+updates the matching Booking schedule and appends audit evidence; GiST
+exclusion constraints remain the final concurrent conflict guard.
+
+Rescheduling cancels the prior blocking occupancy and appends a linked higher
+snapshot version with a controlled reason. It never edits historical
+provenance or commercial values. A `READY` Job cannot be silently rebound; the
+reschedule command fails closed to explicit staff Job review. See
+`docs/SCHEDULING_AND_DISPATCH.md`.
 
 ## Eligibility and authorization
 
@@ -176,7 +202,7 @@ changes do not rewrite their historical values. The mutable Booking row uses a
 monotonic optimistic version for controlled lifecycle changes, but that is not
 permission to edit accepted commercial snapshots.
 
-## Current scheduling decision
+## Acceptance and scheduling decision
 
 Every Phase 3E acceptance currently creates the Booking as:
 
@@ -199,11 +225,19 @@ appointment-window code are retained as customer preference only;
 null. No
 `booking_occupancies` row is fabricated during acceptance.
 
-Current availability can still be revalidated for a later authorized staff
-scheduling decision, but that decision must preserve the accepted commercial
-snapshots. If the operational input cannot be reconciled with frozen,
-reviewed requirements, it must remain in staff review rather than being
-renormalized or repaired automatically.
+Phase 3G provides the later authorized staff decision. It explicitly freezes
+operational requirements from the immutable Booking/issued-Quote evidence and
+uses current availability only after that review. The existing DRAFT working-
+hour, travel, scheduling, zone, team and equipment assumptions stay visibly
+provisional; selecting their exact versions for a development decision does not
+approve them for production.
+
+The persisted scheduling states remain `UNSCHEDULED`, `REVIEW_REQUIRED` and
+`SCHEDULED`. A reschedule-required condition is derived from current readiness
+rather than stored as another lifecycle state, and no proposed-slot state is
+added because Phase 3G creates no hold. If operational input cannot be
+reconciled with the frozen reviewed requirements, the Booking remains in staff
+review rather than being renormalized or repaired automatically.
 
 ## Occupancy and concurrent overlap protection
 
@@ -226,9 +260,9 @@ location/travel/policy evidence, and rejects impossible or unsafe interval
 arithmetic. Cancelled, mixed-context, mismatched or malformed rows are never
 interpreted as valid availability input.
 
-The current acceptance flow writes no occupancy. When a later authorized
-scheduling command is implemented, PostgreSQL—not only the availability
-preview—must be the final concurrent-writer guard. Migration 0007 installs
+The acceptance flow writes no occupancy. The Phase 3G scheduling command uses
+PostgreSQL—not only the availability preview—as the final concurrent-writer
+guard. Migration 0007 installs
 `btree_gist` and adds two GiST exclusion constraints over half-open
 `tstzrange(operational_start, operational_end, '[)')` intervals:
 
@@ -241,7 +275,7 @@ ends. Separate teams and separate equipment resources may operate concurrently.
 The database constraints reject conflicting concurrent inserts even when two
 application workers observed the same earlier availability state.
 
-## Cancellation and future schedule revisions
+## Cancellation and schedule revisions
 
 Authorized staff cancellation requires CRM, operations and schedule-management
 permissions plus the expected Booking version and a controlled reason. It
@@ -258,33 +292,38 @@ pre-work `PREPARED` or `READY` Job through the explicit audited Job operation.
 An arrived, started, review-required or completed Job cannot be erased or
 silently unwound through Booking cancellation.
 
-Full Booking scheduling, occupancy replacement, general team/equipment
-assignment, rescheduling and override operations are not implemented. Phase
-3F's exact-occupancy Job binding does not substitute for them. A future
-reschedule must:
+Phase 3G implements ordinary Booking confirmation, exact team/equipment
+assignment and controlled rescheduling. Phase 3F's exact-occupancy Job binding
+does not substitute for them. A reschedule must:
 
 1. reauthorize the staff actor and revalidate current availability without
    repricing;
 2. fail closed when frozen operational requirements or policy provenance is
    missing or inconsistent;
-3. preserve the prior occupancy row;
-4. append a new snapshot version linked through `previous_occupancy_id`;
-5. rely on the same database overlap constraints; and
-6. append allowlisted `BOOKING_SCHEDULED`/`TEAM_ASSIGNED` or schedule-revision
-   audit evidence atomically.
+3. preserve the prior occupancy as history by cancelling its blocking state;
+4. append its replacement through `previous_occupancy_id` in the same atomic
+   operation;
+5. rely on the same database overlap constraints;
+6. reject silent replacement while a `READY` or later Job owns the exact
+   occupancy; and
+7. append allowlisted schedule, reschedule, team/equipment assignment, review
+   and occupancy-release audit evidence atomically.
 
 It must never rewrite the accepted quote, acceptance, booking items or price
-snapshot.
+snapshot. Exceptional post-readiness overrides and direct customer appointment
+movement remain out of scope.
 
 ## Audit, access and privacy
 
 `booking_audit_events` is separate from authentication security history and
 from the Phase 3D request/quote business stream. Phase 3E records acceptance,
-booking creation and cancellation with an actor, controlled source,
-correlation identifier and allowlisted safe metadata. It stores no provider
+booking creation and cancellation; Phase 3G adds scheduling, rescheduling,
+team/equipment assignment, review and occupancy release with an actor,
+controlled source, correlation identifier and allowlisted safe metadata. It
+stores no provider
 subject, token, contact detail, address or free-form acceptance/cancellation
-note in audit metadata. Database-level append-only grants remain a production
-gate.
+or reschedule note in audit metadata. Database-level append-only grants remain
+a production gate.
 
 Customer reads require `OWN_CUSTOMER_DATA_READ` plus the current exact identity
 link and expose only the customer's own safe Booking projection. Staff reads
@@ -322,6 +361,14 @@ Actions repeat permission and record checks; hidden forms and references are
 not authority. All surfaces use the application-profile Bulgarian or English
 locale and provide explicit empty, review-required and error states.
 
+Phase 3G adds `/app/schedule?date=YYYY-MM-DD` for the staff daily board and
+queue, plus `/app/schedule/bookings/[bookingReference]?date=YYYY-MM-DD` for
+candidate review, exact confirmation and controlled rescheduling. The
+technician uses the separately row-scoped `/app/jobs/today`; the customer keeps
+the existing own-Booking detail route, now with an explicitly Sofia-formatted
+confirmed appointment. Staff dispatch, technician and customer projections
+remain separate.
+
 ## Migration and environment gate
 
 Migration `0007_phase_3e_booking_engine.sql` is additive. It creates only:
@@ -349,18 +396,28 @@ but does not rewrite migration 0007 or any acceptance, Booking, item, occupancy
 or audit row. It is likewise authorized only for Neon development and leaves
 production and provider-managed `neon_auth` untouched.
 
+Migration `0009_phase_3g_scheduling_dispatch.sql` is also additive. It creates
+no new business table; it
+adds only `revision_kind`, `revision_reason_category` and `revision_note` with
+controlled consistency/category/bounded-note checks and expands the allowlisted
+Booking audit event vocabulary. Its SQL, checksum, Drizzle ledger, GiST
+constraints and unchanged prior migration checksums must be verified on Neon
+development. Static SQL inspection is supplemented by guarded direct
+integration tests for same-team/equipment conflict, different-team concurrency,
+cancelled release and no-partial-state failure. Production remains a separate
+authorization gate.
+
 ## Remaining policy decisions
 
-Before confirmed scheduling or production, VAX still needs owner-approved:
+Before production scheduling, VAX still needs owner-approved:
 
 - active working-hour, scheduling, travel, zone, team and equipment
   configuration;
-- the frozen operational-requirements contract derived without changing
-  customer-reported or staff-normalized provenance;
-- slot-hold, expiry, override and same-day/cross-midnight/daylight-saving rules;
+- any future slot-hold/expiry policy, exceptional override rules and supported
+  cross-midnight behavior;
 - map-provider and fallback policy plus measured travel and buffer values;
 - multi-team and equipment-quantity handling;
-- audited schedule/assignment/reschedule commands and customer communication;
+- customer reschedule-request and communication policy;
 - cancellation notice, financial and retention policy (fees/refunds remain out
   of scope);
 - production database roles, RLS, audit immutability and privacy retention;

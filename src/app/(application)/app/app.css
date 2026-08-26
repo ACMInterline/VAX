@@ -1073,8 +1073,16 @@
   padding: clamp(1.4rem, 5vw, 2.4rem);
 }
 
+.schedule-confirmation-dialog__body {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.4rem, 5vw, 2.4rem);
+}
+
 .application-confirmation-action__dialog h2,
-.application-confirmation-action__dialog p {
+.application-confirmation-action__dialog p,
+.schedule-confirmation-dialog__body h2,
+.schedule-confirmation-dialog__body p {
   margin: 0;
 }
 
@@ -1225,5 +1233,292 @@ html[lang="en"] .crm-route-state__copy--bg {
   .crm-record-actions .application-confirmation-action,
   .crm-record-actions .application-confirmation-action__trigger {
     width: 100%;
+  }
+}
+
+.schedule-page {
+  gap: 1.75rem;
+}
+
+.schedule-date-navigation {
+  display: grid;
+  grid-template-columns:
+    minmax(7rem, auto)
+    minmax(16rem, 1fr)
+    minmax(5rem, auto)
+    minmax(7rem, auto);
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.schedule-date-navigation > a,
+.schedule-date-navigation button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-align: center;
+  text-decoration: none;
+}
+
+.schedule-date-navigation form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.schedule-date-navigation label {
+  grid-column: 1 / -1;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.schedule-date-navigation input {
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+
+.schedule-disclosure,
+.schedule-warning {
+  padding: 0.85rem 1rem;
+  border: 1px solid #b58a32;
+  border-radius: var(--radius-small);
+  color: #674c15;
+  background: #fff5d9;
+}
+
+.schedule-disclosure h2,
+.schedule-disclosure p,
+.schedule-warning p,
+.schedule-warning ul {
+  margin-block: 0;
+}
+
+.schedule-warning ul {
+  padding-left: 1.2rem;
+}
+
+.schedule-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.7rem;
+  margin: 0;
+}
+
+.schedule-metrics > div {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+}
+
+.schedule-metrics dt {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.schedule-metrics dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.schedule-unscheduled-list,
+.schedule-team-column > ol {
+  display: grid;
+  gap: 0.9rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.schedule-unscheduled-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.schedule-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  align-items: start;
+  gap: 1rem;
+}
+
+.schedule-team-column {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-medium);
+  background: var(--surface-soft);
+}
+
+.schedule-team-column > header h3,
+.schedule-team-column > header p,
+.schedule-team-column__empty {
+  margin-block: 0;
+}
+
+.schedule-team-column > header p,
+.schedule-team-column__empty {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+.schedule-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  box-shadow: var(--shadow-small);
+}
+
+.schedule-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.schedule-card__header h3,
+.schedule-card__header h4,
+.schedule-card__header p,
+.schedule-card__time {
+  margin-block: 0;
+}
+
+.schedule-card__details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.schedule-card__details div {
+  min-width: 0;
+}
+
+.schedule-card__details dt {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.schedule-card__details dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-candidate-fieldset {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.schedule-candidate-fieldset legend {
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.schedule-candidate-fieldset > p {
+  margin-block: 0;
+}
+
+.schedule-candidate-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.8rem;
+}
+
+.schedule-candidate-card {
+  display: flex;
+  min-height: 3rem;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.schedule-candidate-card:has(input:checked) {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-strong), transparent 75%);
+}
+
+.schedule-candidate-card:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.schedule-candidate-card input {
+  width: 1.15rem;
+  min-height: 1.15rem;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}
+
+.schedule-candidate-card__body {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+@media (max-width: 52rem) {
+  .schedule-date-navigation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .schedule-date-navigation form {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 38rem) {
+  .schedule-date-navigation,
+  .schedule-date-navigation form,
+  .schedule-card__details {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-date-navigation form {
+    grid-column: auto;
+  }
+
+  .schedule-date-navigation > a,
+  .schedule-date-navigation button,
+  .schedule-date-navigation input,
+  .schedule-card .crm-button {
+    width: 100%;
+  }
+
+  .schedule-card__header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

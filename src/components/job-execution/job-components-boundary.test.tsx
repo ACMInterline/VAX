@@ -25,6 +25,7 @@ const listJob: TechnicianJobListItem = {
   customerDisplayName: "Sample customer",
   propertyLabel: "Sample home",
   serviceAddress: "1 Example Street, Sofia",
+  accessInstructions: null,
   assignedTeamLabel: "Team Alpha",
   itemLabels: ["Sofa"],
   reviewReasons: [],

@@ -198,6 +198,11 @@ export type JobSummary = Readonly<{
   updatedAt: Date;
 }>;
 
+export type JobListSummary = JobSummary &
+  Readonly<{
+    accessInstructions: string | null;
+  }>;
+
 export type JobInspectionIssue = Readonly<{
   issueTypeId: number;
   handlingClassification: IssueHandlingClassificationCode;
@@ -321,7 +326,7 @@ export type JobListInput = Readonly<{
 }>;
 
 export type JobPage = Readonly<{
-  items: readonly JobSummary[];
+  items: readonly JobListSummary[];
   total: number;
   limit: number;
   offset: number;

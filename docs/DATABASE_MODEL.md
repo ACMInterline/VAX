@@ -248,9 +248,10 @@ Migration 0007 installs `btree_gist` and adds team and equipment GiST exclusion
 constraints over half-open `[)` operational ranges for `PENDING`/`CONFIRMED`
 occupancy. PostgreSQL therefore rejects concurrent overlap for the same team or
 non-null equipment resource. `CANCELLED` rows remain as history but leave the
-blocking predicate, releasing capacity. A future reschedule must append a new
-snapshot version linked to its prior occupancy and add audited scheduling
-evidence; no such scheduling command is implemented in this phase.
+blocking predicate, releasing capacity. Phase 3G implements the authorized
+schedule and reschedule command by appending a new snapshot version linked to
+its prior occupancy and adding audited scheduling evidence; Phase 3E itself
+continues to create no occupancy.
 
 Money copied into booking items remains exact integer EUR minor units. Acceptance,
 booking and occupancy evidence uses reviewed JSONB snapshots plus searchable
@@ -302,6 +303,41 @@ reviewed RLS remain a production gate. The additive Phase 3F migration is
 authorized only for Neon development, does not alter `neon_auth`, and requires
 a separate production migration decision. See `docs/JOB_EXECUTION.md`.
 
+Phase 3G reuses the Phase 3E Booking and occupancy structures rather than
+creating a second calendar table:
+
+| Existing structure | Phase 3G responsibility |
+| --- | --- |
+| `bookings` | Current exact appointment, team/equipment assignment, optimistic version and the small `UNSCHEDULED` / `REVIEW_REQUIRED` / `SCHEDULED` lifecycle |
+| `booking_occupancies` | One current blocking row plus immutable linked historical schedule versions with exact service/operational instants and reviewed policy, requirements, location, travel, working-hour, availability and equipment snapshots |
+| `booking_audit_events` | Allowlisted scheduling, rescheduling, team/equipment assignment, review, cancellation and occupancy-release evidence |
+| `operations_teams`, `team_capabilities` | Current team-resource and capability revalidation at confirmation |
+| `equipment_resources`, `team_equipment_assignments` | Current equipment activity, capability, assignment and conflict revalidation |
+| scheduling/working/travel configuration | Exact version references retained by each occupancy while the source development rows remain visibly DRAFT/provisional |
+
+The additive `0009_phase_3g_scheduling_dispatch.sql` migration adds only
+`revision_kind`,
+`revision_reason_category` and `revision_note` to `booking_occupancies`, with
+controlled initial/reschedule consistency, reason-category and bounded-note
+checks, and broadens the Booking audit event allowlist. It creates no business
+table, duplicate schedule record, payment, invoice, notification or Neon Auth
+object and does not rewrite existing Booking or occupancy rows.
+
+Initial confirmation locks the Booking, revalidates immutable issued-Quote
+provenance and frozen operational requirements, calculates authoritative Sofia
+instants on the server, inserts the first occupancy, updates the matching
+Booking fields and appends audit evidence atomically. Rescheduling locks the
+current blocking occupancy, changes it to `CANCELLED`, inserts a linked higher
+snapshot version and updates the Booking/audit stream in the same operation.
+PostgreSQL's partial unique index and GiST exclusions remain the final guard for
+one current occupancy and no same-team/equipment operational overlap.
+
+Historical occupancy snapshots are interpreted as the evidence captured at
+their creation. Later travel, working-hour, team, equipment or service-zone
+changes never reinterpret them. A current `READY` Job prevents the scheduling
+command from silently replacing its exact occupancy binding. See
+`docs/SCHEDULING_AND_DISPATCH.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
@@ -310,7 +346,8 @@ The implemented durable hierarchy foundation is:
 
 The implemented commercial-intake relationship is:
 
-> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → Quote Acceptance → Booking → Job
+> Customer or anonymous intake → Service Request → Estimate versions → Quote
+> versions → Quote Acceptance → Booking → occupancy versions → Job
 
 Expected cardinalities:
 
@@ -389,12 +426,14 @@ and reliable session administration remain planned; see
 | bookings | Operational commitment and lifecycle created from that acceptance |
 | booking_items | Frozen quote-line copies and commercial/duration evidence |
 | booking_occupancies | Versioned team/equipment operational intervals with PostgreSQL overlap protection |
-| booking_audit_events | Allowlisted acceptance, Booking and cancellation history |
+| booking_audit_events | Allowlisted acceptance, Booking, scheduling, rescheduling, assignment, review, cancellation and occupancy-release history |
 
-Candidate holds, a confirmed-scheduling command, audited rescheduling/override
-workflow and timestamped contextual-note history remain planned. Booking items
-may retain an optional relationship to the implemented cleaning asset through
-their request-item provenance; they do not own or replace the durable CRM asset.
+Candidate holds, customer-controlled appointment movement, exceptional
+post-readiness overrides and timestamped contextual-note history remain
+planned. Phase 3G implements ordinary exact confirmation and controlled
+rescheduling through append-oriented occupancy versions. Booking items may
+retain an optional relationship to the implemented cleaning asset through their
+request-item provenance; they do not own or replace the durable CRM asset.
 
 ### Operations
 
@@ -489,7 +528,8 @@ objects held by a separate storage provider.
 - Preserve the quoted and performed facts needed for later explanation.
 - Use explicit money currency and integer minor units or another reviewed exact
   numeric strategy; never floating-point amounts.
-- Model scheduling with instants, service time zones, and unambiguous duration.
+- Model scheduling with absolute instants, explicit service time zones,
+  unambiguous duration and tested daylight-saving conversion.
 - Design tenant or organizational ownership before storing business data.
 - Define archival, retention, and legal deletion behavior per domain.
 - Keep external provider identifiers as adapter data, not primary domain

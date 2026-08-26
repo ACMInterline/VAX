@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ApplicationStatusBadge } from "@/components/application/status-badge";
 import { bookingContent, type BookingCopy } from "@/content/booking";
+import { schedulingAppointmentWindow } from "@/content/scheduling";
 import type { JsonObject } from "@/modules/request-quote/types";
 import {
   createBookingPageService,
@@ -74,7 +75,11 @@ export default async function MyBookingDetailPage({
   });
   const dateTime = new Intl.DateTimeFormat(
     locale === "bg" ? "bg-BG" : "en-GB",
-    { dateStyle: "long", timeStyle: "short" },
+    {
+      dateStyle: "long",
+      timeStyle: "short",
+      timeZone: "Europe/Sofia",
+    },
   );
   const terms = customerTerms(booking.termsSnapshot, locale);
   const confirmedTiming =
@@ -83,7 +88,10 @@ export default async function MyBookingDetailPage({
           new Date(booking.scheduledEnd),
         )}`
       : content.common.noValue;
-  const preferredTiming = [booking.preferredDate, booking.appointmentWindowCode]
+  const preferredTiming = [
+    booking.preferredDate,
+    schedulingAppointmentWindow(locale, booking.appointmentWindowCode),
+  ]
     .filter(Boolean)
     .join(" · ");
 

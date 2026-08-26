@@ -138,6 +138,7 @@ export function presentJobPage(
     customerDisplayName: job.customerDisplayName,
     propertyLabel: job.propertyLabel,
     serviceAddress: job.propertyAddress,
+    accessInstructions: job.accessInstructions,
     assignedTeamLabel: job.assignedTeamName,
     itemLabels: [
       locale === "bg"

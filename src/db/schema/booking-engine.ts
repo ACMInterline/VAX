@@ -333,6 +333,13 @@ export const bookingOccupancies = pgTable(
       .references(() => bookings.id, { onDelete: "restrict" }),
     snapshotVersion: integer("snapshot_version").notNull(),
     previousOccupancyId: uuid("previous_occupancy_id"),
+    revisionKind: varchar("revision_kind", { length: 16 })
+      .default("INITIAL")
+      .notNull(),
+    revisionReasonCategory: varchar("revision_reason_category", {
+      length: 32,
+    }),
+    revisionNote: text("revision_note"),
     teamId: integer("team_id")
       .notNull()
       .references(() => operationsTeams.id, { onDelete: "restrict" }),
@@ -452,6 +459,26 @@ export const bookingOccupancies = pgTable(
       sql`${table.snapshotVersion} >= 1 and ${table.serviceDurationMinutes} > 0 and ${table.schedulingPolicyVersion} >= 1 and ${table.workingHourPolicyVersion} >= 1 and ${table.travelTimeProfileVersion} >= 1`,
     ),
     check(
+      "booking_occupancies_revision_kind_valid",
+      sql`${table.revisionKind} in ('INITIAL', 'RESCHEDULE')`,
+    ),
+    check(
+      "booking_occupancies_revision_reason_valid",
+      sql`${table.revisionReasonCategory} is null or ${table.revisionReasonCategory} in ('CUSTOMER_REQUEST', 'OPERATIONAL', 'TEAM_UNAVAILABLE', 'EQUIPMENT_UNAVAILABLE', 'TRAVEL_CONFLICT', 'OTHER')`,
+    ),
+    check(
+      "booking_occupancies_revision_consistent",
+      sql`(${table.revisionKind} = 'INITIAL' and ${table.previousOccupancyId} is null and ${table.revisionReasonCategory} is null and ${table.revisionNote} is null) or (${table.revisionKind} = 'RESCHEDULE' and ${table.previousOccupancyId} is not null and ${table.revisionReasonCategory} is not null)`,
+    ),
+    check(
+      "booking_occupancies_revision_note_valid",
+      sql`${table.revisionNote} is null or (length(trim(${table.revisionNote})) between 1 and 500)`,
+    ),
+    check(
+      "booking_occupancies_other_revision_note_required",
+      sql`${table.revisionReasonCategory} is distinct from 'OTHER' or ${table.revisionNote} is not null`,
+    ),
+    check(
       "booking_occupancies_time_zone_sofia",
       sql`${table.timeZone} = 'Europe/Sofia'`,
     ),
@@ -505,7 +532,7 @@ export const bookingAuditEvents = pgTable(
     ),
     check(
       "booking_audit_events_type_valid",
-      sql`${table.eventType} in ('QUOTE_ACCEPTED', 'BOOKING_CREATED', 'BOOKING_SCHEDULED', 'BOOKING_CANCELLED', 'TEAM_ASSIGNED')`,
+      sql`${table.eventType} in ('QUOTE_ACCEPTED', 'BOOKING_CREATED', 'BOOKING_SCHEDULED', 'BOOKING_RESCHEDULED', 'BOOKING_CANCELLED', 'TEAM_ASSIGNED', 'EQUIPMENT_ASSIGNED', 'SCHEDULE_REVIEW_REQUIRED', 'OCCUPANCY_RELEASED')`,
     ),
     check(
       "booking_audit_events_source_valid",

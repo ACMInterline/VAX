@@ -102,6 +102,29 @@ test identities target development only; mutation commands enforce the explicit
 development label and exact-host interlock, and no script may query or mutate
 `neon_auth` directly.
 
+Phase 3C–3F add only application-owned CRM, request/Quote, acceptance/Booking,
+occupancy, Job, inspection, treatment, Cleaning Passport and business-audit
+structures through reviewed additive migrations. Phase 3G reuses those tables:
+its additive migration creates no new business table, adds only controlled
+occupancy-revision fields/checks and broadens the Booking audit allowlist. It
+must not rewrite prior rows, weaken GiST overlap constraints or alter
+provider-managed Auth.
+
+For migration `0009_phase_3g_scheduling_dispatch.sql`, record the reviewed SQL
+checksum before applying it, prove the exact VAX `development` / `neondb`
+target, apply only the committed migration, then verify the Drizzle ledger
+entry, resulting checks/indexes and unchanged prior migration checksums.
+Production is never a verification target.
+
+Credential-free CI cannot prove live PostgreSQL exclusion behavior. A separate
+guarded, serialized development-only integration run may use deterministic
+synthetic Booking/occupancy fixtures to prove same-team and same-equipment
+conflicts, different-team concurrency, cancelled-capacity release and no
+partial writes. Clean the fixtures and any safely supported synthetic Auth
+identity afterward. Do not create an identity when its cleanup cannot be
+proved, and never weaken or skip the development host interlock to run this
+test.
+
 ## Validation automation
 
 `npm run validate` is the repository completion command. It runs lint,

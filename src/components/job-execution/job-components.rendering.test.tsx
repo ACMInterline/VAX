@@ -26,6 +26,7 @@ const listJob: TechnicianJobListItem = {
   customerDisplayName: "Sample customer",
   propertyLabel: "Sample home",
   serviceAddress: "1 Example Street, Sofia",
+  accessInstructions: "Ring the apartment bell.",
   assignedTeamLabel: "Team Alpha",
   itemLabels: ["Three-seat sofa"],
   reviewReasons: [],
@@ -148,6 +149,7 @@ describe("Phase 3F job execution presentation", () => {
     expect(html).toContain("Team Alpha");
     expect(html).toContain("Sample customer");
     expect(html).toContain("Three-seat sofa");
+    expect(html).toContain("Ring the apartment bell.");
   });
 
   it.each([

@@ -72,6 +72,7 @@ import type {
   JobPage,
   JobStatus,
   JobSummary,
+  JobListSummary,
   StaffCleaningPassportEntry,
   StaffJobDetail,
   TechnicianJobDetail,
@@ -1168,7 +1169,7 @@ export async function createJobFromBookingRecord(
   }
 }
 
-type SummaryRow = JobSummary & { totalCount?: number };
+type SummaryRow = JobListSummary & { totalCount?: number };
 
 export async function listJobRecords(
   database: Database,
@@ -1213,6 +1214,8 @@ export async function listJobRecords(
       job.source_provenance_snapshot ->> 'customerDisplayName'
         as "customerDisplayName",
       job.property_access_snapshot ->> 'propertyLabel' as "propertyLabel",
+      nullif(job.property_access_snapshot ->> 'accessNotes', '')
+        as "accessInstructions",
       concat_ws(', ',
         nullif(job.property_access_snapshot ->> 'streetAddress', ''),
         nullif(job.property_access_snapshot ->> 'district', ''),

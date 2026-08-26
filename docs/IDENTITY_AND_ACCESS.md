@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A–3F decision
+## Phase 3A–3G decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -19,7 +19,9 @@ The integration is deliberately split into three concepts:
    and cleaning-asset records that actor may access. Phase 3D extends the same
    boundary to requests and issued quotes; Phase 3E extends it to acceptance and
    Bookings; Phase 3F extends it to Jobs and Cleaning Passport history while
-   adding exact assigned-team scope for technicians.
+   adding exact assigned-team scope for technicians; Phase 3G adds staff
+   scheduling/dispatch, technician-today and customer appointment projections
+   without expanding provider authority.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
 and a `CUSTOMER` role alone never proves ownership of a business record.
@@ -258,6 +260,31 @@ omit price, margin, estimate/Quote calculations, unrelated CRM history,
 administrative notes and identity administration data. See
 `docs/JOB_EXECUTION.md`.
 
+## Phase 3G scheduling and dispatch authorization
+
+Phase 3G adds no role or permission. Staff board reads require the existing CRM,
+operations and schedule-read conjunction. Candidate review, exact confirmation
+and controlled rescheduling additionally require the corresponding CRM,
+operations and `SCHEDULE_MANAGE` authority. Under the canonical mapping this
+admits Owner, Admin and Dispatcher. A technician's `SCHEDULE_READ` permission
+supports assigned-work visibility but never administrative scheduling,
+arbitrary team/equipment reassignment or cross-team dispatch.
+
+`/app/schedule?date=YYYY-MM-DD` and
+`/app/schedule/bookings/[bookingReference]?date=YYYY-MM-DD` reauthenticate the
+application profile and reauthorize every request. Identifiers and candidate
+values are untrusted selectors; the repository repeats actor, permission,
+Booking, customer/property, provenance and current-resource checks. Schedule
+confirmation is rate-limited and parsed only after authentication and
+authorization.
+
+`/app/jobs/today` retains Phase 3F's exact active-role and time-valid team-
+membership scope. `/app/my-bookings/[bookingReference]` retains the customer's
+active identity-to-customer link and exposes only that customer's safe
+appointment. Neither route grants a schedule mutation. Assigning a team to an
+occupancy never creates a user membership, role or permission. See
+`docs/SCHEDULING_AND_DISPATCH.md`.
+
 ## Central authorization
 
 `src/auth/authorization-service.ts` loads a provider session, the mapped
@@ -457,7 +484,9 @@ state, locale and logout. It does not expose provider tokens or identifiers.
 Permission-aware navigation exposes staff Customers, Requests and Bookings plus
 linked-customer My Properties, My Requests, My Quotes and My Bookings
 destinations. Phase 3F adds staff/assigned-team Jobs and customer/staff Cleaning
-Passport asset history under the same server-mediated namespace.
+Passport asset history under the same server-mediated namespace. Phase 3G adds
+the staff Schedule destination, the row-scoped technician today view and
+confirmed appointment details on the existing customer Booking route.
 `/app/customers`, `/app/requests`, `/app/bookings` and `/app/jobs` repeat their
 respective permission and record checks on the server; own-record routes always
 derive linked-only scope. Draft quotes, estimate internals, staff acceptance
@@ -473,8 +502,9 @@ authentication does not convert them into deployable internal pages.
 ## Rate limiting
 
 Login, signup, reset, verification, anonymous request intake, privileged
-identity mutation, Booking mutation and Job mutation Server Actions use bounded
-in-memory limiting for loopback/local development. Auth/Booking/Job keys are
+identity mutation, Booking/scheduling mutation and Job mutation Server Actions
+use bounded in-memory limiting for loopback/local development.
+Auth/Booking/scheduling/Job keys are
 one-way hashes of the submitted account/actor key and available forwarded
 address; public intake uses an address-scoped constant instead of contact
 details. Keys are not logged. Process-local memory is not reliable across
@@ -508,6 +538,11 @@ Its metadata is allowlisted and excludes provider subjects, addresses, contact
 details and free-form acceptance/cancellation notes. Database-level append-only
 grants remain a production gate.
 
+Phase 3G extends `booking_audit_events` with allowlisted scheduling,
+rescheduling, team/equipment assignment, review and occupancy-release events.
+It stores controlled codes, versions and safe references, not provider subjects,
+addresses, customer notes or credentials.
+
 Phase 3F uses `job_audit_events` for Job lifecycle, team assignment,
 inspection, treatment, review, completion and Cleaning Passport creation.
 Provider subjects and credentials never enter that stream. Its safe metadata
@@ -525,7 +560,9 @@ application-owned public-schema request/quote tables, and Phase 3E adds only
 application-owned acceptance/Booking/occupancy/audit tables on development.
 Phase 3F similarly adds only application-owned team-membership, Job,
 inspection, treatment, Cleaning Passport and Job-audit tables. None queries or
-mutates Auth-managed tables. Production remains unmigrated.
+mutates Auth-managed tables. The Phase 3G additive migration creates no new
+business table and changes only application-owned occupancy revision checks and
+Booking audit vocabulary. Production remains unmigrated.
 Migration and owner-bootstrap commands additionally require an explicit
 development label and exact approved database hostname before opening the
 database client.
@@ -562,8 +599,8 @@ Deployment remains blocked until at least:
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
 - a distributed or provider-backed shared rate limiter for authentication,
-  anonymous request intake, privileged identity mutations, Booking mutations
-  and Job mutations is selected and tested;
+  anonymous request intake, privileged identity mutations, Booking/scheduling
+  mutations and Job mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
@@ -585,11 +622,13 @@ identity separate from explicit CRM ownership and server-side per-record
 authorization. Phase 3D applies that boundary to persistent requests and issued
 quotes; Phase 3E applies it to acceptance and Bookings with a further scoped
 event stream. Phase 3F adds exact assigned-team Job access and separate safe
-Cleaning Passport projections without expanding provider authority. Direct
+Cleaning Passport projections; Phase 3G adds staff schedule management plus
+separate technician/customer appointment projections without expanding
+provider authority. Direct
 browser database access remains prohibited. Organization
 scope, reviewed production
 least-privilege/RLS and append-only grants, final privacy/retention policy,
 data-subject workflows and broader business-audit coverage remain production or
 future-phase gates; see `docs/CRM_AND_PRIVACY.md`,
 `docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md` and
-`docs/JOB_EXECUTION.md`.
+`docs/JOB_EXECUTION.md`, plus `docs/SCHEDULING_AND_DISPATCH.md`.

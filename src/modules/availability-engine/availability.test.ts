@@ -158,6 +158,54 @@ function jobBlock(
 }
 
 describe("availability engine", () => {
+  it("fails closed when working-hour authority is ambiguous or disabled", () => {
+    const mondayRule = developmentWorkingHourPolicy.rules.find(
+      (rule) => rule.weekday === 1 && rule.teamCode === null,
+    );
+    expect(mondayRule).toBeDefined();
+
+    expect(getWorkingWindowForDate(
+      {
+        ...developmentWorkingHourPolicy,
+        rules: [
+          ...developmentWorkingHourPolicy.rules,
+          { ...mondayRule!, id: "DUPLICATE_DEFAULT" },
+        ],
+      },
+      "2026-08-24",
+      "TEAM_A",
+    )).toBeNull();
+
+    const teamRule = {
+      ...mondayRule!,
+      id: "TEAM_A_OVERRIDE",
+      teamCode: "TEAM_A" as const,
+    };
+    expect(getWorkingWindowForDate(
+      {
+        ...developmentWorkingHourPolicy,
+        rules: [
+          ...developmentWorkingHourPolicy.rules,
+          teamRule,
+          { ...teamRule, id: "DUPLICATE_TEAM_A_OVERRIDE" },
+        ],
+      },
+      "2026-08-24",
+      "TEAM_A",
+    )).toBeNull();
+    expect(getWorkingWindowForDate(
+      {
+        ...developmentWorkingHourPolicy,
+        rules: [
+          ...developmentWorkingHourPolicy.rules,
+          { ...teamRule, enabled: false },
+        ],
+      },
+      "2026-08-24",
+      "TEAM_A",
+    )).toBeNull();
+  });
+
   it("supports both development teams without conflating their capacity", () => {
     const result = generateAvailabilityForTeams({
       request: request(),
