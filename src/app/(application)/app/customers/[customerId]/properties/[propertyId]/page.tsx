@@ -32,6 +32,8 @@ export default async function PropertyDetailPage({
   );
   const content = crmContent[locale];
   const canManage = actor.permissions.has("CUSTOMER_RECORDS_MANAGE");
+  const historyLabel =
+    locale === "bg" ? "История на почистванията" : "Cleaning history";
   const address = [
     property.streetAddress,
     property.district,
@@ -149,6 +151,12 @@ export default async function PropertyDetailPage({
                   <strong>{asset.label}</strong>
                   <small>{content.labels.lifecycleStatuses[asset.status]}</small>
                 </div>
+                <Link
+                  className="crm-button"
+                  href={`/app/customers/${customer.id}/properties/${property.id}/assets/${asset.id}`}
+                >
+                  {historyLabel}
+                </Link>
                 {canManage && asset.status !== "ARCHIVED" ? (
                   <CrmConfirmationAction
                     action={archiveAssetAction}

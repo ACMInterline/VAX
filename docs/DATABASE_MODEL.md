@@ -259,23 +259,66 @@ Job, treatment, message or upload table, never names `neon_auth`, is authorized
 only for Neon development and requires a separate production gate. See
 `docs/BOOKING_ENGINE.md`.
 
+Phase 3F adds operational Job execution and Cleaning Passport structures to
+development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `team_memberships` | Time-bounded active application-profile membership in one operations team; operational authorization only, not HR/payroll |
+| `jobs` | One Booking-derived field Job with immutable provenance/schedule/property/contact snapshots, controlled lifecycle, server timestamps and actual duration |
+| `job_items` | Planned executable scope copied from immutable Booking/issued-Quote evidence, with separate reported/normalized provenance and no money |
+| `job_item_inspections` | One immutable professional observation per Job item, including observed measurement, condition, material, construction, damage and feasibility |
+| `job_item_inspection_issues`, `job_item_inspection_risks` | Canonical observed issue and risk relationships scoped to the exact inspection, item and Job |
+| `job_item_treatment_plans` | One confirmed professional decision per inspected item: perform, perform with limitations, decline, refer or require review |
+| `job_item_treatment_plan_addons` | Exact add-ons authorized by the issued Quote for the confirmed plan |
+| `job_item_treatment_executions` | One performed-treatment record per planned item, with controlled result, completion evidence and optimistic version |
+| `cleaning_passport_entries` | Append-only, customer-safe completed-treatment history for an exact durable cleaning asset |
+| `job_audit_events` | Append-oriented allowlisted Job, inspection, treatment, completion and Passport lifecycle evidence |
+
+Exactly one Job can consume a Booking, and every Job item maps to one Booking
+item. Composite restrictive foreign keys preserve the Booking/customer/
+property, current confirmed occupancy, asset, inspection, plan and execution
+graph. Job creation reads planned scope only from the Booking chain and the
+immutable issued-Quote `acceptance_source_snapshot`; current request, estimate
+and mutable CRM attributes are not fallback inputs. A current active primary
+contact may be copied only into a separate visit-contact snapshot.
+
+An exact confirmed Booking occupancy is required before a Job can be `READY`.
+A provenance-valid Booking without exact schedule/team/equipment evidence can
+produce only a review-gated `PREPARED` Job. Planned, observed, confirmed and
+performed facts occupy separate columns/records. Safety, capability, scope or
+execution divergence cannot overwrite source history and instead produces a
+review, decline or referral outcome.
+
+Job completion freezes actual server-derived productive and occupied-team
+minutes. Eligible `cleaning_passport_entries` are created atomically only for
+asset-linked treatments actually completed within their confirmed plan. One
+restrictive composite key binds each Passport row to the exact completed
+execution timestamp, result and performed treatment facts. Inspection-only,
+declined, referred, review-required, unperformed, stopped-for-safety and no-
+observable-improvement items create no treatment entry. Passport and Job-audit rows have no
+ordinary update/delete application path; database-level append-only grants and
+reviewed RLS remain a production gate. The additive Phase 3F migration is
+authorized only for Neon development, does not alter `neon_auth`, and requires
+a separate production migration decision. See `docs/JOB_EXECUTION.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
 
-> Customer → Property → Property Area → Cleaning Asset → future Cleaning History
+> Customer → Property → Property Area → Cleaning Asset → Cleaning Passport history
 
 The implemented commercial-intake relationship is:
 
-> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → Quote Acceptance → Booking
+> Customer or anonymous intake → Service Request → Estimate versions → Quote versions → Quote Acceptance → Booking → Job
 
 Expected cardinalities:
 
 - one customer may own or manage many properties;
 - one property contains many rooms;
 - one room contains many durable cleaning items;
-- one cleaning asset may later appear in many booking and job events;
-- one cleaning asset may later accumulate many cleaning-history entries.
+- one cleaning asset may appear in many Booking and Job events; and
+- one cleaning asset may accumulate many append-only Cleaning Passport entries.
 
 A Booking item can retain an indirect relationship to a cleaning asset through
 its source request item. It does not own or replace that asset. This distinction
@@ -283,9 +326,10 @@ enables a Digital Cleaning Passport across repeat visits.
 
 ## Planned domains
 
-The following catalog records the intended model vocabulary. Columns,
-constraints, identifiers, lifecycle states, retention, and deletion behavior
-must be designed in the owning phase before migration.
+The following catalog records implemented and intended model vocabulary.
+Planned entries still require their columns, constraints, identifiers,
+lifecycle states, retention and deletion behavior to be designed in the owning
+phase before migration.
 
 ### Identity
 
@@ -360,27 +404,29 @@ their request-item provenance; they do not own or replace the durable CRM asset.
 | team_capabilities | Implemented capability foundation |
 | equipment_resources, team_equipment_assignments | Implemented lightweight capacity foundation; maintenance history remains planned |
 | employees | Staff and technician employment profiles |
-| jobs | Executable operational work created from accepted scope |
-| job_assignments | Employee or team assignment history |
-| job_status_history | Append-oriented job lifecycle events |
+| team_memberships | Implemented time-bounded application-profile membership in an operations team |
+| jobs, job_items | Implemented Booking-derived executable work and immutable planned item scope |
+| job_assignments | Richer employee or multi-team assignment history remains planned; Phase 3F binds one exact occupancy team on `jobs` |
+| job_audit_events | Implemented append-oriented Job/item lifecycle events |
 
 ### Inspection
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| inspections | Inspection event and responsible technician |
-| inspection_items | Cleaning items included in an inspection |
-| surface_assessments | Material, condition, and treatment-risk findings |
-| identified_stains | Stain observations and confidence |
-| existing_damage | Pre-service damage and customer acknowledgement |
+| job_item_inspections | Implemented one professional observation per exact Job item, including responsible application profile |
+| job_item_inspection_issues, job_item_inspection_risks | Implemented canonical observed issues and risks |
+| surface_assessments | Phase 3F stores confirmed material/construction, observed condition and feasibility on the item inspection; richer amendment/evidence history remains planned |
+| identified_stains | Canonical observed issue relationships are implemented; confidence/evidence detail remains planned |
+| existing_damage | Phase 3F records presence and notes on the inspection; customer acknowledgement and media evidence remain planned |
 
 ### Treatment
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| job_treatments | Treatment performed for a job item |
-| products_used | Product, quantity, and treatment usage records |
-| technician_notes | Timestamped operational notes |
+| job_item_treatment_plans, job_item_treatment_plan_addons | Implemented confirmed treatment decision and issued-Quote-authorized add-ons |
+| job_item_treatment_executions | Implemented performed treatment, result and immutable completion snapshot |
+| products_used | Phase 3F permits one optional verified canonical product reference; quantity/consumption history remains planned |
+| technician_notes | Phase 3F separates internal and customer-visible notes on owned workflow records; richer timestamped amendment history remains planned |
 
 ### Media
 
@@ -416,21 +462,22 @@ objects held by a separate storage provider.
 
 ### Maintenance
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
-| cleaning_history | Completed cleaning events tied to durable items |
-| care_recommendations | Item-specific aftercare guidance |
+| cleaning_passport_entries | Implemented append-only completed-treatment history tied to one durable cleaning asset and exact execution |
+| care_recommendations | Phase 3F stores optional customer-safe advice and evidence-scoped review date/interval on the Passport entry |
 | reminders | Scheduled maintenance and follow-up prompts |
 
 ### Business control
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
 | equipment | Durable company equipment |
 | equipment_maintenance | Inspection, service, and repair history |
 | inventory | Consumable stock and movement basis |
 | business_audit_events | Implemented request/estimate/quote business events; broader business-audit coverage remains planned |
-| audit_logs | Planned broader critical business-operation audit records or a future extension of the implemented stream |
+| booking_audit_events, job_audit_events | Implemented owning streams for acceptance/Booking and Job execution respectively |
+| audit_logs | Planned broader cross-domain critical-operation audit records or reviewed extensions of the owned streams |
 | activity_logs | Lower-risk operational activity stream |
 
 ## Future modeling rules

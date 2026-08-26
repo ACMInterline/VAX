@@ -287,6 +287,8 @@ describe("booking read, cancellation, and availability boundaries", () => {
     expect(query.sql).toContain("occupancy.status in ('PENDING', 'CONFIRMED')");
     expect(query.sql).toContain('update "bookings" booking');
     expect(query.sql).toContain("'BOOKING_CANCELLED'");
+    expect(query.sql).toContain('from "jobs" job');
+    expect(query.sql).toContain("job.status <> 'CANCELLED'");
     expect(query.sql).not.toMatch(/update\s+"?(?:quotes|quote_items|request_estimates)"?/i);
   });
 

@@ -119,7 +119,7 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     code: "FIELD_WORK",
     labelBg: "Теренна работа",
     labelEn: "Field work",
-    futurePath: "/app/jobs",
+    href: "/app/jobs",
     requiredPermissions: ["FIELD_JOBS_READ"],
     audience: "STAFF",
   },

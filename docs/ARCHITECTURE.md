@@ -45,6 +45,7 @@ introduced.
 | src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
 | src/modules/request-quote | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports | Provider identities, browser authority, booking acceptance, payments or occupancy |
 | src/modules/booking-engine | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation | Provider identities, request renormalization, repricing, Job execution or payments |
+| src/modules/job-execution | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments |
 | src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
@@ -112,6 +113,16 @@ normalization, pricing, duration or CRM repair. It atomically inserts
 acceptance, Booking, copied items and Booking audit evidence, or fails closed
 with no partial state. Scheduling remains a separate later command and must use
 database-backed occupancy constraints rather than trusting a preview.
+
+Phase 3F adds `src/modules/job-execution`. Staff and assigned-technician
+transports call provider-neutral Job policy and use cases; the PostgreSQL
+repository rechecks current permissions, exact time-valid team membership,
+Booking/occupancy state and immutable issued-quote provenance. Job creation
+copies planned scope only from the Booking chain and the Quote's
+`acceptance_source_snapshot`; it never invokes request normalization, pricing,
+duration calculation or CRM repair. Inspection, treatment and completion keep
+planned, observed, confirmed and performed facts distinct. Completion and
+eligible Cleaning Passport creation are one atomic database operation.
 
 ## Public website boundary
 
@@ -275,6 +286,49 @@ to `CANCELLED`. Future scheduling and rescheduling must append audited snapshot
 versions, preserve prior occupancy and never alter accepted commercial
 evidence. See `docs/BOOKING_ENGINE.md`.
 
+## Job execution and Cleaning Passport boundary
+
+Phase 3F extends the operational chain without weakening Phase 3D or Phase 3E
+source authority:
+
+> Booking + immutable issued-Quote snapshot → Job → inspection → confirmed
+> treatment → performed treatment → completion → Cleaning Passport
+
+Exactly one Job may consume a Booking. Creation uses the Booking, Booking
+items, Quote Acceptance and the immutable issued-Quote
+`acceptance_source_snapshot`. Current request, estimate and mutable CRM facts
+are not fallback scope inputs. Current CRM may be checked only for ownership
+integrity and may supply a separate purpose-limited visit-contact snapshot. A
+malformed or inconsistent commercial, request, CRM or provenance chain fails
+closed with no Job write.
+
+An exact current `CONFIRMED` Booking occupancy that matches the Booking's
+schedule, team and equipment may produce a `READY` Job. Otherwise a
+provenance-valid Booking produces only `PREPARED` with explicit review reasons;
+the Job cannot enter field execution. Team assignment may bind only to that
+exact occupancy and does not reschedule or replace it.
+
+Assigned-technician access is derived from a current active `TECHNICIAN` role,
+the field-job permissions and an exact time-valid membership in the Job's
+assigned operations team. Staff and technician projections are separate, so
+prices, estimate internals, unrelated CRM history and administrative data do
+not enter the field view.
+
+Inspection records professional observed facts without rewriting customer-
+reported or staff-normalized scope. Treatment plans use canonical technical
+references and only add-ons already authorized by the issued Quote. Material
+scope change, unsafe or specialist evidence, or performed-versus-confirmed
+divergence moves the item or Job to review, decline or referral instead of
+silently changing or repricing work.
+
+Job completion derives actual productive and occupied-team time from server
+timestamps and atomically freezes completion, audit and eligible asset history.
+A Cleaning Passport entry exists only for an asset-linked treatment actually
+completed within the confirmed plan; inspection-only, declined, referred,
+review-required and unperformed work creates no treatment history. Customer-
+safe history and staff operational history remain separate projections. See
+`docs/JOB_EXECUTION.md`.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -285,11 +339,11 @@ src/db/client.ts is the single connection construction point. It:
 - avoids opening a connection during import or production build; and
 - prevents provider setup from spreading into business modules.
 
-The current Neon HTTP adapter supports the bounded transactions used by the CRM
-and request/quote repositories. Transactional invariants stay in the database
-adapter rather than the domain policy. If a later workflow requires interactive
-session semantics that the HTTP transport cannot provide, the adapter may
-change without changing domain rules.
+The current Neon HTTP adapter supports the bounded transactions used by the
+CRM, request/Quote, Booking and Job repositories. Transactional invariants stay
+in the database adapter rather than the domain policy. If a later workflow
+requires interactive session semantics that the HTTP transport cannot provide,
+the adapter may change without changing domain rules.
 
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
@@ -331,6 +385,15 @@ team/equipment overlap. The acceptance flow creates no occupancy or confirmed
 slot; a later scheduling adapter must supply reviewed immutable operational
 snapshots and remain transactionally guarded.
 
+Phase 3F team-membership, Job, item, inspection, treatment, Cleaning Passport
+and Job-audit rows are runtime operational data and are never seeded.
+Restrictive composite foreign keys preserve the exact Booking, occupancy,
+asset, inspection, plan and execution graph. Jobs and their items copy no
+commercial amount. `cleaning_passport_entries` and `job_audit_events` are
+append-oriented; ordinary application code exposes no update/delete path for
+them. Reviewed production grants, RLS and database-level append-only
+enforcement remain a deployment gate.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
@@ -370,9 +433,10 @@ contracts and permission policy; provider session, Admin API and token shapes
 stay inside `src/auth/neon-provider.ts` and its projection helper.
 Provider-managed `neon_auth`, application `user_profiles`, and CRM customer
 records are separate ownership boundaries. Implemented customer, request,
-quote, acceptance and Booking authorization remains application-owned and
-never changes the provider schema. See `docs/IDENTITY_AND_ACCESS.md`,
-`docs/REQUEST_AND_QUOTE.md` and `docs/BOOKING_ENGINE.md`.
+quote, acceptance, Booking, Job and Cleaning Passport authorization remains
+application-owned and never changes the provider schema. See
+`docs/IDENTITY_AND_ACCESS.md`, `docs/REQUEST_AND_QUOTE.md`,
+`docs/BOOKING_ENGINE.md` and `docs/JOB_EXECUTION.md`.
 
 ### Object storage
 
@@ -394,7 +458,9 @@ validated internal commands.
 - Use UTC instants for stored events and explicit local zones for scheduling.
 - Record critical state changes and privileged actions in their owning audit
   stream; Phase 3D covers request/estimate/quote events and Phase 3E covers
-  acceptance, Booking creation and cancellation.
+  acceptance, Booking creation and cancellation. Phase 3F separately covers
+  Job lifecycle, inspection, treatment, completion and Cleaning Passport
+  creation.
 - Preserve the implemented Booking idempotency boundary and design idempotency
   before adding payments, messages, notifications or webhooks.
 - Avoid irreversible deletes for records that contribute to service history.

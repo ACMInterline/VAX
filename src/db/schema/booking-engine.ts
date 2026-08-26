@@ -197,6 +197,11 @@ export const bookings = pgTable(
     uniqueIndex("bookings_quote_unique").on(table.quoteId),
     uniqueIndex("bookings_acceptance_unique").on(table.quoteAcceptanceId),
     uniqueIndex("bookings_reference_unique").on(table.bookingReference),
+    uniqueIndex("bookings_id_customer_property_unique").on(
+      table.id,
+      table.customerId,
+      table.propertyId,
+    ),
     index("bookings_customer_status_idx").on(
       table.customerId,
       table.status,
@@ -296,6 +301,10 @@ export const bookingItems = pgTable(
     uniqueIndex("booking_items_booking_quote_item_unique").on(
       table.bookingId,
       table.quoteItemId,
+    ),
+    uniqueIndex("booking_items_id_booking_unique").on(
+      table.id,
+      table.bookingId,
     ),
     index("booking_items_booking_idx").on(table.bookingId),
     check(
@@ -410,6 +419,12 @@ export const bookingOccupancies = pgTable(
     uniqueIndex("booking_occupancies_booking_version_unique").on(
       table.bookingId,
       table.snapshotVersion,
+    ),
+    uniqueIndex("booking_occupancies_id_booking_version_team_unique").on(
+      table.id,
+      table.bookingId,
+      table.snapshotVersion,
+      table.teamId,
     ),
     uniqueIndex("booking_occupancies_blocking_booking_unique")
       .on(table.bookingId)

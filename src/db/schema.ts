@@ -26,3 +26,4 @@ export * from "./schema/identity-access";
 export * from "./schema/customer-crm";
 export * from "./schema/request-quote";
 export * from "./schema/booking-engine";
+export * from "./schema/job-execution";

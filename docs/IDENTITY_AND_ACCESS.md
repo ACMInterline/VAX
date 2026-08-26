@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A–3E decision
+## Phase 3A–3F decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -18,7 +18,8 @@ The integration is deliberately split into three concepts:
 3. **Business ownership** answers which implemented customer, property, area
    and cleaning-asset records that actor may access. Phase 3D extends the same
    boundary to requests and issued quotes; Phase 3E extends it to acceptance and
-   Bookings. Jobs remain future.
+   Bookings; Phase 3F extends it to Jobs and Cleaning Passport history while
+   adding exact assigned-team scope for technicians.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
 and a `CUSTOMER` role alone never proves ownership of a business record.
@@ -224,6 +225,39 @@ commercial evidence is inconsistent, the operation writes nothing and returns
 safe staff review rather than repairing or recalculating data. See
 `docs/BOOKING_ENGINE.md`.
 
+## Phase 3F Job and Cleaning Passport authorization
+
+Phase 3F adds no role or permission. Broad staff Job reads require the
+conjunction of `CUSTOMER_RECORDS_READ`, `OPERATIONS_READ`, `SCHEDULE_READ` and
+`FIELD_JOBS_READ`. Job creation, exact-occupancy team assignment and pre-work
+cancellation require `FIELD_JOBS_READ`, `OPERATIONS_MANAGE` and
+`SCHEDULE_MANAGE`. Execution mutations require `FIELD_JOBS_UPDATE` plus the
+fresh operational scope described below. Policy evaluates permissions, not
+route visibility or a submitted role label.
+
+An assigned technician must have an active application profile, active
+`TECHNICIAN` role, `OPERATIONS_READ`, `SCHEDULE_READ` and `FIELD_JOBS_READ`,
+plus an active time-valid `team_memberships` row for the exact Job team.
+Technician inspection, treatment and lifecycle mutations additionally require
+`FIELD_JOBS_UPDATE`. The repository repeats the exact membership check for
+every read and write. Team code, route reference, hidden field or a prior page
+read is never authority, and no technician self-assignment path exists.
+
+An operations manager with `FIELD_JOBS_UPDATE` may execute the controlled
+workflow under staff scope. Under the current canonical mapping this admits
+Owner and Admin. Dispatcher may prepare, assign and cancel pre-work Jobs but
+cannot record field execution; Technician may execute only an exact assigned-
+team Job and receives no unrestricted CRM or commercial access.
+
+Staff Cleaning Passport history requires `CUSTOMER_RECORDS_READ`,
+`OPERATIONS_READ` and `FIELD_JOBS_READ`. Customer history requires
+`OWN_CUSTOMER_DATA_READ` plus the current active identity link to the exact
+customer/property/asset graph. The customer projection contains only
+customer-safe completed-treatment and care facts. Technician Job projections
+omit price, margin, estimate/Quote calculations, unrelated CRM history,
+administrative notes and identity administration data. See
+`docs/JOB_EXECUTION.md`.
+
 ## Central authorization
 
 `src/auth/authorization-service.ts` loads a provider session, the mapped
@@ -422,12 +456,15 @@ shows only display name, localized role labels, account status, verification
 state, locale and logout. It does not expose provider tokens or identifiers.
 Permission-aware navigation exposes staff Customers, Requests and Bookings plus
 linked-customer My Properties, My Requests, My Quotes and My Bookings
-destinations. `/app/customers`, `/app/requests` and `/app/bookings` repeat their
-respective permission checks on the server; own-record routes always derive
-linked-only scope. Draft quotes, estimate internals, staff acceptance evidence
-and operational Booking snapshots have no customer route. Authorized identities
-additionally see Administration → Users. The root document language and
-skip-link copy are derived from the validated application-profile locale.
+destinations. Phase 3F adds staff/assigned-team Jobs and customer/staff Cleaning
+Passport asset history under the same server-mediated namespace.
+`/app/customers`, `/app/requests`, `/app/bookings` and `/app/jobs` repeat their
+respective permission and record checks on the server; own-record routes always
+derive linked-only scope. Draft quotes, estimate internals, staff acceptance
+evidence, operational Booking snapshots and internal Job notes have no customer
+route. Authorized identities additionally see Administration → Users. The root
+document language and skip-link copy are derived from the validated
+application-profile locale.
 
 `/internal/pricing-lab` and `/internal/availability-lab` remain separate local
 development tools. Their existing production `notFound()` gate is unchanged;
@@ -436,13 +473,13 @@ authentication does not convert them into deployable internal pages.
 ## Rate limiting
 
 Login, signup, reset, verification, anonymous request intake, privileged
-identity mutation and Booking mutation Server Actions use bounded in-memory
-limiting for loopback/local development. Auth/Booking keys are one-way hashes
-of the submitted account/actor key and available forwarded address; public
-intake uses an address-scoped constant instead of contact details. Keys are not
-logged. Process-local memory is not reliable across production instances, so
-production remains blocked until a shared/provider-backed limiter is selected
-and tested.
+identity mutation, Booking mutation and Job mutation Server Actions use bounded
+in-memory limiting for loopback/local development. Auth/Booking/Job keys are
+one-way hashes of the submitted account/actor key and available forwarded
+address; public intake uses an address-scoped constant instead of contact
+details. Keys are not logged. Process-local memory is not reliable across
+production instances, so production remains blocked until a shared/provider-
+backed limiter is selected and tested.
 
 ## Audit events
 
@@ -471,6 +508,13 @@ Its metadata is allowlisted and excludes provider subjects, addresses, contact
 details and free-form acceptance/cancellation notes. Database-level append-only
 grants remain a production gate.
 
+Phase 3F uses `job_audit_events` for Job lifecycle, team assignment,
+inspection, treatment, review, completion and Cleaning Passport creation.
+Provider subjects and credentials never enter that stream. Its safe metadata
+uses controlled operational codes rather than contact/address content or
+internal/customer free text. It is separate from authentication, request/Quote
+and Booking audit vocabulary, and production append-only grants remain gated.
+
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
@@ -479,7 +523,9 @@ this phase. Migration `0004_add_identity_access.sql` is additive, creates only
 application-owned public tables and never names `neon_auth`. Phase 3D adds only
 application-owned public-schema request/quote tables, and Phase 3E adds only
 application-owned acceptance/Booking/occupancy/audit tables on development.
-Neither queries or mutates Auth-managed tables. Production remains unmigrated.
+Phase 3F similarly adds only application-owned team-membership, Job,
+inspection, treatment, Cleaning Passport and Job-audit tables. None queries or
+mutates Auth-managed tables. Production remains unmigrated.
 Migration and owner-bootstrap commands additionally require an explicit
 development label and exact approved database hostname before opening the
 database client.
@@ -516,8 +562,8 @@ Deployment remains blocked until at least:
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
 - a distributed or provider-backed shared rate limiter for authentication,
-  anonymous request intake, privileged identity mutations and Booking
-  mutations is selected and tested;
+  anonymous request intake, privileged identity mutations, Booking mutations
+  and Job mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
@@ -538,9 +584,12 @@ Phase 3C implements the initial Customer and Property CRM with application
 identity separate from explicit CRM ownership and server-side per-record
 authorization. Phase 3D applies that boundary to persistent requests and issued
 quotes; Phase 3E applies it to acceptance and Bookings with a further scoped
-event stream. Direct browser database access remains prohibited. Organization
+event stream. Phase 3F adds exact assigned-team Job access and separate safe
+Cleaning Passport projections without expanding provider authority. Direct
+browser database access remains prohibited. Organization
 scope, reviewed production
 least-privilege/RLS and append-only grants, final privacy/retention policy,
 data-subject workflows and broader business-audit coverage remain production or
 future-phase gates; see `docs/CRM_AND_PRIVACY.md`,
-`docs/REQUEST_AND_QUOTE.md` and `docs/BOOKING_ENGINE.md`.
+`docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md` and
+`docs/JOB_EXECUTION.md`.

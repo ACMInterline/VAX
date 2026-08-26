@@ -20,6 +20,11 @@ This phase deliberately does not implement payment, invoice, technician Job,
 treatment completion, upload, message, notification delivery, recurring
 maintenance, production migration or deployment.
 
+Phase 3F now consumes this boundary downstream without changing it. One Job may
+be created only from a provenance-valid Booking and the immutable issued-Quote
+`acceptance_source_snapshot`. Job creation never reinterprets or refreshes the
+request, estimate, Quote, acceptance or commercial evidence documented here.
+
 ## Domain separation
 
 | Record | Authority |
@@ -31,13 +36,36 @@ maintenance, production migration or deployment.
 | `bookings` and booking items | The durable operational commitment and copied commercial/service evidence |
 | `booking_occupancies` | A versioned operational interval for one team and optional equipment resource |
 | `booking_audit_events` | Append-oriented acceptance, booking and cancellation evidence |
-| future Job | Field execution and treatment evidence; not a Booking and not implemented |
+| Phase 3F `jobs` and Job items | Field execution scope copied from the immutable Booking/issued-Quote chain; never a Booking rewrite |
 
 Booking creation does not change the accepted quote into a mutable order. The
 quote remains `ISSUED`, and its request remains `QUOTED`. The unique acceptance
 relationship is the authoritative evidence that the quote was accepted; VAX
 does not add an `ACCEPTED` quote status or use the request status as a substitute
 for acceptance.
+
+## Phase 3F downstream execution boundary
+
+A Job is not another commercial interpretation. Creation accepts only the
+Booking, its copied items, the exact Quote Acceptance and the immutable
+issued-Quote `acceptance_source_snapshot` as planned-scope authority. It does
+not query current request or estimate rows as a fallback, rerun normalization,
+pricing or duration, or refresh mutable CRM facts into the accepted scope. Any
+inconsistent identity, item, version, ownership or source snapshot fails closed
+with zero Job writes.
+
+Current CRM is consulted only for active asset/property ownership integrity
+and a separate purpose-limited visit-contact snapshot. It cannot replace
+the issuance-time customer/property presentation or reported/normalized item
+facts. Job items intentionally contain no price, tax, margin or commercial
+calculation fields.
+
+Only a current `CONFIRMED` occupancy that exactly matches the Booking's
+scheduled time, team and equipment can make the Job `READY`. Otherwise an
+otherwise valid Booking can produce only a non-executable `PREPARED` Job with
+review reasons. Phase 3F assignment can bind that exact occupancy; it does not
+implement the general scheduling/rescheduling command deferred by Phase 3E.
+See `docs/JOB_EXECUTION.md`.
 
 ## Eligibility and authorization
 
@@ -224,8 +252,16 @@ atomically marks the Booking `CANCELLED`, marks any blocking occupancy
 without deleting the historical row or its scheduling evidence. Repeated
 cancellation is a safe no-change result.
 
-Full scheduling, assignment, rescheduling and override operations are not
-implemented. A future reschedule must:
+Phase 3F adds a downstream integrity gate: ordinary Booking cancellation is
+rejected while a non-cancelled Job exists. Staff must first cancel an eligible
+pre-work `PREPARED` or `READY` Job through the explicit audited Job operation.
+An arrived, started, review-required or completed Job cannot be erased or
+silently unwound through Booking cancellation.
+
+Full Booking scheduling, occupancy replacement, general team/equipment
+assignment, rescheduling and override operations are not implemented. Phase
+3F's exact-occupancy Job binding does not substitute for them. A future
+reschedule must:
 
 1. reauthorize the staff actor and revalidate current availability without
    repricing;
@@ -307,6 +343,11 @@ The reviewed migration is authorized only for VAX Neon `development` →
 Neon production is untouched. Production migration, least-privilege/RLS and
 append-only grants, backup/recovery, monitoring and deployment require a later
 separately authorized gate.
+
+The separate additive Phase 3F migration references these Booking structures
+but does not rewrite migration 0007 or any acceptance, Booking, item, occupancy
+or audit row. It is likewise authorized only for Neon development and leaves
+production and provider-managed `neon_auth` untouched.
 
 ## Remaining policy decisions
 

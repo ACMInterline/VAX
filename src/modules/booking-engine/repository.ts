@@ -19,6 +19,7 @@ import {
   customers,
   properties,
 } from "@/db/schema/customer-crm";
+import { jobs } from "@/db/schema/job-execution";
 import {
   quoteItems,
   quotes,
@@ -1323,6 +1324,9 @@ export async function cancelBookingRecord(
         when (select version from target) <> ${input.expectedVersion} then 'CONFLICT'
         when (select status from target) not in ('PENDING_SCHEDULING', 'CONFIRMED')
           then 'INVALID_TRANSITION'
+        when exists (select 1 from ${jobs} job
+          where job.booking_id = (select id from target)
+            and job.status <> 'CANCELLED') then 'INVALID_TRANSITION'
         else 'READY'
       end as result
     ),

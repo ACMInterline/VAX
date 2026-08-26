@@ -280,8 +280,12 @@ describe("Phase 3E quote acceptance and booking migration boundary", () => {
         breakpoints: boolean;
       }>;
     };
-    const previous = journal.entries.at(-2);
-    const current = journal.entries.at(-1);
+    const previous = journal.entries.find(
+      (entry) => entry.tag === "0006_phase_3d_request_quote",
+    );
+    const current = journal.entries.find(
+      (entry) => entry.tag === "0007_phase_3e_booking_engine",
+    );
 
     expect(journal).toMatchObject({ version: "7", dialect: "postgresql" });
     expect(previous).toMatchObject({
