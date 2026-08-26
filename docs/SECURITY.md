@@ -531,11 +531,14 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   operational boundaries distinct. It does not add captured historical travel
   or buffers a second time. Missing/invalid travel never becomes a silent zero;
   deterministic fallback and manual-review state remain visible.
-- One atomic confirmation/reschedule operation updates the Booking, changes any
-  prior blocking occupancy, inserts the linked immutable replacement and
-  appends allowlisted audit evidence. PostgreSQL half-open GiST exclusions are
-  the final same-team/same-equipment race guard; an exclusion violation returns
-  a generic conflict and leaves no partial state.
+- One atomic `READ COMMITTED` confirmation/reschedule transaction acquires the
+  team/date advisory lock before its fresh mutation snapshot, then updates the
+  Booking, changes any prior blocking occupancy, inserts the linked immutable
+  replacement and appends allowlisted audit evidence. The mutation locks the
+  complete selected-day occupancy and current configuration authority it uses.
+  PostgreSQL half-open GiST exclusions are the final same-team/same-equipment
+  overlap guard; an exclusion violation returns a generic conflict and leaves
+  no partial state.
 - Rescheduling uses controlled reason values and preserves old-to-new history.
   A `READY` or later Job cannot be silently rebound or moved. Simultaneous
   schedule, reschedule and cancellation requests are resolved under locks and
@@ -551,11 +554,12 @@ Detailed roles, sessions, audit events and remaining production blockers are in
 - Capacity metrics are read-only and use persisted operational components and,
   where shown, immutable booked gross values. They do not reprice, expose
   cross-scope CRM data or become accounting/payroll authority.
-- Static migration tests are supplemented by guarded serialized Neon
-  development integration tests for team/equipment overlap, different-team
-  concurrency, cancelled release and no-partial-state conflicts. Synthetic
-  fixtures are cleaned up. CI remains credential-free and production is never
-  a test target.
+- Static migration tests are supplemented by guarded Neon development
+  integration tests for team/equipment overlap, different-team concurrency,
+  cancelled release, two-dispatcher serialization and a reschedule/cancellation
+  race. The minimal application fixture is cleaned from every touched table and
+  creates no Neon Auth identity. CI remains credential-free and production is
+  never a test target.
 - DRAFT working hours, zones, travel, team capacity and equipment assignments
   remain visibly provisional. No development result is automatically approved
   operational knowledge. Direct browser Data API access, paid routing,

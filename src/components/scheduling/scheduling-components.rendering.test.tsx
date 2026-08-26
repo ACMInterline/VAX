@@ -9,6 +9,7 @@ import type {
 } from "./types";
 
 const bookingReference = "BKG-0123456789ABCDEF01234567";
+const jobReference = "JOB-0123456789ABCDEF01234567";
 const serviceStart = new Date("2026-10-25T06:30:00.000Z");
 const serviceEnd = new Date("2026-10-25T08:00:00.000Z");
 const unchangedAction: SchedulingFormAction = async (state, formData) => {
@@ -107,10 +108,13 @@ function day(): DispatchDayView {
         appointments: [
           {
             bookingReference,
-            jobReference: null,
+            bookingStatus: "CONFIRMED",
+            jobReference,
+            jobStatus: "READY",
             customerDisplayName: "Synthetic customer",
             propertyLabel: "Synthetic property",
             propertyAddress: "Synthetic address",
+            propertyArea: "Synthetic district",
             serviceStart,
             serviceEnd,
             serviceDurationMinutes: 90,
@@ -149,6 +153,10 @@ describe("Phase 3G scheduling presentation", () => {
       expect(html).toContain(
         `/app/schedule/bookings/${bookingReference}?date=2026-10-25`,
       );
+      expect(html).toContain(jobReference);
+      expect(html).toContain("Synthetic district");
+      expect(html).toContain(locale === "bg" ? "Потвърдена" : "Confirmed");
+      expect(html).toContain(locale === "bg" ? "Готова" : "Ready");
       expect(html).not.toContain("Revenue per occupied team-hour");
       expect(html).not.toContain("Приход на зает екип-час");
     },

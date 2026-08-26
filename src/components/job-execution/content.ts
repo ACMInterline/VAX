@@ -21,6 +21,8 @@ type JobExecutionContent = Readonly<{
     team: string;
     unassigned: string;
     address: string;
+    access: string;
+    noAccess: string;
     customer: string;
     items: string;
     review: string;
@@ -175,6 +177,8 @@ export const jobExecutionContent = {
       team: "Назначен екип",
       unassigned: "Няма назначен екип",
       address: "Адрес на посещението",
+      access: "Указания за достъп",
+      noAccess: "Няма записани указания",
       customer: "Клиент",
       items: "Обекти за обработка",
       review: "Изисква преглед от служител",
@@ -370,6 +374,8 @@ export const jobExecutionContent = {
       team: "Assigned team",
       unassigned: "No team assigned",
       address: "Visit address",
+      access: "Access instructions",
+      noAccess: "No instructions recorded",
       customer: "Customer",
       items: "Items to treat",
       review: "Staff review required",

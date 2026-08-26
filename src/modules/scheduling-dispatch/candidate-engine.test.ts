@@ -5,6 +5,7 @@ import type {
   TravelTimeEstimator,
 } from "@/modules/availability-engine/types";
 import {
+  evaluateSchedulingCandidateAt,
   generateSchedulingCandidates,
   type SchedulingCandidateContext,
   type SchedulingOccupancy,
@@ -100,6 +101,26 @@ function at(
 }
 
 describe("scheduling candidate engine", () => {
+  it("evaluates an exact persisted appointment against current constraints", () => {
+    const candidate = evaluateSchedulingCandidateAt(
+      context({
+        occupancies: [
+          occupancy("previous", 8 * 60, 9 * 60, 8 * 60, 9 * 60, "Previous"),
+        ],
+        travelEstimator: () => estimate(20),
+      }),
+      10 * 60,
+    );
+
+    expect(candidate).toMatchObject({
+      previousOccupancyId: "previous",
+      travelBeforeMinutes: 20,
+      operationalStartMinute: 9 * 60 + 30,
+      readiness: "READY",
+      selectable: true,
+    });
+  });
+
   it("accounts independently for travel from the previous and to the following appointment", () => {
     const travelEstimator: TravelTimeEstimator = ({ origin, destination }) => {
       if (origin.district === "Previous" && destination.district === "Current") {

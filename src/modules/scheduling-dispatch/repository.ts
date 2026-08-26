@@ -24,6 +24,8 @@ import {
 import { travelZones } from "@/db/schema/commercial-engine";
 import { customers, properties } from "@/db/schema/customer-crm";
 import { jobs } from "@/db/schema/job-execution";
+import type { BookingStatus } from "@/modules/booking-engine/types";
+import type { JobStatus } from "@/modules/job-execution/types";
 import {
   developmentSchedulingPolicy,
 } from "@/modules/availability-engine/development-config";
@@ -48,7 +50,15 @@ import {
   calculateTeamUtilisation,
 } from "@/modules/availability-engine/utilisation";
 import { activeActorPermissionSql } from "@/modules/request-quote/repository";
-import { generateSchedulingCandidates } from "./candidate-engine";
+import {
+  evaluateSchedulingCandidateAt,
+  generateSchedulingCandidates,
+  type SchedulingCandidateEvaluation,
+} from "./candidate-engine";
+import {
+  equipmentAssignmentCoversService,
+  type EquipmentAssignmentWindow,
+} from "./equipment-assignment";
 import { immutableOperationalRequirementsFromDurationSnapshot } from "./provenance";
 import { rankScheduleCandidates } from "./ranking";
 import {
@@ -66,6 +76,7 @@ import type {
   DispatchDayInput,
   DispatchMetrics,
   DispatchRepository,
+  ScheduleCandidate,
   ScheduleCandidateBase,
   ScheduleConfirmationCommand,
   ScheduleMutationResult,
@@ -135,6 +146,14 @@ function numberValue(value: unknown): number | null {
 
 function booleanValue(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
+}
+
+function optionalDateValue(value: unknown): Date | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date && Number.isFinite(value.valueOf())) return value;
+  if (typeof value !== "string") return undefined;
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.valueOf()) ? parsed : undefined;
 }
 
 function stringArray(value: unknown): readonly string[] {
@@ -239,6 +258,7 @@ type WindowRow = {
 type EquipmentConfig = Readonly<{
   id: number;
   definition: EquipmentResourceDefinition;
+  assignment: EquipmentAssignmentWindow;
 }>;
 
 type TeamConfig = Readonly<{
@@ -329,8 +349,6 @@ async function loadOperationalConfiguration(
         left join ${teamCapabilities} capability on capability.team_id = team.id
         left join ${teamEquipmentAssignments} assignment on assignment.team_id = team.id
           and assignment.active = true
-          and (assignment.effective_from is null or assignment.effective_from <= now())
-          and (assignment.effective_until is null or assignment.effective_until > now())
         left join ${equipmentResources} equipment
           on equipment.id = assignment.equipment_resource_id
         where ${access}
@@ -350,14 +368,19 @@ async function loadOperationalConfiguration(
         from ${travelZones} zone where ${access}
       `),
       database.execute<WindowRow>(sql`
-        select window.id, window.profile_code as "profileCode",
-          window.version, window.status, window.window_code as "windowCode",
-          window.label_bg as "labelBg", window.label_en as "labelEn",
-          window.start_minute as "startMinute",
-          window.end_minute as "endMinute", window.provisional, window.active
-        from ${appointmentWindowDefinitions} window
-        where window.profile_code = ${appointmentProfileCode} and ${access}
-        order by window.start_minute
+        select appointment_window.id,
+          appointment_window.profile_code as "profileCode",
+          appointment_window.version, appointment_window.status,
+          appointment_window.window_code as "windowCode",
+          appointment_window.label_bg as "labelBg",
+          appointment_window.label_en as "labelEn",
+          appointment_window.start_minute as "startMinute",
+          appointment_window.end_minute as "endMinute",
+          appointment_window.provisional, appointment_window.active
+        from ${appointmentWindowDefinitions} appointment_window
+        where appointment_window.profile_code = ${appointmentProfileCode}
+          and ${access}
+        order by appointment_window.start_minute
       `),
     ]);
 
@@ -456,11 +479,19 @@ async function loadOperationalConfiguration(
       const id = integerValue(item?.id);
       const code = textValue(item?.code);
       const name = textValue(item?.name);
-      if (!id || !code || !name || item?.capabilityCode !== "PORTABLE_EXTRACTION") {
+      const effectiveFrom = optionalDateValue(item?.effectiveFrom);
+      const effectiveUntil = optionalDateValue(item?.effectiveUntil);
+      if (
+        !id || !code || !name ||
+        item?.assignmentActive !== true ||
+        item?.capabilityCode !== "PORTABLE_EXTRACTION" ||
+        effectiveFrom === undefined || effectiveUntil === undefined
+      ) {
         return [];
       }
       return [{
         id,
+        assignment: { effectiveFrom, effectiveUntil },
         definition: {
           id: String(id), code, name,
           equipmentTypeCode: "PORTABLE_CLEANING_MACHINE",
@@ -871,14 +902,33 @@ export async function previewBookingScheduleRecord(
           Math.max(0, occupancy.operationalEndMinute - occupancy.operationalStartMinute),
         0,
       );
-      for (const evaluation of evaluations.filter((item) => item.selectable)) {
+      for (const generatedEvaluation of evaluations) {
         const serviceStart = sofiaLocalMinuteToInstant(
           input.workDate,
-          evaluation.serviceStartMinute,
+          generatedEvaluation.serviceStartMinute,
         );
         const serviceEnd = new Date(
           serviceStart.valueOf() + duration * 60_000,
         );
+        const assignmentCoversService =
+          !equipment ||
+          equipmentAssignmentCoversService(
+            equipment.assignment,
+            serviceStart,
+            serviceEnd,
+          );
+        const evaluation = assignmentCoversService
+          ? generatedEvaluation
+          : {
+              ...generatedEvaluation,
+              readiness: "MISSING_EQUIPMENT" as const,
+              selectable: false,
+              manualReviewRequired: true,
+              warnings: [
+                ...generatedEvaluation.warnings,
+                "Required equipment assignment does not cover the full service interval.",
+              ],
+            };
         const operationalStart = sofiaLocalMinuteToInstant(
           input.workDate,
           evaluation.operationalStartMinute,
@@ -946,23 +996,29 @@ export async function previewBookingScheduleRecord(
 }
 
 type DispatchAppointmentRow = {
+  bookingId: string;
   bookingReference: string;
+  bookingStatus: BookingStatus;
+  customerStatus: string;
+  propertyStatus: string;
+  propertyCustomerMatches: boolean;
   customerDisplayName: string;
   propertyLabel: string;
   propertyAddress: string;
+  propertyArea: string | null;
   teamId: number;
-  teamActive: boolean;
-  equipmentActive: boolean | null;
-  equipmentStatus: string | null;
+  equipmentResourceId: number | null;
   serviceStart: Date;
   serviceEnd: Date;
   operationalStart: Date;
   operationalEnd: Date;
   serviceDurationMinutes: number;
+  locationSnapshot: unknown;
+  requirementsSnapshot: unknown;
   travelSnapshot: unknown;
   equipmentLabel: string | null;
   jobReference: string | null;
-  jobStatus: string | null;
+  jobStatus: JobStatus | null;
   grossRevenueMinorUnits: number | null;
 };
 
@@ -979,6 +1035,14 @@ type UnscheduledRow = {
 function nonnegativeSnapshotMinute(snapshot: unknown, key: string): number {
   const value = integerValue(object(snapshot)?.[key]);
   return value !== null && value >= 0 ? value : 0;
+}
+
+function requiredNonnegativeSnapshotMinute(
+  snapshot: unknown,
+  key: string,
+): number | null {
+  const value = integerValue(object(snapshot)?.[key]);
+  return value !== null && value >= 0 ? value : null;
 }
 
 function metricsForTeam(input: {
@@ -1102,17 +1166,283 @@ function combineMetrics(
   };
 }
 
-function appointmentReadiness(
-  row: DispatchAppointmentRow,
-): SchedulingReadinessCode {
-  if (!row.teamActive) return "MISSING_TEAM";
+type DispatchRequirements = Readonly<{
+  team: readonly TeamCapabilityCode[];
+  equipment: readonly "PORTABLE_EXTRACTION"[];
+}>;
+
+type DispatchAppointmentEvaluation = Readonly<{
+  readiness: SchedulingReadinessCode;
+  fallbackTravelUsed: boolean;
+  travelMinutes: number;
+  bufferMinutes: number;
+  warnings: readonly string[];
+}>;
+
+function dispatchRequirements(value: unknown): DispatchRequirements | null {
+  const snapshot = object(value);
+  const requiredTeamCount = integerValue(snapshot?.requiredTeamCount);
+  const team = stringArray(snapshot?.requiredCapabilityCodes);
+  const equipment = stringArray(snapshot?.requiredEquipmentCapabilityCodes);
   if (
-    row.equipmentLabel &&
-    (row.equipmentActive !== true || row.equipmentStatus !== "ACTIVE")
-  ) return "MISSING_EQUIPMENT";
-  if (object(row.travelSnapshot)?.fallbackUsed === true) return "TRAVEL_REVIEW";
-  if (row.jobStatus === "REQUIRES_REVIEW") return "CAPABILITY_REVIEW";
-  return "READY";
+    snapshot?.source !== "IMMUTABLE_ACCEPTED_ESTIMATE_DURATION_INPUT" ||
+    snapshot?.bookingItemCountVerified !== true ||
+    requiredTeamCount !== 1 ||
+    team.length === 0 ||
+    !team.every((code) => knownTeamCapabilities.has(code as TeamCapabilityCode)) ||
+    !equipment.every((code) => code === "PORTABLE_EXTRACTION")
+  ) {
+    return null;
+  }
+  return {
+    team: team as readonly TeamCapabilityCode[],
+    equipment: equipment as readonly "PORTABLE_EXTRACTION"[],
+  };
+}
+
+function addDispatchWarning(warnings: string[], warning: string): void {
+  if (!warnings.includes(warning)) warnings.push(warning);
+}
+
+function invalidDispatchEvaluation(
+  readiness: SchedulingReadinessCode,
+  warning: string,
+  row: DispatchAppointmentRow,
+): DispatchAppointmentEvaluation {
+  const warnings = [warning];
+  if (!row.jobReference) addDispatchWarning(warnings, "JOB_NOT_PREPARED");
+  if (row.jobStatus === "PREPARED") {
+    addDispatchWarning(warnings, "JOB_TEAM_BINDING_REQUIRED");
+  }
+  return {
+    readiness,
+    fallbackTravelUsed: false,
+    travelMinutes: 0,
+    bufferMinutes: 0,
+    warnings,
+  };
+}
+
+function currentDispatchEvaluation(
+  row: DispatchAppointmentRow,
+  rows: readonly DispatchAppointmentRow[],
+  configuration: OperationalConfiguration,
+  workDate: string,
+): DispatchAppointmentEvaluation {
+  if (
+    row.customerStatus !== "ACTIVE" ||
+    row.propertyStatus !== "ACTIVE" ||
+    !row.propertyCustomerMatches
+  ) {
+    return invalidDispatchEvaluation(
+      "CUSTOMER_REVIEW",
+      "CRM_OWNERSHIP_REVIEW_REQUIRED",
+      row,
+    );
+  }
+  const requirements = dispatchRequirements(row.requirementsSnapshot);
+  if (!requirements) {
+    return invalidDispatchEvaluation(
+      "CAPABILITY_REVIEW",
+      "CURRENT_OPERATIONAL_REQUIREMENTS_INVALID",
+      row,
+    );
+  }
+  const location = locationFromSnapshot(row.locationSnapshot);
+  if (!location) {
+    return invalidDispatchEvaluation(
+      "CUSTOMER_REVIEW",
+      "CURRENT_SERVICE_LOCATION_INVALID",
+      row,
+    );
+  }
+  const persistedTravelBefore = requiredNonnegativeSnapshotMinute(
+    row.travelSnapshot,
+    "travelBeforeMinutes",
+  );
+  const persistedTravelAfter = requiredNonnegativeSnapshotMinute(
+    row.travelSnapshot,
+    "travelAfterMinutes",
+  );
+  const persistedBuffer = requiredNonnegativeSnapshotMinute(
+    row.travelSnapshot,
+    "bufferMinutes",
+  );
+  const persistedParkingBuffer = requiredNonnegativeSnapshotMinute(
+    row.travelSnapshot,
+    "parkingBufferMinutes",
+  );
+  if (
+    persistedTravelBefore === null ||
+    persistedTravelAfter === null ||
+    persistedBuffer === null ||
+    persistedParkingBuffer === null
+  ) {
+    return invalidDispatchEvaluation(
+      "TRAVEL_REVIEW",
+      "CURRENT_TRAVEL_OR_BUFFER_CHANGED",
+      row,
+    );
+  }
+  const team = configuration.teams.find((item) => item.id === row.teamId);
+  if (!team) {
+    return invalidDispatchEvaluation(
+      "MISSING_TEAM",
+      "CURRENT_TEAM_UNAVAILABLE",
+      row,
+    );
+  }
+  const workingWindow = getWorkingWindowForDate(
+    configuration.workingPolicy,
+    workDate,
+    team.definition.code,
+  );
+  if (!workingWindow) {
+    return invalidDispatchEvaluation(
+      "SCHEDULE_CONFLICT",
+      "CURRENT_WORKING_HOURS_UNAVAILABLE",
+      row,
+    );
+  }
+  const assignedEquipment = row.equipmentResourceId === null
+    ? null
+    : team.equipment.find(
+        (item) =>
+          item.id === row.equipmentResourceId &&
+          equipmentAssignmentCoversService(
+            item.assignment,
+            row.serviceStart,
+            row.serviceEnd,
+          ),
+      ) ?? null;
+  if (
+    (requirements.equipment.length > 0 && !assignedEquipment) ||
+    (requirements.equipment.length === 0 && row.equipmentResourceId !== null)
+  ) {
+    return invalidDispatchEvaluation(
+      "MISSING_EQUIPMENT",
+      "CURRENT_EQUIPMENT_ASSIGNMENT_INVALID",
+      row,
+    );
+  }
+
+  const otherRows = rows.filter((item) => item.bookingId !== row.bookingId);
+  let evaluation: SchedulingCandidateEvaluation;
+  try {
+    evaluation = evaluateSchedulingCandidateAt(
+      {
+        workDate,
+        serviceDurationMinutes: row.serviceDurationMinutes,
+        location,
+        workingWindow,
+        preferredWindow: null,
+        candidateIntervalMinutes:
+          developmentSchedulingPolicy.candidateIntervalMinutes,
+        interJobBufferMinutes:
+          configuration.travelProfile.interJobBufferMinutes,
+        parkingBufferMinutes: persistedParkingBuffer,
+        largeJobReviewThresholdMinutes:
+          developmentSchedulingPolicy.largeJobReviewThresholdMinutes,
+        configurationProvisional: configuration.provisional,
+        teamActive: team.definition.active,
+        teamCapabilityCodes: team.definition.capabilityCodes,
+        requiredCapabilityCodes: requirements.team,
+        equipmentActive:
+          assignedEquipment?.definition.active === true &&
+          assignedEquipment.definition.status === "ACTIVE",
+        equipmentCapabilityCode:
+          assignedEquipment?.definition.capabilityCode ?? null,
+        requiredEquipmentCapabilityCodes: requirements.equipment,
+        occupancies: otherRows
+          .filter((item) => item.teamId === row.teamId)
+          .map((item) => ({
+            id: item.bookingId,
+            serviceStartMinute: minuteForWorkDate(item.serviceStart, workDate),
+            serviceEndMinute: minuteForWorkDate(item.serviceEnd, workDate),
+            operationalStartMinute: minuteForWorkDate(
+              item.operationalStart,
+              workDate,
+            ),
+            operationalEndMinute: minuteForWorkDate(
+              item.operationalEnd,
+              workDate,
+            ),
+            location: locationFromSnapshot(item.locationSnapshot),
+          })),
+        equipmentOccupancies: row.equipmentResourceId === null
+          ? []
+          : otherRows
+              .filter(
+                (item) =>
+                  item.equipmentResourceId === row.equipmentResourceId,
+              )
+              .map((item) => ({
+                operationalStartMinute: minuteForWorkDate(
+                  item.operationalStart,
+                  workDate,
+                ),
+                operationalEndMinute: minuteForWorkDate(
+                  item.operationalEnd,
+                  workDate,
+                ),
+              })),
+        travelEstimator: createDevelopmentTravelTimeEstimator(
+          configuration.travelProfile,
+        ),
+      },
+      minuteForWorkDate(row.serviceStart, workDate),
+    );
+  } catch {
+    return invalidDispatchEvaluation(
+      "SCHEDULE_CONFLICT",
+      "CURRENT_SCHEDULE_EVIDENCE_INVALID",
+      row,
+    );
+  }
+
+  const expectedOperationalStart = sofiaLocalMinuteToInstant(
+    workDate,
+    evaluation.operationalStartMinute,
+  );
+  const expectedOperationalEnd = sofiaLocalMinuteToInstant(
+    workDate,
+    evaluation.operationalEndMinute,
+  );
+  const currentEvidenceMismatch =
+    row.serviceEnd.valueOf() !==
+      row.serviceStart.valueOf() + row.serviceDurationMinutes * 60_000 ||
+    row.operationalStart.valueOf() !== expectedOperationalStart.valueOf() ||
+    row.operationalEnd.valueOf() !== expectedOperationalEnd.valueOf() ||
+    persistedTravelBefore !== evaluation.travelBeforeMinutes ||
+    persistedTravelAfter !== evaluation.travelAfterMinutes ||
+    persistedBuffer !== evaluation.bufferMinutes;
+  const warnings = [...evaluation.warnings];
+  if (currentEvidenceMismatch) {
+    addDispatchWarning(warnings, "CURRENT_TRAVEL_OR_BUFFER_CHANGED");
+  }
+  if (!row.jobReference) addDispatchWarning(warnings, "JOB_NOT_PREPARED");
+  if (row.jobStatus === "PREPARED") {
+    addDispatchWarning(warnings, "JOB_TEAM_BINDING_REQUIRED");
+  }
+  if (row.jobStatus === "REQUIRES_REVIEW") {
+    addDispatchWarning(warnings, "CURRENT_JOB_REVIEW_REQUIRED");
+  }
+  return {
+    readiness:
+      evaluation.readiness !== "READY"
+        ? evaluation.readiness
+        : currentEvidenceMismatch
+          ? "TRAVEL_REVIEW"
+          : row.jobStatus === "REQUIRES_REVIEW"
+            ? "CAPABILITY_REVIEW"
+            : "READY",
+    fallbackTravelUsed: evaluation.fallbackTravelUsed,
+    travelMinutes:
+      evaluation.travelBeforeMinutes + evaluation.travelAfterMinutes,
+    bufferMinutes:
+      evaluation.bufferMinutes + persistedParkingBuffer,
+    warnings,
+  };
 }
 
 export async function loadDispatchDayRecord(
@@ -1125,18 +1455,25 @@ export async function loadDispatchDayRecord(
   const access = staffReadSql(profileId);
   const [appointmentResult, unscheduledResult] = await Promise.all([
     database.execute<DispatchAppointmentRow>(sql`
-      select booking.booking_reference as "bookingReference",
+      select booking.id as "bookingId",
+        booking.booking_reference as "bookingReference",
+        booking.status as "bookingStatus",
+        customer.status as "customerStatus",
+        property.status as "propertyStatus",
+        (property.customer_id = booking.customer_id) as "propertyCustomerMatches",
         booking.customer_snapshot ->> 'displayName' as "customerDisplayName",
         booking.property_snapshot ->> 'label' as "propertyLabel",
         booking.property_snapshot ->> 'streetAddress' as "propertyAddress",
-        occupancy.team_id as "teamId", team.active as "teamActive",
-        equipment.active as "equipmentActive",
-        equipment.status as "equipmentStatus",
+        nullif(booking.property_snapshot ->> 'district', '') as "propertyArea",
+        occupancy.team_id as "teamId",
+        occupancy.equipment_resource_id as "equipmentResourceId",
         occupancy.service_start as "serviceStart",
         occupancy.service_end as "serviceEnd",
         occupancy.operational_start as "operationalStart",
         occupancy.operational_end as "operationalEnd",
         occupancy.service_duration_minutes as "serviceDurationMinutes",
+        occupancy.location_snapshot as "locationSnapshot",
+        occupancy.requirements_snapshot as "requirementsSnapshot",
         occupancy.travel_snapshot as "travelSnapshot",
         equipment.name as "equipmentLabel",
         job.job_reference as "jobReference", job.status as "jobStatus",
@@ -1145,6 +1482,8 @@ export async function loadDispatchDayRecord(
           else null end as "grossRevenueMinorUnits"
       from ${bookingOccupancies} occupancy
       join ${bookings} booking on booking.id = occupancy.booking_id
+      join ${customers} customer on customer.id = booking.customer_id
+      join ${properties} property on property.id = booking.property_id
       join ${operationsTeams} team on team.id = occupancy.team_id
       left join ${equipmentResources} equipment
         on equipment.id = occupancy.equipment_resource_id
@@ -1174,6 +1513,16 @@ export async function loadDispatchDayRecord(
     `),
   ]);
   if (!configuration) {
+    const confirmedReviewRows = appointmentResult.rows.map((row) => ({
+      bookingReference: row.bookingReference,
+      customerDisplayName: row.customerDisplayName,
+      propertyLabel: row.propertyLabel,
+      preferredDate: null,
+      appointmentWindowLabel: null,
+      serviceDurationMinutes: row.serviceDurationMinutes,
+      readiness: "CUSTOMER_REVIEW" as const,
+      warnings: ["SCHEDULING_CONFIGURATION_INCOMPLETE"],
+    }));
     return {
       workDate: input.workDate,
       timeZone: "Europe/Sofia",
@@ -1181,20 +1530,34 @@ export async function loadDispatchDayRecord(
       nextDate: nextSofiaDate(input.workDate),
       provisionalConfiguration: true,
       warnings: ["SCHEDULING_CONFIGURATION_INCOMPLETE"],
-      unscheduledBookings: unscheduledResult.rows.map((row) => ({
-        bookingReference: row.bookingReference,
-        customerDisplayName: row.customerDisplayName,
-        propertyLabel: row.propertyLabel,
-        preferredDate: row.preferredDate,
-        appointmentWindowLabel: row.appointmentWindowCode,
-        serviceDurationMinutes: snapshotDuration(row.durationSnapshot) ?? 0,
-        readiness: "CUSTOMER_REVIEW",
-        warnings: ["SCHEDULING_CONFIGURATION_INCOMPLETE"],
-      })),
+      unscheduledBookings: [
+        ...unscheduledResult.rows.map((row) => ({
+          bookingReference: row.bookingReference,
+          customerDisplayName: row.customerDisplayName,
+          propertyLabel: row.propertyLabel,
+          preferredDate: row.preferredDate,
+          appointmentWindowLabel: row.appointmentWindowCode,
+          serviceDurationMinutes: snapshotDuration(row.durationSnapshot) ?? 0,
+          readiness: "CUSTOMER_REVIEW" as const,
+          warnings: ["SCHEDULING_CONFIGURATION_INCOMPLETE"],
+        })),
+        ...confirmedReviewRows,
+      ],
       teams: [],
       metrics: combineMetrics([], false, []),
     };
   }
+  const appointmentEvaluations = new Map(
+    appointmentResult.rows.map((row) => [
+      row.bookingReference,
+      currentDispatchEvaluation(
+        row,
+        appointmentResult.rows,
+        configuration,
+        input.workDate,
+      ),
+    ]),
+  );
   const teams = configuration.teams.map((team) => {
     const workingWindow = getWorkingWindowForDate(
       configuration.workingPolicy,
@@ -1217,29 +1580,25 @@ export async function loadDispatchDayRecord(
       name: team.definition.name,
       workingWindowLabel: `${label(workingWindow.startMinute)}–${label(workingWindow.endMinute)}`,
       appointments: rows.map((row) => {
-        const warnings = [
-          ...(row.jobReference ? [] : ["JOB_NOT_PREPARED"]),
-          ...(row.jobStatus === "PREPARED" ? ["JOB_TEAM_BINDING_REQUIRED"] : []),
-        ];
+        const evaluation = appointmentEvaluations.get(row.bookingReference)!;
         return {
           bookingReference: row.bookingReference,
+          bookingStatus: row.bookingStatus,
           jobReference: row.jobReference,
+          jobStatus: row.jobStatus,
           customerDisplayName: row.customerDisplayName,
           propertyLabel: row.propertyLabel,
           propertyAddress: row.propertyAddress,
+          propertyArea: row.propertyArea,
           serviceStart: row.serviceStart,
           serviceEnd: row.serviceEnd,
           serviceDurationMinutes: row.serviceDurationMinutes,
-          travelMinutes:
-            nonnegativeSnapshotMinute(row.travelSnapshot, "travelBeforeMinutes") +
-            nonnegativeSnapshotMinute(row.travelSnapshot, "travelAfterMinutes"),
-          bufferMinutes:
-            nonnegativeSnapshotMinute(row.travelSnapshot, "bufferMinutes") +
-            nonnegativeSnapshotMinute(row.travelSnapshot, "parkingBufferMinutes"),
+          travelMinutes: evaluation.travelMinutes,
+          bufferMinutes: evaluation.bufferMinutes,
           equipmentLabel: row.equipmentLabel,
-          readiness: appointmentReadiness(row),
-          fallbackTravelUsed: object(row.travelSnapshot)?.fallbackUsed === true,
-          warnings,
+          readiness: evaluation.readiness,
+          fallbackTravelUsed: evaluation.fallbackTravelUsed,
+          warnings: evaluation.warnings,
         };
       }),
       metrics,
@@ -1254,26 +1613,43 @@ export async function loadDispatchDayRecord(
     warnings: configuration.provisional
       ? ["SCHEDULING_CONFIGURATION_DRAFT"]
       : [],
-    unscheduledBookings: unscheduledResult.rows.map((row) => ({
-      bookingReference: row.bookingReference,
-      customerDisplayName: row.customerDisplayName,
-      propertyLabel: row.propertyLabel,
-      preferredDate: row.preferredDate,
-      appointmentWindowLabel:
-        row.appointmentWindowCode
-          ? configuration.windows.get(row.appointmentWindowCode)?.name.en ??
-            row.appointmentWindowCode
-          : null,
-      serviceDurationMinutes: snapshotDuration(row.durationSnapshot) ?? 0,
-      readiness:
-        snapshotDuration(row.durationSnapshot) === null
-          ? "CUSTOMER_REVIEW"
-          : "READY",
-      warnings:
-        row.schedulingStatus === "REVIEW_REQUIRED"
-          ? ["STAFF_SCHEDULING_REVIEW_REQUIRED"]
-          : [],
-    })),
+    unscheduledBookings: [
+      ...unscheduledResult.rows.map((row) => ({
+        bookingReference: row.bookingReference,
+        customerDisplayName: row.customerDisplayName,
+        propertyLabel: row.propertyLabel,
+        preferredDate: row.preferredDate,
+        appointmentWindowLabel:
+          row.appointmentWindowCode
+            ? configuration.windows.get(row.appointmentWindowCode)?.name.en ??
+              row.appointmentWindowCode
+            : null,
+        serviceDurationMinutes: snapshotDuration(row.durationSnapshot) ?? 0,
+        readiness:
+          snapshotDuration(row.durationSnapshot) === null
+            ? "CUSTOMER_REVIEW" as const
+            : "READY" as const,
+        warnings:
+          row.schedulingStatus === "REVIEW_REQUIRED"
+            ? ["STAFF_SCHEDULING_REVIEW_REQUIRED"]
+            : [],
+      })),
+      ...appointmentResult.rows.flatMap((row) => {
+        const evaluation = appointmentEvaluations.get(row.bookingReference)!;
+        return evaluation.readiness === "READY"
+          ? []
+          : [{
+              bookingReference: row.bookingReference,
+              customerDisplayName: row.customerDisplayName,
+              propertyLabel: row.propertyLabel,
+              preferredDate: null,
+              appointmentWindowLabel: null,
+              serviceDurationMinutes: row.serviceDurationMinutes,
+              readiness: evaluation.readiness,
+              warnings: evaluation.warnings,
+            }];
+      }),
+    ],
     teams,
     metrics: combineMetrics(
       teams.map((team) => team.metrics),
@@ -1358,9 +1734,37 @@ export async function confirmBookingScheduleRecord(
       reasonCodes: ["CANDIDATE_NO_LONGER_AVAILABLE"],
     };
   }
-  const warningSnapshot = JSON.stringify(candidate.warnings);
+  return executeScheduleConfirmationCandidate(
+    database,
+    profileId,
+    command,
+    candidate,
+  );
+}
+
+/** Server-only persistence seam used by the direct PostgreSQL syntax probe. */
+export async function executeScheduleConfirmationCandidate(
+  database: Database,
+  profileId: string,
+  command: ScheduleConfirmationCommand,
+  candidate: ScheduleCandidate,
+): Promise<ScheduleMutationResult> {
+  const confirmationBounds = sofiaDayBounds(command.workDate);
   try {
-    const result = await database.execute<ScheduleMutationRow>(sql`
+    const [, , result] = await database.batch([
+      database.execute(sql`set transaction isolation level read committed`),
+      database.execute(sql`
+        select pg_advisory_xact_lock(hashtextextended(
+          'vax-schedule:' || ${candidate.teamId}::text || ':' ||
+          ${command.workDate}, 0
+        ))
+        where exists (
+          select 1 from ${bookings} booking
+          where booking.booking_reference = ${command.bookingReference}
+            and ${staffManageSql(profileId)}
+        )
+      `),
+      database.execute<ScheduleMutationRow>(sql`
       with target as materialized (
         select booking.*, acceptance.duration_snapshot
             as acceptance_duration_snapshot,
@@ -1377,11 +1781,26 @@ export async function confirmBookingScheduleRecord(
           and ${staffManageSql(profileId)}
         for update of booking
       ),
-      schedule_lock as materialized (
-        select pg_advisory_xact_lock(hashtextextended(
-          'vax-schedule:' || ${candidate.teamId}::text || ':' ||
-          ${command.workDate}, 0
-        )) as acquired
+      authoritative_slot as materialized (
+        select ${candidate.serviceStart}::timestamptz as service_start,
+          case
+            when coalesce(
+              target.duration_snapshot ->> 'quotedDurationMinutes', ''
+            ) ~ '^[1-9][0-9]*$'
+              then (target.duration_snapshot
+                ->> 'quotedDurationMinutes')::integer
+            else null
+          end as service_duration_minutes,
+          ${candidate.serviceStart}::timestamptz + make_interval(mins =>
+            case
+              when coalesce(
+                target.duration_snapshot ->> 'quotedDurationMinutes', ''
+              ) ~ '^[1-9][0-9]*$'
+                then (target.duration_snapshot
+                  ->> 'quotedDurationMinutes')::integer
+              else null
+            end
+          ) as service_end
         from target
       ),
       current_occupancy as materialized (
@@ -1433,7 +1852,7 @@ export async function confirmBookingScheduleRecord(
         end) snapshot_item(item) on true
         group by target.id
       ),
-      policy_context as materialized (
+      policy_authority as materialized (
         select team.id as team_id, team.code as team_code,
           team.name as team_name, team.active as team_active,
           team.default_crew_size,
@@ -1443,68 +1862,386 @@ export async function confirmBookingScheduleRecord(
           policy.status as working_policy_status,
           policy.provisional as working_policy_provisional,
           policy.active as working_policy_active,
-          work_rule.start_minute, work_rule.end_minute,
           travel.id as travel_profile_id,
           travel.code as travel_profile_code,
           travel.version as travel_profile_version,
           travel.status as travel_profile_status,
           travel.provisional as travel_profile_provisional,
-          travel.active as travel_profile_active
+          travel.active as travel_profile_active,
+          travel.default_travel_minutes as travel_default_minutes,
+          travel.inter_job_buffer_minutes as inter_job_buffer_minutes
         from ${operationsTeams} team
         join ${workingHourPolicies} policy
           on policy.id = team.working_hour_policy_id
          and policy.code = ${workingPolicyCode}
          and policy.version = 1 and policy.status = 'DRAFT'
          and policy.provisional = true and policy.active = false
-        join lateral (
-          select rule.start_minute, rule.end_minute
-          from ${workingHourRules} rule
-          where rule.policy_id = policy.id and rule.enabled = true
-            and rule.weekday = extract(isodow from ${command.workDate}::date)
-            and (rule.team_id = team.id or rule.team_id is null)
-          order by (rule.team_id is not null) desc, rule.id
-          limit 1
-        ) work_rule on true
         join ${travelTimeProfiles} travel
           on travel.code = ${travelProfileCode}
          and travel.version = 1 and travel.status = 'DRAFT'
          and travel.provisional = true and travel.active = false
         where team.id = ${candidate.teamId}
+        for update of team, policy, travel
+      ),
+      locked_working_rules as materialized (
+        select work_rule.*
+        from policy_authority
+        join ${workingHourRules} work_rule
+          on work_rule.policy_id = policy_authority.working_policy_id
+        order by work_rule.id
+        for share of work_rule
+      ),
+      policy_context as materialized (
+        select policy_authority.*,
+          work_rule.start_minute, work_rule.end_minute,
+          work_rule.enabled as selected_rule_enabled,
+          work_rule.matching_team_rule_count,
+          work_rule.matching_default_rule_count
+        from policy_authority
+        left join lateral (
+          select candidate_rule.start_minute, candidate_rule.end_minute,
+            candidate_rule.enabled,
+            candidate_rule.matching_team_rule_count,
+            candidate_rule.matching_default_rule_count
+          from (
+            select matching_rule.*,
+              count(*) filter (
+                where matching_rule.team_id = policy_authority.team_id
+              ) over ()::integer as matching_team_rule_count,
+              count(*) filter (
+                where matching_rule.team_id is null
+              ) over ()::integer as matching_default_rule_count
+            from locked_working_rules matching_rule
+            where matching_rule.weekday =
+                extract(isodow from ${command.workDate}::date)
+              and (matching_rule.team_id = policy_authority.team_id
+                or matching_rule.team_id is null)
+          ) candidate_rule
+          order by (candidate_rule.team_id is not null) desc,
+            candidate_rule.id
+          limit 1
+        ) work_rule on true
+      ),
+      service_zone_context as materialized (
+        select zone.id, zone.code
+        from target
+        join ${travelZones} zone
+          on zone.code = target.property_snapshot ->> 'travelZoneCode'
+         and zone.active = true and zone.service_eligible = true
+         and zone.code <> 'OUTSIDE_SOFIA'
+        for share of zone
+      ),
+      appointment_window_context as materialized (
+        select appointment_window.id, appointment_window.start_minute,
+          appointment_window.end_minute
+        from target
+        join ${appointmentWindowDefinitions} appointment_window
+          on appointment_window.profile_code = ${appointmentProfileCode}
+         and appointment_window.version = 1
+         and appointment_window.status = 'DRAFT'
+         and appointment_window.provisional = true
+         and appointment_window.active = false
+         and appointment_window.window_code = target.appointment_window_code
+        for share of appointment_window
+      ),
+      locked_team_capabilities as materialized (
+        select capability.*
+        from policy_authority
+        join ${teamCapabilities} capability
+          on capability.team_id = policy_authority.team_id
+        order by capability.capability_code, capability.id
+        for share of capability
+      ),
+      current_team_capabilities as materialized (
+        select capability.capability_code
+        from locked_team_capabilities capability
+        where capability.active = true
+      ),
+      equipment_authority as materialized (
+        select equipment.id, equipment.code, equipment.name,
+          equipment.capability_code, equipment.active, equipment.status
+        from policy_authority
+        join ${equipmentResources} equipment
+          on equipment.id = ${candidate.equipmentResourceId}
+        for update of equipment
+      ),
+      locked_equipment_assignments as materialized (
+        select assignment.*
+        from equipment_authority
+        join ${teamEquipmentAssignments} assignment
+          on assignment.equipment_resource_id = equipment_authority.id
+         and assignment.team_id = ${candidate.teamId}
+        order by assignment.id
+        for share of assignment
       ),
       equipment_context as materialized (
-        select equipment.id, equipment.code, equipment.name,
-          equipment.capability_code, equipment.active, equipment.status,
-          assignment.id is not null as currently_assigned
-        from ${equipmentResources} equipment
-        left join ${teamEquipmentAssignments} assignment
-          on assignment.equipment_resource_id = equipment.id
-         and assignment.team_id = ${candidate.teamId}
-         and assignment.active = true
-         and (assignment.effective_from is null or assignment.effective_from <= now())
-         and (assignment.effective_until is null or assignment.effective_until > now())
-        where equipment.id = ${candidate.equipmentResourceId}
+        select equipment_authority.*, true as assigned_for_service
+        from authoritative_slot
+        cross join equipment_authority
+        join locked_equipment_assignments assignment
+          on assignment.active = true
+         and (assignment.effective_from is null
+           or assignment.effective_from <= authoritative_slot.service_start)
+         and (assignment.effective_until is null
+           or assignment.effective_until >= authoritative_slot.service_end)
+        order by assignment.id
+        limit 1
       ),
-      actual_previous as materialized (
-        select occupancy.id
+      locked_team_occupancies as materialized (
+        select occupancy.*
         from target
         join ${bookingOccupancies} occupancy
           on occupancy.team_id = ${candidate.teamId}
          and occupancy.booking_id <> target.id
          and occupancy.status in ('PENDING', 'CONFIRMED')
-         and occupancy.service_end <= ${candidate.serviceStart}
+         and occupancy.operational_start < ${confirmationBounds.endExclusive}
+         and occupancy.operational_end > ${confirmationBounds.startInclusive}
+        order by occupancy.id
+        for update of occupancy
+      ),
+      actual_previous as materialized (
+        select occupancy.id, occupancy.service_end,
+          occupancy.location_snapshot
+        from locked_team_occupancies occupancy
+        cross join authoritative_slot
+        where occupancy.service_end <= authoritative_slot.service_start
         order by occupancy.service_end desc, occupancy.id
         limit 1
       ),
       actual_next as materialized (
-        select occupancy.id
-        from target
-        join ${bookingOccupancies} occupancy
-          on occupancy.team_id = ${candidate.teamId}
-         and occupancy.booking_id <> target.id
-         and occupancy.status in ('PENDING', 'CONFIRMED')
-         and occupancy.service_start >= ${candidate.serviceEnd}
+        select occupancy.id, occupancy.service_start,
+          occupancy.location_snapshot
+        from locked_team_occupancies occupancy
+        cross join authoritative_slot
+        where occupancy.service_start >= authoritative_slot.service_end
         order by occupancy.service_start, occupancy.id
         limit 1
+      ),
+      locked_travel_rules as materialized (
+        select rule.id, rule.code, rule.active,
+          rule.estimated_travel_minutes,
+          rule.manual_assessment_required, rule.bidirectional,
+          rule.same_district_only, rule.priority,
+          origin_zone.code as origin_zone_code,
+          destination_zone.code as destination_zone_code
+        from policy_context
+        join ${travelTimeMatrixRules} rule
+          on rule.travel_time_profile_id = policy_context.travel_profile_id
+        join ${travelZones} origin_zone
+          on origin_zone.id = rule.origin_travel_zone_id
+        join ${travelZones} destination_zone
+          on destination_zone.id = rule.destination_travel_zone_id
+        order by rule.priority, rule.code, rule.id
+        for share of rule, origin_zone, destination_zone
+      ),
+      previous_rule as materialized (
+        select rule.id, rule.code, rule.estimated_travel_minutes,
+          rule.manual_assessment_required
+        from actual_previous neighbor
+        cross join target
+        cross join locked_travel_rules rule
+        where (
+          rule.active = true
+          and (
+          (rule.origin_zone_code =
+              neighbor.location_snapshot ->> 'travelZoneCode'
+            and rule.destination_zone_code =
+              target.property_snapshot ->> 'travelZoneCode')
+          or (rule.bidirectional = true
+            and rule.destination_zone_code =
+              neighbor.location_snapshot ->> 'travelZoneCode'
+            and rule.origin_zone_code =
+              target.property_snapshot ->> 'travelZoneCode')
+          )
+        )
+          and (
+            rule.same_district_only = false
+            or (
+              nullif(lower(trim(
+                neighbor.location_snapshot ->> 'district'
+              )), '') is not null
+              and lower(trim(neighbor.location_snapshot ->> 'district')) =
+                lower(trim(target.property_snapshot ->> 'district'))
+            )
+          )
+        order by rule.priority, rule.code
+        limit 1
+      ),
+      next_rule as materialized (
+        select rule.id, rule.code, rule.estimated_travel_minutes,
+          rule.manual_assessment_required
+        from actual_next neighbor
+        cross join target
+        cross join locked_travel_rules rule
+        where (
+          rule.active = true
+          and (
+          (rule.origin_zone_code =
+              target.property_snapshot ->> 'travelZoneCode'
+            and rule.destination_zone_code =
+              neighbor.location_snapshot ->> 'travelZoneCode')
+          or (rule.bidirectional = true
+            and rule.destination_zone_code =
+              target.property_snapshot ->> 'travelZoneCode'
+            and rule.origin_zone_code =
+              neighbor.location_snapshot ->> 'travelZoneCode')
+          )
+        )
+          and (
+            rule.same_district_only = false
+            or (
+              nullif(lower(trim(
+                target.property_snapshot ->> 'district'
+              )), '') is not null
+              and lower(trim(target.property_snapshot ->> 'district')) =
+                lower(trim(neighbor.location_snapshot ->> 'district'))
+            )
+          )
+        order by rule.priority, rule.code
+        limit 1
+      ),
+      previous_travel as materialized (
+        select case
+            when neighbor.id is null then 0
+            when coalesce(neighbor.location_snapshot ->> 'city', '') = ''
+              or neighbor.location_snapshot ->> 'travelZoneCode' not in (
+                'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS'
+              )
+              or matched.manual_assessment_required = true
+              or (matched.id is not null
+                and matched.estimated_travel_minutes is null)
+              then null
+            else coalesce(
+              matched.estimated_travel_minutes,
+              policy_context.travel_default_minutes
+            )
+          end as estimated_minutes,
+          case
+            when neighbor.id is null then false
+            when coalesce(neighbor.location_snapshot ->> 'city', '') = ''
+              or neighbor.location_snapshot ->> 'travelZoneCode' not in (
+                'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS'
+              )
+              or matched.manual_assessment_required = true
+              or (matched.id is not null
+                and matched.estimated_travel_minutes is null)
+              then true
+            else false
+          end as manual_required,
+          neighbor.id is not null as fallback_used,
+          neighbor.id as neighbor_id,
+          neighbor.service_end as neighbor_service_instant,
+          matched.id as applied_rule_id,
+          matched.code as applied_rule_code
+        from target
+        left join policy_context on true
+        left join actual_previous neighbor on true
+        left join previous_rule matched on true
+      ),
+      next_travel as materialized (
+        select case
+            when neighbor.id is null then 0
+            when coalesce(neighbor.location_snapshot ->> 'city', '') = ''
+              or neighbor.location_snapshot ->> 'travelZoneCode' not in (
+                'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS'
+              )
+              or matched.manual_assessment_required = true
+              or (matched.id is not null
+                and matched.estimated_travel_minutes is null)
+              then null
+            else coalesce(
+              matched.estimated_travel_minutes,
+              policy_context.travel_default_minutes
+            )
+          end as estimated_minutes,
+          case
+            when neighbor.id is null then false
+            when coalesce(neighbor.location_snapshot ->> 'city', '') = ''
+              or neighbor.location_snapshot ->> 'travelZoneCode' not in (
+                'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS'
+              )
+              or matched.manual_assessment_required = true
+              or (matched.id is not null
+                and matched.estimated_travel_minutes is null)
+              then true
+            else false
+          end as manual_required,
+          neighbor.id is not null as fallback_used,
+          neighbor.id as neighbor_id,
+          neighbor.service_start as neighbor_service_instant,
+          matched.id as applied_rule_id,
+          matched.code as applied_rule_code
+        from target
+        left join policy_context on true
+        left join actual_next neighbor on true
+        left join next_rule matched on true
+      ),
+      travel_revalidation as materialized (
+        select authoritative_slot.service_start,
+          authoritative_slot.service_end,
+          authoritative_slot.service_duration_minutes,
+          previous_travel.estimated_minutes as travel_before_minutes,
+          next_travel.estimated_minutes as travel_after_minutes,
+          previous_travel.manual_required as previous_manual_required,
+          next_travel.manual_required as next_manual_required,
+          (previous_travel.fallback_used or next_travel.fallback_used)
+            as fallback_used,
+          previous_travel.neighbor_id as previous_occupancy_id,
+          previous_travel.neighbor_service_instant
+            as previous_service_end,
+          next_travel.neighbor_id as next_occupancy_id,
+          next_travel.neighbor_service_instant as next_service_start,
+          previous_travel.applied_rule_id as previous_rule_id,
+          previous_travel.applied_rule_code as previous_rule_code,
+          next_travel.applied_rule_id as next_rule_id,
+          next_travel.applied_rule_code as next_rule_code,
+          (case when previous_travel.fallback_used
+            then policy_context.inter_job_buffer_minutes else 0 end
+           + case when next_travel.fallback_used
+            then policy_context.inter_job_buffer_minutes else 0 end)
+            as buffer_minutes,
+          authoritative_slot.service_start - make_interval(mins =>
+            coalesce(previous_travel.estimated_minutes, 0)
+            + case when previous_travel.fallback_used
+              then policy_context.inter_job_buffer_minutes else 0 end
+            + 0
+          ) as operational_start,
+          authoritative_slot.service_end + make_interval(mins =>
+            coalesce(next_travel.estimated_minutes, 0)
+            + case when next_travel.fallback_used
+              then policy_context.inter_job_buffer_minutes else 0 end
+          ) as operational_end
+        from previous_travel cross join next_travel
+        cross join authoritative_slot
+        left join policy_context on true
+      ),
+      confirmation_evidence as materialized (
+        select case when travel_revalidation.fallback_used
+            then 'TRAVEL_REVIEW' else 'READY' end as readiness,
+          (
+            policy_context.working_policy_provisional
+            or policy_context.travel_profile_provisional
+            or travel_revalidation.fallback_used
+            or travel_revalidation.service_duration_minutes >
+              ${developmentSchedulingPolicy.largeJobReviewThresholdMinutes}
+          ) as manual_review_required,
+          '[]'::jsonb
+            || case when policy_context.working_policy_provisional
+                or policy_context.travel_profile_provisional
+              then jsonb_build_array(
+                'Draft scheduling configuration requires explicit staff review.'
+              ) else '[]'::jsonb end
+            || case when travel_revalidation.fallback_used
+              then jsonb_build_array(
+                'Deterministic travel fallback was used; no live routing provider was called.'
+              ) else '[]'::jsonb end
+            || case when travel_revalidation.service_duration_minutes >
+                ${developmentSchedulingPolicy.largeJobReviewThresholdMinutes}
+              then jsonb_build_array(
+                'Large job requires staff capacity review.'
+              ) else '[]'::jsonb end as warnings
+        from travel_revalidation
+        left join policy_context on true
       ),
       decision as materialized (
         select case
@@ -1520,8 +2257,8 @@ export async function confirmBookingScheduleRecord(
             or target.duration_snapshot ->> 'quotedDurationMinutes'
               is distinct from target.duration_snapshot
                 #>> '{sourceEstimateDurationSnapshot,result,totalEstimatedMinutes}'
-            or (target.duration_snapshot ->> 'quotedDurationMinutes')::integer
-              <> ${candidate.serviceDurationMinutes}
+            or travel_revalidation.service_duration_minutes is distinct from
+              ${candidate.serviceDurationMinutes}
             or target.acceptance_provenance_snapshot
                 ->> 'quoteSourceSnapshotMatched' is distinct from 'true'
             or target.acceptance_provenance_snapshot
@@ -1538,12 +2275,8 @@ export async function confirmBookingScheduleRecord(
               'SOFIA_CORE', 'SOFIA_EXTENDED', 'SOFIA_OUTSKIRTS',
               'OUTSIDE_SOFIA'
             )
-            or not exists (
-              select 1 from ${travelZones} zone
-              where zone.code = target.property_snapshot ->> 'travelZoneCode'
-                and zone.active = true and zone.service_eligible = true
-                and zone.code <> 'OUTSIDE_SOFIA'
-            ) then 'REVIEW_REQUIRED'
+            or not exists (select 1 from service_zone_context)
+            then 'REVIEW_REQUIRED'
           when operational_requirements.item_count <= 0
             or operational_requirements.item_count <>
               operational_requirements.service_count
@@ -1566,17 +2299,27 @@ export async function confirmBookingScheduleRecord(
           when exists (select 1 from current_job
             where status <> 'PREPARED' or source_occupancy_id is not null)
             then 'REVIEW_REQUIRED'
-          when not exists (select 1 from policy_context where team_active)
+          when not exists (
+            select 1 from policy_context
+            where team_active and start_minute is not null
+              and end_minute is not null
+              and selected_rule_enabled = true
+              and (
+                matching_team_rule_count = 1
+                or (
+                  matching_team_rule_count = 0
+                  and matching_default_rule_count = 1
+                )
+              )
+          )
             then 'REVIEW_REQUIRED'
           when exists (
             select 1 from jsonb_array_elements_text(
               operational_requirements.required_capabilities
             ) required(code)
             where not exists (
-              select 1 from ${teamCapabilities} capability
-              where capability.team_id = ${candidate.teamId}
-                and capability.capability_code = required.code
-                and capability.active = true
+              select 1 from current_team_capabilities capability
+              where capability.capability_code = required.code
             )
           ) then 'REVIEW_REQUIRED'
           when operational_requirements.needs_equipment and (
@@ -1584,60 +2327,84 @@ export async function confirmBookingScheduleRecord(
             or not exists (select 1 from equipment_context
               where active and status = 'ACTIVE'
                 and capability_code = 'PORTABLE_EXTRACTION'
-                and currently_assigned)
+                and assigned_for_service)
           ) then 'REVIEW_REQUIRED'
           when not operational_requirements.needs_equipment
             and ${candidate.equipmentResourceId}::integer is not null
             then 'REVIEW_REQUIRED'
-          when (${candidate.serviceStart} at time zone 'Europe/Sofia')::date
+          when (travel_revalidation.service_start
+                at time zone 'Europe/Sofia')::date
               <> ${command.workDate}::date
-            or (${candidate.serviceEnd} at time zone 'Europe/Sofia')::date
+            or (travel_revalidation.service_end
+                at time zone 'Europe/Sofia')::date
               <> ${command.workDate}::date
-            or ${candidate.serviceEnd} <= ${candidate.serviceStart}
-            or extract(epoch from (${candidate.serviceEnd} -
-              ${candidate.serviceStart})) / 60
-              <> ${candidate.serviceDurationMinutes}
-            or ${candidate.operationalStart} > ${candidate.serviceStart}
-            or ${candidate.operationalEnd} < ${candidate.serviceEnd}
-            or (extract(hour from ${candidate.operationalStart}
+            or travel_revalidation.service_end <=
+              travel_revalidation.service_start
+            or extract(epoch from (travel_revalidation.service_end -
+              travel_revalidation.service_start)) / 60
+              <> travel_revalidation.service_duration_minutes
+            or travel_revalidation.operational_start >
+              travel_revalidation.service_start
+            or travel_revalidation.operational_end <
+              travel_revalidation.service_end
+            or (extract(hour from travel_revalidation.operational_start
                 at time zone 'Europe/Sofia') * 60
-              + extract(minute from ${candidate.operationalStart}
+              + extract(minute from travel_revalidation.operational_start
                 at time zone 'Europe/Sofia')) < policy_context.start_minute
-            or (extract(hour from ${candidate.operationalEnd}
+            or (extract(hour from travel_revalidation.operational_end
                 at time zone 'Europe/Sofia') * 60
-              + extract(minute from ${candidate.operationalEnd}
+              + extract(minute from travel_revalidation.operational_end
                 at time zone 'Europe/Sofia')) > policy_context.end_minute
             then 'REVIEW_REQUIRED'
           when target.appointment_window_code is not null and not exists (
-            select 1 from ${appointmentWindowDefinitions} window
-            where window.profile_code = ${appointmentProfileCode}
-              and window.version = 1 and window.status = 'DRAFT'
-              and window.provisional = true and window.active = false
-              and window.window_code = target.appointment_window_code
-              and (extract(hour from ${candidate.serviceStart}
+            select 1 from appointment_window_context appointment_window
+            where (extract(hour from travel_revalidation.service_start
                     at time zone 'Europe/Sofia') * 60
-                + extract(minute from ${candidate.serviceStart}
-                    at time zone 'Europe/Sofia')) >= window.start_minute
-              and (extract(hour from ${candidate.serviceStart}
+                + extract(minute from travel_revalidation.service_start
+                    at time zone 'Europe/Sofia')) >=
+                  appointment_window.start_minute
+              and (extract(hour from travel_revalidation.service_start
                     at time zone 'Europe/Sofia') * 60
-                + extract(minute from ${candidate.serviceStart}
-                    at time zone 'Europe/Sofia')) < window.end_minute
+                + extract(minute from travel_revalidation.service_start
+                    at time zone 'Europe/Sofia')) <
+                  appointment_window.end_minute
           ) then 'REVIEW_REQUIRED'
-          when (select id from actual_previous) is distinct from
+          when travel_revalidation.previous_occupancy_id is distinct from
               ${candidate.previousOccupancyId ?? null}::uuid
-            or (select id from actual_next) is distinct from
+            or travel_revalidation.next_occupancy_id is distinct from
               ${candidate.nextOccupancyId ?? null}::uuid
+            then 'STALE'
+          when travel_revalidation.previous_manual_required
+            or travel_revalidation.next_manual_required
+            or travel_revalidation.travel_before_minutes is null
+            or travel_revalidation.travel_after_minutes is null
+            then 'REVIEW_REQUIRED'
+          when travel_revalidation.travel_before_minutes is distinct from
+              ${candidate.travelBeforeMinutes}
+            or travel_revalidation.travel_after_minutes is distinct from
+              ${candidate.travelAfterMinutes}
+            or travel_revalidation.buffer_minutes is distinct from
+              ${candidate.bufferMinutes}
+            or travel_revalidation.fallback_used is distinct from
+              ${candidate.fallbackTravelUsed}
+            or travel_revalidation.operational_start is distinct from
+              ${candidate.operationalStart}
+            or travel_revalidation.operational_end is distinct from
+              ${candidate.operationalEnd}
             then 'STALE'
           when exists (select 1 from current_occupancy
             where team_id = ${candidate.teamId}
               and equipment_resource_id is not distinct from
                 ${candidate.equipmentResourceId}::integer
-              and service_start = ${candidate.serviceStart}
-              and service_end = ${candidate.serviceEnd})
+              and service_start = travel_revalidation.service_start
+              and service_end = travel_revalidation.service_end)
             then 'NO_CHANGE'
           else 'READY'
         end as result
-        from target, schedule_lock, operational_requirements, policy_context
+        from target cross join operational_requirements
+        cross join travel_revalidation
+        cross join confirmation_evidence
+        left join policy_context on true
         union all select 'NOT_FOUND_OR_FORBIDDEN'
         where not exists (select 1 from target)
       ),
@@ -1679,9 +2446,12 @@ export async function confirmBookingScheduleRecord(
           case when current_occupancy.id is null then null
             else ${command.reasonText} end,
           policy_context.team_id, ${candidate.equipmentResourceId},
-          ${candidate.serviceStart}, ${candidate.serviceEnd},
-          ${candidate.operationalStart}, ${candidate.operationalEnd},
-          'Europe/Sofia', 'CONFIRMED', ${candidate.serviceDurationMinutes},
+          travel_revalidation.service_start,
+          travel_revalidation.service_end,
+          travel_revalidation.operational_start,
+          travel_revalidation.operational_end,
+          'Europe/Sofia', 'CONFIRMED',
+          travel_revalidation.service_duration_minutes,
           case when operational_requirements.needs_equipment
             then 'PORTABLE_EXTRACTION' else null end,
           ${developmentSchedulingPolicy.code},
@@ -1706,32 +2476,48 @@ export async function confirmBookingScheduleRecord(
             'bookingItemCountVerified', true
           ),
           jsonb_build_object(
-            'schemaVersion', 1, 'workDate', ${command.workDate},
-            'candidateKey', ${command.candidateKey},
-            'previousOccupancyId', ${candidate.previousOccupancyId ?? null}::uuid,
-            'nextOccupancyId', ${candidate.nextOccupancyId ?? null}::uuid,
+            'schemaVersion', 1, 'workDate', ${command.workDate}::text,
+            'candidateKey', ${command.candidateKey}::text,
+            'previousOccupancyId',
+              travel_revalidation.previous_occupancy_id,
+            'previousServiceEnd',
+              travel_revalidation.previous_service_end,
+            'nextOccupancyId', travel_revalidation.next_occupancy_id,
+            'nextServiceStart', travel_revalidation.next_service_start,
             'staffReviewAcknowledged', true,
             'configurationStatus', 'DRAFT'
           ),
           jsonb_build_object(
-            'schemaVersion', 1, 'readiness', ${candidate.readiness},
-            'manualReviewRequired', ${candidate.manualReviewRequired},
-            'warnings', ${warningSnapshot}::jsonb,
-            'serviceStart', ${candidate.serviceStart},
-            'serviceEnd', ${candidate.serviceEnd},
-            'operationalStart', ${candidate.operationalStart},
-            'operationalEnd', ${candidate.operationalEnd}
+            'schemaVersion', 1,
+            'readiness', confirmation_evidence.readiness,
+            'manualReviewRequired',
+              confirmation_evidence.manual_review_required,
+            'warnings', confirmation_evidence.warnings,
+            'serviceStart', travel_revalidation.service_start,
+            'serviceEnd', travel_revalidation.service_end,
+            'operationalStart', travel_revalidation.operational_start,
+            'operationalEnd', travel_revalidation.operational_end
           ),
           jsonb_build_object(
             'schemaVersion', 1,
-            'travelBeforeMinutes', ${candidate.travelBeforeMinutes},
-            'travelAfterMinutes', ${candidate.travelAfterMinutes},
-            'bufferMinutes', ${candidate.bufferMinutes},
-            'parkingBufferMinutes', ${candidate.parkingBufferMinutes},
-            'fallbackUsed', ${candidate.fallbackTravelUsed},
+            'travelBeforeMinutes', travel_revalidation.travel_before_minutes,
+            'travelAfterMinutes', travel_revalidation.travel_after_minutes,
+            'bufferMinutes', travel_revalidation.buffer_minutes,
+            'parkingBufferMinutes', 0,
+            'fallbackUsed', travel_revalidation.fallback_used,
             'liveRoutingUsed', false,
             'profileCode', policy_context.travel_profile_code,
-            'profileVersion', policy_context.travel_profile_version
+            'profileVersion', policy_context.travel_profile_version,
+            'previousOccupancyId',
+              travel_revalidation.previous_occupancy_id,
+            'previousServiceEnd',
+              travel_revalidation.previous_service_end,
+            'previousRuleId', travel_revalidation.previous_rule_id,
+            'previousRuleCode', travel_revalidation.previous_rule_code,
+            'nextOccupancyId', travel_revalidation.next_occupancy_id,
+            'nextServiceStart', travel_revalidation.next_service_start,
+            'nextRuleId', travel_revalidation.next_rule_id,
+            'nextRuleCode', travel_revalidation.next_rule_code
           ),
           jsonb_build_object(
             'schemaVersion', 1,
@@ -1750,11 +2536,13 @@ export async function confirmBookingScheduleRecord(
             'capabilityCode', equipment_context.capability_code,
             'status', equipment_context.status,
             'assignmentVerified',
-              coalesce(equipment_context.currently_assigned, false)
+              coalesce(equipment_context.assigned_for_service, false)
           ),
           ${profileId}::uuid
         from target cross join decision cross join policy_context
         cross join operational_requirements
+        cross join travel_revalidation
+        cross join confirmation_evidence
         left join current_occupancy on true
         left join equipment_context on true
         where decision.result = 'READY'
@@ -1801,7 +2589,7 @@ export async function confirmBookingScheduleRecord(
             'occupancySnapshotVersion', inserted.snapshot_version,
             'teamCode', policy_context.team_code,
             'equipmentAssigned', inserted.equipment_resource_id is not null,
-            'revisionReasonCategory', ${command.reasonCategory}
+            'revisionReasonCategory', ${command.reasonCategory}::text
           )
         from changed join inserted on inserted.booking_id = changed.id
         cross join policy_context
@@ -1841,7 +2629,8 @@ export async function confirmBookingScheduleRecord(
       left join current_occupancy on true
       left join inserted on true
       left join changed on true
-    `);
+      `),
+    ]);
     return scheduleMutationResult(result.rows[0]);
   } catch (error) {
     if (databaseConflict(error)) return { status: "CONFLICT" };

@@ -33,6 +33,12 @@ type SchedulingContent = Readonly<{
     teamsTitle: string;
     teamEmpty: string;
     preferredTiming: string;
+    bookingReference: string;
+    bookingStatus: string;
+    jobReference: string;
+    jobStatus: string;
+    jobNotPrepared: string;
+    area: string;
     duration: string;
     readiness: string;
     equipment: string;
@@ -132,6 +138,38 @@ const warningMessages = {
     bg: "Работната задача изисква преглед на връзката с назначения екип.",
     en: "The field job requires review of its assigned-team binding.",
   },
+  CURRENT_OPERATIONAL_REQUIREMENTS_INVALID: {
+    bg: "Текущите оперативни изисквания са невалидни и изискват служебен преглед.",
+    en: "Current operational requirements are invalid and require staff review.",
+  },
+  CURRENT_SERVICE_LOCATION_INVALID: {
+    bg: "Текущият адрес за услугата е непълен и изисква служебен преглед.",
+    en: "The current service location is incomplete and requires staff review.",
+  },
+  CURRENT_TEAM_UNAVAILABLE: {
+    bg: "Назначеният екип вече не е наличен.",
+    en: "The assigned team is no longer available.",
+  },
+  CURRENT_WORKING_HOURS_UNAVAILABLE: {
+    bg: "Текущото работно време вече не покрива посещението.",
+    en: "Current working hours no longer cover the appointment.",
+  },
+  CURRENT_EQUIPMENT_ASSIGNMENT_INVALID: {
+    bg: "Текущото оборудване или назначението му към екипа вече не е валидно за посещението.",
+    en: "The current equipment or its team assignment is no longer valid for the appointment.",
+  },
+  CURRENT_SCHEDULE_EVIDENCE_INVALID: {
+    bg: "Текущите данни за графика не могат да бъдат потвърдени безопасно.",
+    en: "The current schedule evidence cannot be validated safely.",
+  },
+  CURRENT_TRAVEL_OR_BUFFER_CHANGED: {
+    bg: "Текущото пътуване или оперативният буфер вече не съвпада с потвърдения интервал.",
+    en: "Current travel or buffer assumptions no longer match the confirmed interval.",
+  },
+  CURRENT_JOB_REVIEW_REQUIRED: {
+    bg: "Работната задача изисква служебен преглед.",
+    en: "The field job requires staff review.",
+  },
   STAFF_SCHEDULING_REVIEW_REQUIRED: {
     bg: "Резервацията изисква служебен преглед преди насрочване.",
     en: "The booking requires staff review before scheduling.",
@@ -195,6 +233,10 @@ const warningMessages = {
   "Operational occupancy conflicts with another appointment.": {
     bg: "Оперативният интервал се застъпва с друго посещение.",
     en: "The operational interval conflicts with another appointment.",
+  },
+  "Required equipment conflicts with another appointment.": {
+    bg: "Необходимото оборудване се застъпва с друго посещение.",
+    en: "Required equipment conflicts with another appointment.",
   },
   "Draft scheduling configuration requires explicit staff review.": {
     bg: "DRAFT конфигурацията изисква изричен служебен преглед.",
@@ -286,6 +328,12 @@ export const schedulingContent = {
       teamsTitle: "График по екипи",
       teamEmpty: "Няма потвърдени посещения за този екип.",
       preferredTiming: "Предпочитание на клиента",
+      bookingReference: "Резервация",
+      bookingStatus: "Статус на резервацията",
+      jobReference: "Работна задача",
+      jobStatus: "Статус на задачата",
+      jobNotPrepared: "Няма подготвена задача",
+      area: "Район",
       duration: "Продължителност на услугата",
       readiness: "Готовност",
       equipment: "Оборудване",
@@ -403,6 +451,12 @@ export const schedulingContent = {
       teamsTitle: "Schedule by team",
       teamEmpty: "No confirmed visits for this team.",
       preferredTiming: "Customer preference",
+      bookingReference: "Booking",
+      bookingStatus: "Booking status",
+      jobReference: "Field job",
+      jobStatus: "Job status",
+      jobNotPrepared: "No field job prepared",
+      area: "Area",
       duration: "Service duration",
       readiness: "Readiness",
       equipment: "Equipment",

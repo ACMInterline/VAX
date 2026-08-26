@@ -2,6 +2,8 @@ import type {
   SchedulingReadinessCode,
   SchedulingReasonCategory,
 } from "@/content/scheduling";
+import type { BookingStatus } from "@/modules/booking-engine/types";
+import type { JobStatus } from "@/modules/job-execution/types";
 
 export type DispatchMetricsView = Readonly<{
   scheduledJobs: number;
@@ -29,10 +31,13 @@ export type UnscheduledBookingView = Readonly<{
 
 export type DispatchAppointmentView = Readonly<{
   bookingReference: string;
+  bookingStatus: BookingStatus;
   jobReference: string | null;
+  jobStatus: JobStatus | null;
   customerDisplayName: string;
   propertyLabel: string;
   propertyAddress: string;
+  propertyArea: string | null;
   serviceStart: Date;
   serviceEnd: Date;
   serviceDurationMinutes: number;

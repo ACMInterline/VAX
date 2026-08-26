@@ -1360,7 +1360,7 @@ export async function cancelBookingRecord(
       )
       select changed.id, changed.quote_acceptance_id, 'BOOKING_CANCELLED',
         ${actorProfileId}::uuid, 'STAFF', jsonb_build_object(
-          'reasonCategory', ${input.reasonCategory},
+          'reasonCategory', ${input.reasonCategory}::text,
           'releasedOccupancyCount', (select count(*) from cancelled_occupancy)
         )
       from changed

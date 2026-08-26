@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { AuthLocale } from "@/auth/validation";
 import { ApplicationStatusBadge } from "@/components/application/status-badge";
+import { jobExecutionContent } from "@/components/job-execution/content";
+import { bookingContent } from "@/content/booking";
 import { schedulingContent } from "@/content/scheduling";
 import type {
   DispatchAppointmentView,
@@ -148,7 +150,12 @@ function Appointment({
         </time>
       </p>
       <dl className="schedule-card__details">
+        <div><dt>{content.dispatch.bookingReference}</dt><dd>{appointment.bookingReference}</dd></div>
+        <div><dt>{content.dispatch.bookingStatus}</dt><dd>{bookingContent[locale].labels.bookingStatuses[appointment.bookingStatus]}</dd></div>
+        <div><dt>{content.dispatch.jobReference}</dt><dd>{appointment.jobReference ?? content.dispatch.jobNotPrepared}</dd></div>
+        <div><dt>{content.dispatch.jobStatus}</dt><dd>{appointment.jobStatus ? jobExecutionContent[locale].statuses[appointment.jobStatus].label : content.dispatch.jobNotPrepared}</dd></div>
         <div><dt>{locale === "bg" ? "Клиент" : "Customer"}</dt><dd>{appointment.customerDisplayName}</dd></div>
+        <div><dt>{content.dispatch.area}</dt><dd>{appointment.propertyArea ?? content.common.noValue}</dd></div>
         <div><dt>{locale === "bg" ? "Адрес" : "Address"}</dt><dd>{appointment.propertyAddress}</dd></div>
         <div><dt>{content.dispatch.duration}</dt><dd>{content.common.minutes(appointment.serviceDurationMinutes)}</dd></div>
         <div><dt>{content.dispatch.travel}</dt><dd>{content.common.minutes(appointment.travelMinutes)}</dd></div>

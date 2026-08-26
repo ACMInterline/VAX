@@ -157,10 +157,13 @@ export function presentDispatchDay(
       workingWindowLabel: team.workingWindowLabel,
       appointments: team.appointments.map((appointment) => ({
         bookingReference: appointment.bookingReference,
+        bookingStatus: appointment.bookingStatus,
         jobReference: appointment.jobReference,
+        jobStatus: appointment.jobStatus,
         customerDisplayName: appointment.customerDisplayName,
         propertyLabel: appointment.propertyLabel,
         propertyAddress: appointment.propertyAddress,
+        propertyArea: appointment.propertyArea,
         serviceStart: appointment.serviceStart,
         serviceEnd: appointment.serviceEnd,
         serviceDurationMinutes: appointment.serviceDurationMinutes,

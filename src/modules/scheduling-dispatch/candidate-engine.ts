@@ -235,6 +235,13 @@ function evaluateOne(
     customerMismatch ||
     travelUnconfirmed;
 
+  if (teamMissing) addUnique(warnings, "Assigned team is unavailable.");
+  if (capabilityMissing) {
+    addUnique(warnings, "Missing required team capability.");
+  }
+  if (equipmentMissing) {
+    addUnique(warnings, "Required equipment is unavailable or incompatible.");
+  }
   if (outsideWorkingHours) addUnique(warnings, "Outside provisional working hours.");
   if (collision) addUnique(warnings, "Operational occupancy conflicts with another appointment.");
   if (equipmentCollision) {
@@ -296,9 +303,7 @@ function evaluateOne(
   };
 }
 
-export function generateSchedulingCandidates(
-  context: SchedulingCandidateContext,
-): readonly SchedulingCandidateEvaluation[] {
+function validateContext(context: SchedulingCandidateContext): void {
   assertMinute(context.workingWindow.startMinute, "Working start");
   assertMinute(context.workingWindow.endMinute, "Working end", true);
   if (
@@ -313,6 +318,21 @@ export function generateSchedulingCandidates(
   ) {
     throw new Error("Scheduling durations and intervals must be valid minutes.");
   }
+}
+
+export function evaluateSchedulingCandidateAt(
+  context: SchedulingCandidateContext,
+  serviceStartMinute: number,
+): SchedulingCandidateEvaluation {
+  validateContext(context);
+  assertMinute(serviceStartMinute, "Service start");
+  return evaluateOne(context, serviceStartMinute);
+}
+
+export function generateSchedulingCandidates(
+  context: SchedulingCandidateContext,
+): readonly SchedulingCandidateEvaluation[] {
+  validateContext(context);
   const start = Math.max(
     context.workingWindow.startMinute,
     context.preferredWindow?.startMinute ?? 0,

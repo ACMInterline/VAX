@@ -42,6 +42,11 @@ function candidate(
 describe("deterministic schedule candidate ranking", () => {
   it("applies every ranking factor in the documented order", () => {
     const input = [
+      candidate("blocked", {
+        selectable: false,
+        readiness: "SCHEDULE_CONFLICT",
+        additionalTravelMinutes: 0,
+      }),
       candidate("non-preferred", {
         preferredWindowMatch: false,
         additionalTravelMinutes: 0,
@@ -83,6 +88,7 @@ describe("deterministic schedule candidate ranking", () => {
       ["no-continuity", 6],
       ["higher-travel", 7],
       ["non-preferred", 8],
+      ["blocked", 9],
     ]);
   });
 

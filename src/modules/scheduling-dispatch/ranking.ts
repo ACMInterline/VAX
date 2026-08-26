@@ -30,6 +30,9 @@ export function compareScheduleCandidates(
 ): number {
   assertRankingCandidate(left);
   assertRankingCandidate(right);
+  if (left.selectable !== right.selectable) {
+    return left.selectable ? -1 : 1;
+  }
   if (left.preferredWindowMatch !== right.preferredWindowMatch) {
     return left.preferredWindowMatch ? -1 : 1;
   }

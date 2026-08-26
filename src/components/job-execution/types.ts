@@ -23,6 +23,7 @@ export type TechnicianJobListItem = Readonly<{
   customerDisplayName: string;
   propertyLabel: string;
   serviceAddress: string;
+  accessInstructions: string | null;
   assignedTeamLabel: string | null;
   itemLabels: readonly string[];
   reviewReasons: readonly string[];

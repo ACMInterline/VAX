@@ -113,6 +113,10 @@ export function TechnicianJobList({
                   <dd>{job.serviceAddress}</dd>
                 </div>
                 <div>
+                  <dt>{content.access}</dt>
+                  <dd>{job.accessInstructions ?? content.noAccess}</dd>
+                </div>
+                <div>
                   <dt>{content.items}</dt>
                   <dd><Values empty="—" values={job.itemLabels} /></dd>
                 </div>

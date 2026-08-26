@@ -17,7 +17,12 @@ export default function TodayJobsError({ reset }: { reset: () => void }) {
         </p>
       </div>
       <button className="crm-button" type="button" onClick={reset}>
-        Retry / Опитай отново
+        <span className="crm-route-state__copy--bg" lang="bg">
+          Опитайте отново
+        </span>
+        <span className="crm-route-state__copy--en" lang="en">
+          Try again
+        </span>
       </button>
     </section>
   );

@@ -1,3 +1,6 @@
+import type { BookingStatus } from "@/modules/booking-engine/types";
+import type { JobStatus } from "@/modules/job-execution/types";
+
 export const SOFIA_TIME_ZONE = "Europe/Sofia" as const;
 export type SofiaTimeZone = typeof SOFIA_TIME_ZONE;
 
@@ -50,10 +53,13 @@ export type UnscheduledBooking = Readonly<{
 
 export type DispatchAppointment = Readonly<{
   bookingReference: string;
+  bookingStatus: BookingStatus;
   jobReference: string | null;
+  jobStatus: JobStatus | null;
   customerDisplayName: string;
   propertyLabel: string;
   propertyAddress: string;
+  propertyArea: string | null;
   serviceStart: Date;
   serviceEnd: Date;
   serviceDurationMinutes: number;

@@ -157,7 +157,8 @@ scheduling-specific adapter for durable occupancy. It uses:
 - parking/access time where it has been reviewed; and
 - the configured inter-job operational buffer exactly once per transition.
 
-Feasible candidates are ranked deterministically in this order:
+Confirmable candidates are returned ahead of review-only candidates. Within
+each tier, candidates are ranked deterministically in this order:
 
 1. fit within the customer's preferred appointment window;
 2. lower additional travel while retaining safe adjacent-job feasibility;
@@ -231,18 +232,28 @@ expected end, operational interval, timestamps, policy snapshots or audit
 metadata.
 
 At confirmation the server recomputes the exact service end and operational
-interval. One atomic database operation:
+interval in one atomic `READ COMMITTED` transaction. The transaction first
+acquires a team/date advisory lock; the following statement therefore receives
+a fresh snapshot only after any competing scheduler has committed. It then:
 
-1. locks the Booking and its current blocking occupancy;
+1. locks the Booking and every current blocking occupancy for the selected team
+   and Sofia civil day in deterministic order;
 2. verifies optimistic Booking version and candidate freshness;
 3. revalidates immutable provenance and staff-reviewed requirements;
-4. revalidates current team state and every capability;
-5. revalidates equipment state, capability and team assignment;
-6. reloads the exact working-hour, scheduling and travel versions;
-7. reloads adjacent blocking occupancy and recomputes travel feasibility;
+4. locks and revalidates current team state and the complete capability set;
+5. locks and revalidates equipment state, capability and the complete assignment
+   set for the selected resource;
+6. locks the exact working-hour/travel authorities and their complete rule sets,
+   rejecting missing, disabled or ambiguous working-hour authority;
+7. derives the current adjacent occupancies and recomputes both travel legs,
+   buffers and operational bounds from those locked rows;
 8. inserts the new immutable occupancy version;
 9. updates the Booking to the matching exact schedule; and
 10. appends allowlisted audit evidence.
+
+Only the post-serialization values from that fresh statement are persisted.
+Preview duration/end, neighbor identity, travel, buffer and readiness values are
+comparison evidence, not write authority.
 
 PostgreSQL GiST exclusion constraints over half-open `[)` operational ranges
 remain the final race-safe guard for the same team and the same non-null
@@ -278,8 +289,9 @@ command.
 Booking cancellation preserves the existing rule that an active Job must be
 cancelled through its controlled pre-work policy first. A successful Booking
 cancellation releases the blocking occupancy by changing its state rather than
-deleting it and appends both cancellation and occupancy-release evidence where
-applicable.
+deleting it. `BOOKING_CANCELLED` records the released occupancy count. The
+separate `OCCUPANCY_RELEASED` event is appended for controlled rescheduling,
+where it identifies the historical predecessor that was replaced.
 
 The Booking audit vocabulary includes initial scheduling, rescheduling, team
 assignment, equipment assignment, schedule-review, cancellation and occupancy
@@ -385,21 +397,27 @@ migration; then verify its checksum, Drizzle ledger entry, expected schema and
 unchanged prior migration checksums. Production remains untouched.
 
 Static migration inspection is not evidence that PostgreSQL exclusion
-constraints work at runtime. A guarded, serialized development integration run
-must use deterministic synthetic fixtures and prove:
+constraints work at runtime. The guarded development integration suite uses a
+temporary constraint probe plus a minimal deterministic application fixture to
+prove:
 
 - overlapping occupancy for the same team is rejected;
 - overlapping occupancy for the same equipment is rejected;
 - different teams may operate concurrently;
 - cancelled/released occupancy no longer blocks capacity; and
-- a rejected conflict leaves Booking, occupancy and audit state unchanged.
+- a rejected conflict leaves no partial occupancy state;
+- two dispatchers targeting the same Booking serialize to one schedule and one
+  stale result; and
+- a reschedule/cancellation race leaves one coherent Booking/occupancy/audit
+  outcome with linked history where rescheduling wins.
 
-Fixtures and any safely supported synthetic identities must be removed after
-verification. Credential-free CI continues to run without a live database.
+The application fixture is deleted from every touched table and residue is
+asserted as zero after verification. It creates no Neon Auth identity.
+Credential-free CI continues to skip the guarded live tests.
 
 ## Validation matrix
 
-Phase 3G verification covers:
+Automated Phase 3G verification covers:
 
 - eligible, cancelled and provenance-incomplete Bookings;
 - preferred-window and working-hour boundaries, long jobs, required
@@ -415,12 +433,14 @@ Phase 3G verification covers:
 - own customer appointment visibility and unrelated appointment denial;
 - Sofia spring and autumn clock transitions;
 - Bulgarian/English labels, keyboard controls, time/date labels, repeated-error
-  focus, confirmation dialog, list alternatives and responsive layouts at 320,
-  375, 390, 430, 768 and at least 1024 CSS pixels; and
+  focus, confirmation-dialog semantics and list alternatives; and
 - CRM, request, estimate, quote, Booking, Job, Cleaning Passport, RBAC, CSRF and
   database-security regression suites.
 
-An authenticated browser rehearsal may create dispatcher, technician or
+Responsive CSS contracts cover stacked/list presentation at 320, 375, 390, 430,
+768 and at least 1024 CSS pixels, but this is not a claim of authenticated live
+browser rehearsal. An authenticated browser rehearsal may create dispatcher,
+technician or
 customer identities only when provider-supported cleanup is proven first. If
 safe cleanup is unavailable, no identity is created and the limitation is
 reported instead of weakening the cleanup requirement.
