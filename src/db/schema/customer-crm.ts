@@ -396,6 +396,10 @@ export const cleaningAssets = pgTable(
       table.cleaningItemTypeId,
       table.status,
     ),
+    uniqueIndex("cleaning_assets_id_property_unique").on(
+      table.id,
+      table.propertyId,
+    ),
     check("cleaning_assets_label_not_blank", sql`length(trim(${table.label})) > 0`),
     check(
       "cleaning_assets_status_valid",

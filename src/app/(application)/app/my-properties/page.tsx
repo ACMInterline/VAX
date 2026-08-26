@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import Link from "next/link";
 import { CustomerSelfServiceCard } from "@/components/crm/customer-self-service-card";
 import { crmContent } from "@/content/crm";
 import type { CustomerSelfDetail } from "@/modules/customer-crm/types";
@@ -27,6 +29,8 @@ export default async function MyPropertiesPage() {
     )
   ).filter(isLinkedDetail);
   const content = crmContent[locale];
+  const passportLabel =
+    locale === "bg" ? "Паспорт на почистването" : "Cleaning passport";
 
   return (
     <section className="crm-page crm-page--self" aria-labelledby="my-properties-heading">
@@ -45,13 +49,35 @@ export default async function MyPropertiesPage() {
         </div>
       ) : (
         <div className="crm-self-service-list">
-          {linkedDetails.map((customer) => (
-            <CustomerSelfServiceCard
-              key={customer.id}
-              customer={customer}
-              locale={locale}
-            />
-          ))}
+          {linkedDetails.map((customer) => {
+            const passportAssets = customer.properties.flatMap((property) =>
+              property.status === "ARCHIVED"
+                ? []
+                : property.cleaningAssets
+                    .filter((asset) => asset.status !== "ARCHIVED")
+                    .map((asset) => ({ asset, property })),
+            );
+            return (
+              <Fragment key={customer.id}>
+                <CustomerSelfServiceCard customer={customer} locale={locale} />
+                {passportAssets.length > 0 ? (
+                  <nav
+                    className="crm-subnavigation"
+                    aria-label={`${passportLabel}: ${customer.displayName}`}
+                  >
+                    {passportAssets.map(({ asset, property }) => (
+                      <Link
+                        key={asset.id}
+                        href={`/app/my-properties/${property.id}/assets/${asset.id}`}
+                      >
+                        {passportLabel}: {property.label} · {asset.label}
+                      </Link>
+                    ))}
+                  </nav>
+                ) : null}
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </section>

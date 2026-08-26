@@ -992,6 +992,19 @@
   gap: 0.65rem;
 }
 
+.job-page .crm-form__choice {
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--canvas);
+}
+
+.job-page .crm-form__choice input {
+  margin-top: 0;
+}
+
 .crm-form__hint,
 .crm-form__notice,
 .crm-form__intro {

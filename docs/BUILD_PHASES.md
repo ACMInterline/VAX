@@ -222,29 +222,67 @@ database-backed occupancy constraints, cancellation history, bilingual
 accessible customer/staff flows, reviewed development-only migration, full
 validation and protected-main CI.
 
+### Phase 3F — Operational Job → Inspection → Treatment → Completion → Cleaning Passport
+
+Implements one durable Job per eligible Booking without changing Phase 3D/3E
+authority. Job creation consumes only the Booking/Booking-item chain and the
+immutable issued-Quote `acceptance_source_snapshot`; it never rereads current
+request or estimate rows as scope authority, renormalizes reported/staff facts,
+reprices, recalculates duration or silently repairs CRM provenance. Current CRM
+may provide a separate purpose-limited visit contact and exact active asset-
+ownership integrity check only. Any malformed or inconsistent provenance fails
+closed with zero Job writes.
+
+An exact current confirmed Booking occupancy is required for a `READY` Job;
+otherwise a valid Booking can produce only review-gated `PREPARED`. Phase 3F
+adds time-bounded operations-team membership, mobile-first staff/assigned-
+technician Job views, controlled en-route/arrival/start states, professional
+inspection, confirmed treatment or decline/referral, performed-treatment
+evidence, atomic completion with server-derived actual duration, and append-
+only asset Cleaning Passport history. Planned, observed, confirmed and
+performed facts remain distinct. Unsafe, specialist, material-scope or
+performed-versus-confirmed divergence fails closed to review instead of
+changing scope or price.
+
+No new role or permission, general Booking scheduling/rescheduling command,
+multi-visit Job, payment, invoice, file/media, message, notification, route
+optimisation, offline synchronization, payroll, inventory, production
+migration or deployment is included. Cleaning Passport entries exist only for
+asset-linked treatments actually completed within their confirmed plans. See
+`docs/JOB_EXECUTION.md`.
+
+Gate: immutable Booking/issued-Quote provenance, no partial Job creation,
+exact-occupancy readiness, assigned-team/record-level authorization and IDOR
+defense, safety/review behavior, optimistic concurrency and retry idempotency,
+completion/Passport atomicity, safe customer versus technician projections,
+bilingual responsive accessibility, reviewed development-only migration, full
+validation and protected-main CI.
+
 ## Phase 7 — Calendar, availability and dispatch
 
-Build the durable calendar and dispatch workflow on the Phase 2B calculation
-foundation and Phase 3E occupancy constraints: approved scheduling inputs,
-holds, calendar views, dispatch queues, assignments, audited schedule revisions
-and overrides, and broader concurrent conflict handling.
+Expand the durable calendar and dispatch workflow on the Phase 2B calculation
+foundation, Phase 3E occupancy constraints and Phase 3F exact-occupancy Job
+binding: approved scheduling inputs, holds, calendar views, dispatch queues,
+general assignments, audited schedule revisions and overrides, and broader
+concurrent conflict handling.
 
 Gate: Sofia time-zone and daylight-saving tests, concurrency rules, override
 audit logs, and dispatcher workflow validation.
 
 ## Phase 8 — Technician workspace
 
-Implement mobile-first assigned-work views, arrival and progress states,
-offline and sync strategy, task guidance, issue escalation, and completion
-checks.
+Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,
+task guidance, issue escalation and completion checks with an explicit offline
+and synchronization strategy plus broader field-device behavior.
 
 Gate: field-device browser testing, accessible touch interactions, retry and
 sync behavior, and permission isolation.
 
 ## Phase 9 — Inspection and treatment workflow
 
-Implement inspections, item condition, materials, stains, existing damage,
-treatment plans, products used, technician notes, evidence, and customer
+Expand Phase 3F's item inspection, condition/material/risk findings, existing
+damage, treatment plans, performed treatment and separated notes with media
+evidence, richer product-consumption detail, amendments and customer
 acknowledgement where required.
 
 Gate: history integrity, safe treatment guidance ownership, media controls,
@@ -252,17 +290,18 @@ customer acknowledgement, and audited amendments.
 
 ## Phase 10 — Customer portal
 
-Expand the secure customer surface beyond Phase 3D's request submission and
-issued-quote read access to appointments, documents, messages and relevant
-service status.
+Expand the secure customer surface beyond Phase 3D's request/issued-Quote
+history, Phase 3E Bookings and Phase 3F Cleaning Passport to appointments,
+documents, messages and relevant service status.
 
 Gate: object-level authorization, privacy review, responsive accessibility,
 empty and error states, and account-recovery behavior.
 
 ## Phase 11 — Digital Cleaning Passport/history
 
-Assemble durable item history from bookings, inspections, treatments, photos,
-completed cleanings, and care recommendations without duplicating source facts.
+Expand Phase 3F's initial append-only asset history with photos, reviewed
+amendments, export controls, multi-visit composition and recurring-maintenance
+workflows without duplicating source facts.
 
 Gate: provenance, timeline correctness, amendment rules, export controls, and
 multi-visit scenario tests.

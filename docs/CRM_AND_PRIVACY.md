@@ -1,6 +1,6 @@
 # Customer CRM and Privacy
 
-## Scope through Phase 3E
+## Scope through Phase 3F
 
 Phase 3C introduced the first persistent VAX business records: customers,
 contacts, identity-to-customer links, properties, property areas and physical
@@ -12,10 +12,13 @@ append-only estimates and versioned staff-reviewed quotes. Phase 3E adds the
 immutable acceptance of an eligible issued quote, the resulting Booking and
 copied booking items, a durable occupancy foundation and booking audit events.
 New Bookings remain `PENDING_SCHEDULING` / `REVIEW_REQUIRED`; acceptance creates
-no confirmed slot or occupancy. Job execution, payment, invoice, file, message,
-notification and completed cleaning history remain absent. The commercial and
-booking contracts are defined in `docs/REQUEST_AND_QUOTE.md` and
-`docs/BOOKING_ENGINE.md`.
+no confirmed slot or occupancy. Phase 3F adds one Booking-derived Job,
+assigned-team technician scope, professional inspection, confirmed and
+performed treatment, completion evidence and append-only Cleaning Passport
+history. Payment, invoice, file, message and notification records remain
+absent. The commercial, Booking and execution contracts are defined in
+`docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md` and
+`docs/JOB_EXECUTION.md`.
 
 The model serves one VAX cleaning business. It is not a general multi-tenant
 platform and does not claim that future organization, retention or data-subject
@@ -35,12 +38,16 @@ An active `customer_identity_links` row is the only application-owned
 relationship that can grant a signed-in customer profile access to a CRM
 customer. Matching an email address never creates or proves that relationship.
 Removing or revoking a link does not delete the customer, contacts, properties,
-assets, requests, estimates, historical quotes, acceptances or Bookings.
+assets, requests, estimates, historical quotes, acceptances, Bookings, Jobs or
+Cleaning Passport entries.
 
 Staff access requires the existing CRM permissions. `OWNER`, `ADMIN` and
 `DISPATCHER` may read and manage CRM records under the application policy.
-`TECHNICIAN` receives no unrestricted CRM access. A later technician workspace
-must expose only the minimum property/job facts needed for an assigned job.
+`TECHNICIAN` receives no unrestricted CRM access. The Phase 3F technician
+workspace uses a separate purpose-limited Job projection and an exact
+time-valid membership in the Job's assigned team. It exposes only visit-
+essential customer, property, contact, access, schedule and work facts and
+never grants general CRM history access.
 
 Request and quote access is deliberately narrower than CRM access alone. Staff
 reads require both `CUSTOMER_RECORDS_READ` and `OPERATIONS_READ`; mutations
@@ -69,6 +76,8 @@ identifiers are not distinguished to the caller.
 | Request intake | Submitted contact details, service descriptions, preferred timing and original free text | Preserve what was requested for staff assessment without inferring identity |
 | Commercial history | Normalized scope, estimate snapshots, quote lines, terms, validity and status | Explain and present a reviewed offer without recalculating historical facts |
 | Booking and appointment history | Acceptance evidence, copied commercial/item snapshots, preferred or confirmed timing, service address, cancellation and occupancy history | Preserve the operational commitment and explain scheduling decisions without rewriting the quote |
+| Job and inspection history | Assigned team, visit lifecycle, immutable planned scope, observed condition/material/construction/issues/risks and treatment feasibility | Execute the accepted scope safely while preserving reported, normalized and observed facts separately |
+| Treatment and Cleaning Passport history | Confirmed plan, treatment actually performed, outcome, completion time, customer-safe summaries and evidence-scoped care recommendation | Explain completed asset service without exposing commercial calculations or internal technician notes |
 
 Full addresses and coordinates are sensitive operational data. They are shown
 only to staff with CRM access or to application profiles explicitly linked to
@@ -104,22 +113,30 @@ customer-merge and property-move workflows remain future decisions.
 Requests, issued quotes, acceptances and Bookings retain their own controlled
 lifecycle rather than following CRM archive state automatically. Estimates,
 issued commercial evidence, copied booking items and cancelled occupancy
-history are not overwritten. Normal closure uses controlled status and link
-revocation rather than cascading deletion. Retention, anonymization and lawful
-deletion must reconcile request contact data, address/schedule history and
-commercial/audit integrity before production.
+history are not overwritten. Jobs, inspections, treatment records and Cleaning
+Passport entries likewise retain their controlled lifecycle and restrictive
+source relationships; completed history is not rewritten when current asset or
+CRM facts change. Normal closure uses controlled status and link revocation
+rather than cascading deletion. Retention, anonymization and lawful deletion
+must reconcile request contact data, address/schedule/visit history,
+commercial evidence, operational history and audit integrity before production.
 
 ## Cleaning Passport foundation
 
 Each `cleaning_assets.id` is a stable identity for one physical item. Phase 3C
-stores customer-described current characteristics only; it does not fabricate a
-professional inspection or treatment event. Future evidence will attach to the
-asset through this provenance chain:
+stores customer-described current characteristics only. Phase 3F attaches
+professional evidence to that asset through this provenance chain:
 
-> Cleaning Asset → Inspection/Assessment → Job Treatment → Completed Job → Maintenance Recommendation
+> Cleaning Asset → Job Item → Inspection/Assessment → Confirmed Treatment → Performed Treatment → Completed Job → Cleaning Passport
 
-Future append-only history must reference its source inspection or completed
-job instead of copying mutable CRM notes into a false timeline.
+A Passport entry is created only for an asset-linked treatment that was
+actually completed within the confirmed plan. Inspection-only, declined,
+referred, review-required, unperformed and stopped-for-safety items create no
+treatment history. Each entry references its exact Job item and execution
+instead of copying mutable CRM notes into a false timeline. Customer-safe
+completion and care text is separate from internal technician notes and audit
+metadata. Optional maintenance timing is advisory, evidence-scoped and never a
+universal manufacturer, health or legal claim.
 
 ## Validation, concurrency and audit foundation
 
@@ -134,9 +151,13 @@ actor metadata. Link rows retain creation and revocation provenance. Phase 3D
 adds separate `business_audit_events` for allowlisted request, estimate and
 quote changes. Phase 3E adds a separate Booking event stream for acceptance,
 Booking creation and cancellation, written atomically with its owning change.
+Phase 3F adds a separate Job event stream for controlled lifecycle, inspection,
+treatment, completion and Passport creation. Eligible completion and Passport
+insertion are atomic.
+
 Safe metadata excludes contact details, addresses, notes, provider subjects,
 tokens and secrets, and ordinary application code has no update/delete
-operation for either stream.
+operation for these event streams or Passport entries.
 
 This is not a complete business audit system. Sensitive reads, exports, merges,
 retention actions and later domains still require reviewed coverage without
@@ -158,11 +179,14 @@ production CRM deployment, the owner must approve and test:
 - anonymous-request abuse, duplicate and contact-data retention policy;
 - issued-quote and immutable acceptance retention;
 - acceptance, Booking, appointment-address, occupancy and cancellation
-  retention, including the relationship to future Job history;
+  retention, including its relationship to retained Job history;
+- inspection, internal technician note, treatment, completion, Cleaning
+  Passport and maintenance-recommendation retention and amendment policy;
 - production least-privilege grants and reviewed row-level security;
 - monitoring for unauthorized access and an incident/recovery procedure; and
 - a separate authorized production migration and deployment review.
 
 Direct browser database access remains prohibited. The enabled development
 Data API is not an application integration, and no CRM, request/quote or
-Booking route receives a database credential or provider token.
+Booking, Job or Cleaning Passport route receives a database credential or
+provider token.

@@ -11,13 +11,16 @@ describe a serviceable textile item across its future lifecycle:
 
 This phase creates reference data only. It does not create customers, durable
 cleaning-item records, requests, quotes, bookings, jobs, prices, payments,
-schedules or invoices. A future `cleaning_item` will persist independently of
-any booking and will refer to the codes defined here.
+schedules or invoices. Later transaction and durable-asset records refer to the
+stable codes defined here without making a Booking their owner.
 
 Phase 3C implements that physical instance as `cleaning_assets`. A canonical
 `cleaning_item_types` row answers “what kind of item is this?”; a cleaning asset
 answers “which physical item at which authorized property?” Assets reference
-this taxonomy and remain independent of any future request, quote or booking.
+this taxonomy and remain independent of any request, Quote, Booking or Job.
+Phase 3F now uses the same canonical vocabulary for professional inspection,
+confirmed treatment and performed-treatment history without changing the
+Phase 2 source-of-truth boundary.
 
 ## Sources of truth
 
@@ -200,9 +203,32 @@ The relational capability model provides:
 Capability status is controlled by `STANDARD`, `ASSESSMENT_REQUIRED`,
 `SPECIALIST_ONLY` and `UNAVAILABLE`. Service/item rows also carry
 `inspection_required` and `instant_quote_eligible`. All seeded rows require
-inspection and are not instant-quote eligible because pricing is not yet
-implemented. A relationship expresses catalogue availability, not a technical
-guarantee for a specific item.
+inspection and are not instant-quote eligible because automatic pricing was not
+part of Phase 2. A relationship expresses catalogue availability, not a
+technical guarantee for a specific item.
+
+## Phase 3F operational use
+
+Job creation copies planned catalogue identities only from the immutable
+Booking and issued-Quote `acceptance_source_snapshot`; it does not refresh
+those identities from current request, estimate or CRM data. On-site inspection
+records observed item type, measurement, condition, material, construction,
+issues and risks as separate professional facts.
+
+Treatment planning may reference only active canonical treatment levels,
+mechanical-action levels, approaches and add-ons supported by the validated
+service/item relationship. An add-on must also be present in the issued Quote;
+otherwise the item requires staff review rather than silent execution or
+repricing. `SPECIALIST_ONLY`, `UNAVAILABLE`, decline/referral and safety evidence
+remain fail-closed boundaries. `ASSESSMENT_REQUIRED` may become executable only
+after the required professional inspection resolves the uncertainty.
+
+The product reference remains optional because no actual approved product is
+seeded. Phase 3F never invents a product selection, manufacturer origin,
+dilution, safety, medical, antibacterial, allergen or performance claim. A
+Cleaning Passport entry records only a treatment actually completed within its
+confirmed plan and carries customer-safe summaries separately from internal
+technician notes.
 
 ## Duration and reuse readiness
 
@@ -244,13 +270,15 @@ admin data after authentication, authorization and audit logging exist. No
 admin UI exists in Phase 2. Until then, actual product or operational values
 must be added only through a reviewed owner-authorized data change.
 
-## Public request alignment
+## Request and execution alignment
 
-The frontend-only request form now submits canonical cleaning-item codes and a
-canonical condition code to its in-browser Zod validator. Labels come from the
-same Bulgarian/English catalogue. The form still has no action, Server Action,
-route handler, fetch, upload, email adapter or database import. It creates no
-request, quote, booking, cleaning item or persistent data.
+The Phase 3D public intake submits canonical cleaning-item and condition codes
+to a server-validated persistent request while preserving original facts
+separately from staff normalization. Labels still come from the same Bulgarian/
+English catalogue. Phase 3F carries those distinct reported and normalized
+facts through the immutable issued-Quote snapshot, then records technician-
+observed facts separately. No stage silently upgrades customer description or
+staff interpretation into professional observation.
 
 ## Owner decisions carried into Phase 2B
 

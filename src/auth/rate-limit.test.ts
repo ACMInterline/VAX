@@ -57,4 +57,19 @@ describe("authentication rate-limit boundary", () => {
       limiter.consume("BOOKING_MUTATION", "actor-key"),
     ).resolves.toMatchObject({ allowed: false });
   });
+
+  it("bounds field-job mutations independently from booking actions", async () => {
+    const limiter = new InMemoryAuthRateLimiter();
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await expect(
+        limiter.consume("JOB_MUTATION", "technician-key"),
+      ).resolves.toEqual({ allowed: true });
+    }
+    await expect(
+      limiter.consume("JOB_MUTATION", "technician-key"),
+    ).resolves.toMatchObject({ allowed: false });
+    await expect(
+      limiter.consume("BOOKING_MUTATION", "technician-key"),
+    ).resolves.toEqual({ allowed: true });
+  });
 });

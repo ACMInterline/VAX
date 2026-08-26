@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3E
+## Security posture through Phase 3F
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -86,6 +86,11 @@ only application-owned acceptance, Booking, item, occupancy and Booking-audit
 tables plus the required `btree_gist` extension and overlap constraints. It
 never names `neon_auth`, creates no payment/invoice/Job table and is not
 authorized for production.
+The separate additive Phase 3F migration creates only application-owned team-
+membership, Job/item, inspection, treatment, Cleaning Passport and Job-audit
+structures. It does not rewrite migrations 0001–0007, contains no commercial,
+payment, invoice or Auth-managed table, and is authorized only for Neon
+development. Production remains untouched.
 The current migration and owner-bootstrap commands refuse production mode,
 non-development mutation labels and unexpected database hostnames before
 opening a database client. Applying any migration to production requires a
@@ -434,19 +439,79 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   payment, invoice, Job/treatment execution, upload, message, notification,
   production migration or deployment. See `docs/BOOKING_ENGINE.md`.
 
+## Phase 3F Job execution and Cleaning Passport safeguards
+
+- Job creation is one atomic, one-Booking-to-one-Job operation. It validates
+  the Booking, Booking items, Quote Acceptance, issued Quote and immutable
+  `acceptance_source_snapshot` and inserts no partial Job/item/audit state on
+  any failure or retry conflict.
+- The immutable issued snapshot is the only authority for reported and staff-
+  normalized request facts, asset link and quoted add-ons. Creation never reads
+  current request/estimate rows as a fallback, invokes normalization/pricing/
+  duration, or refreshes CRM facts into scope. Current CRM can only prove
+  active asset ownership/integrity and supply a separately labeled visit
+  contact. Inconsistency fails closed with zero writes.
+- `READY` requires an exact current `CONFIRMED` occupancy matching Booking
+  schedule, team and equipment. Otherwise a valid Job remains non-executable
+  `PREPARED` with controlled review reasons. Job assignment can bind only that
+  exact occupancy; it is not a hidden rescheduling path.
+- Broad staff reads require CRM, operations, schedule and field-job read
+  permissions. Assigned-technician reads additionally require an active
+  `TECHNICIAN` role and an exact active time-valid membership in the Job's
+  assigned team. Every mutation repeats fresh profile, permission, team,
+  resource, state and optimistic-version checks in the database.
+- Technician projections are purpose-limited to visit, scope, inspection,
+  treatment and completion facts. They exclude all price/margin/calculation
+  data, unrelated CRM history, administrative notes and identity data.
+- Planned, observed, confirmed and performed facts are separate records.
+  Canonical item/measurement/material/issue/risk/capability relationships are
+  revalidated. Unsafe contamination/structure, specialist-only capability,
+  material scope change, unquoted add-on or performed-plan divergence moves to
+  controlled review, decline or referral instead of silent execution,
+  replacement, repricing or repair.
+- Server-owned timestamps control en-route, arrival, start, treatment and
+  completion time. Job/item/execution versions and database uniqueness protect
+  stale and duplicate mutation. A stopped-for-safety execution creates no
+  Passport entry and cannot be represented as successfully completed service.
+- Job completion locks the Job and all items, requires every item to be
+  completed, declined or referred with its required inspection/plan/execution
+  evidence, derives actual productive/occupied-team duration server-side and
+  atomically freezes completion, Job audit and eligible Passport entries.
+- `cleaning_passport_entries` are append-only and reference the exact asset,
+  Job item and execution. Customer reads require the current exact identity/
+  customer/property/asset link and receive only the customer-safe snapshot;
+  staff history uses a separate authorized projection. Internal technician
+  notes never enter customer history.
+- `job_audit_events` accepts only controlled event/source/status metadata and
+  has no ordinary update/delete path. Production database roles, RLS and
+  append-only grants remain required; server authorization is not a substitute.
+- Job mutations use a bounded local limiter only for development. Production
+  remains blocked on shared abuse controls, monitoring/recovery, privacy/
+  retention decisions, reviewed least-privilege/RLS, a separately authorized
+  migration and explicit deployment approval. See `docs/JOB_EXECUTION.md`.
+- Executable Job mutations freshly revalidate exact Booking occupancy,
+  schedule, active team capabilities and effective equipment assignment.
+  Cross-team or expired technician membership remains a not-found/forbidden
+  boundary; mutable resource revocation cannot be bypassed with a stale page.
+- Cleaning Passport history is database-bound to the exact completed treatment
+  execution facts and excludes stopped, unperformed and no-observable-
+  improvement outcomes from customer treatment history.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
 business stream. Phase 3E separately records acceptance, Booking creation and
-cancellation. Authentication and role/status events remain in
-`auth_audit_events`. Broader sensitive-read and future-domain operations still
-require durable audit coverage, including:
+cancellation. Phase 3F separately records Job lifecycle, assignment,
+inspection, treatment, review, completion and Passport creation.
+Authentication and role/status events remain in `auth_audit_events`. Broader
+sensitive-read and future-domain operations still require durable audit
+coverage, including:
 
 - role and permission changes;
 - access to sensitive customer information;
 - discount, invoice and payment state changes;
-- scheduling, rescheduling, assignment, and job-status overrides;
-- inspection, damage, treatment, and claim changes;
+- scheduling, rescheduling, multi-team assignment and job-status overrides;
+- inspection, damage, treatment, Passport amendments and claim changes;
 - exports, deletions, and retention actions;
 - security-setting changes; and
 - equipment or inventory adjustments with business impact.
@@ -459,7 +524,7 @@ payloads. Audit logs must not be silently editable by ordinary operators.
 
 - Reconfirm CSRF and cookie policy if social/OAuth or cross-site embedding is added
 - Safe output encoding and content security policy
-- Distributed rate and abuse controls for request, quote, booking,
+- Distributed rate and abuse controls for request, quote, Booking, Job,
   authentication and messaging paths
 - An approved duplicate/replay policy for public request intake, preservation
   of Booking idempotency, plus idempotency for payments, notifications and
