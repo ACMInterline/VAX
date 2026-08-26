@@ -32,7 +32,7 @@ import {
   confirmPaymentSchema,
   createInvoiceDraftSchema,
   issueInvoiceSchema,
-  recordPaymentSchema,
+  recordPaymentSchemaAt,
   reversePaymentSchema,
 } from "@/modules/finance-invoicing/validation";
 
@@ -45,6 +45,8 @@ const messages = {
     conflict: "Записът е променен. Презаредете страницата и опитайте отново.",
     review: "Необходим е финансов преглед. Не е направена автоматична промяна.",
     draftCreated: "Черновата на фактурата е създадена.",
+    draftCreatedForReview:
+      "Черновата на фактурата е създадена и изисква финансов преглед.",
     draftExisting: "За тази резервация вече има чернова на фактура.",
     issued: "Фактурата е издадена.",
     cancelled: "Черновата на фактурата е отменена.",
@@ -63,6 +65,8 @@ const messages = {
     conflict: "The record changed. Reload the page and try again.",
     review: "Finance review is required. No automatic change was made.",
     draftCreated: "The invoice draft was created.",
+    draftCreatedForReview:
+      "The invoice draft was created and requires finance review.",
     draftExisting: "An invoice draft already exists for this booking.",
     issued: "The invoice was issued.",
     cancelled: "The invoice draft was cancelled.",
@@ -286,6 +290,17 @@ export async function createInvoiceDraftAction(
 
   try {
     const result = await service().createInvoiceDraft(context.actor, parsed.data);
+    if (
+      result.status === "FINANCE_REVIEW_REQUIRED" &&
+      result.invoiceReference
+    ) {
+      revalidateFinance(result.invoiceReference);
+      return {
+        status: "SUCCESS",
+        message: messages[context.locale].draftCreatedForReview,
+        invoiceReference: result.invoiceReference,
+      };
+    }
     const review = reviewRequired(result, context.locale);
     if (review) return review;
     if (
@@ -406,7 +421,7 @@ export async function recordPaymentAction(
   if ("status" in context) return context;
 
   const parsed = parseInput(
-    recordPaymentSchema,
+    recordPaymentSchemaAt(new Date()),
     {
       invoiceReference: scalar(formData, "invoiceReference"),
       amountMinorUnits: integer(formData, "amountMinorUnits"),

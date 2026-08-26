@@ -34,7 +34,7 @@ import {
   invoiceListSchema,
   invoiceReferenceSchema,
   issueInvoiceSchema,
-  recordPaymentSchema,
+  recordPaymentSchemaAt,
   reversePaymentSchema,
 } from "./validation";
 
@@ -211,7 +211,7 @@ export function createFinanceService(
 
     async recordPayment(actor: FinanceActor | null, input: unknown) {
       requirePaymentRecord(actor);
-      const parsed = parse(recordPaymentSchema, input);
+      const parsed = parse(recordPaymentSchemaAt(clock()), input);
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const result = checkedResult(
           await operation(() =>

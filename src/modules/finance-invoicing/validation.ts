@@ -41,17 +41,22 @@ export const cancelDraftInvoiceSchema = z
   })
   .strict();
 
-export const recordPaymentSchema = z
-  .object({
-    invoiceReference: invoiceReferenceSchema,
-    amountMinorUnits: positiveMinorUnits,
-    method: z.enum(paymentMethods),
-    receivedAt: z.coerce.date(),
-    externalReference: z.string().trim().min(1).max(160).nullable(),
-    internalNote: boundedOptionalText,
-    idempotencyKey: uuid,
-  })
-  .strict();
+export function recordPaymentSchemaAt(now: Date) {
+  const latestReceivedAt = now.getTime();
+  return z
+    .object({
+      invoiceReference: invoiceReferenceSchema,
+      amountMinorUnits: positiveMinorUnits,
+      method: z.enum(paymentMethods),
+      receivedAt: z.coerce
+        .date()
+        .refine((receivedAt) => receivedAt.getTime() <= latestReceivedAt),
+      externalReference: z.string().trim().min(1).max(160).nullable(),
+      internalNote: boundedOptionalText,
+      idempotencyKey: uuid,
+    })
+    .strict();
+}
 
 export const confirmPaymentSchema = z
   .object({
