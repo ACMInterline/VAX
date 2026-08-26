@@ -12,9 +12,11 @@ export type ApplicationNavigationItem = {
     | "MY_REQUESTS"
     | "MY_QUOTES"
     | "MY_BOOKINGS"
+    | "MY_INVOICES"
     | "CUSTOMERS"
     | "REQUESTS"
     | "BOOKINGS"
+    | "FINANCE"
     | "OPERATIONS"
     | "SCHEDULE"
     | "FIELD_WORK"
@@ -70,6 +72,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     audience: "CUSTOMER",
   },
   {
+    code: "MY_INVOICES",
+    labelBg: "Моите фактури",
+    labelEn: "My invoices",
+    href: "/app/my-invoices",
+    requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+    audience: "CUSTOMER",
+  },
+  {
     code: "CUSTOMERS",
     labelBg: "Клиенти",
     labelEn: "Customers",
@@ -97,6 +107,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
       "SCHEDULE_READ",
     ],
     permissionMatch: "ALL",
+    audience: "STAFF",
+  },
+  {
+    code: "FINANCE",
+    labelBg: "Финанси",
+    labelEn: "Finance",
+    href: "/app/finance",
+    requiredPermissions: ["FINANCE_READ"],
     audience: "STAFF",
   },
   {

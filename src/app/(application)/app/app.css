@@ -1236,6 +1236,38 @@ html[lang="en"] .crm-route-state__copy--bg {
   }
 }
 
+@media print {
+  .application-body {
+    color: #111;
+    background: #fff;
+  }
+
+  .application-header,
+  .application-navigation,
+  .crm-back-link,
+  .crm-page__actions,
+  [data-print-hidden="true"] {
+    display: none !important;
+  }
+
+  .application-main {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  [data-print-document="invoice"] {
+    display: block;
+  }
+
+  [data-print-document="invoice"] .crm-card {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    border-color: #bbb;
+    box-shadow: none;
+  }
+}
+
 .schedule-page {
   gap: 1.75rem;
 }

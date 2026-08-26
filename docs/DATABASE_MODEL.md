@@ -338,6 +338,66 @@ changes never reinterpret them. A current `READY` Job prevents the scheduling
 command from silently replacing its exact occupancy binding. See
 `docs/SCHEDULING_AND_DISPATCH.md`.
 
+Phase 3H adds controlled finance configuration and settlement structures to
+development:
+
+| Structure | Responsibility |
+| --- | --- |
+| `customer_billing_profiles` | Versioned customer invoice identity/address and controlled VAT-identifier state |
+| `business_legal_profiles` | Environment-scoped versioned seller legal identity and optional approved payment instructions |
+| `invoice_numbering_policies` | Environment/document-scoped, versioned prefix and serialized next sequence |
+| `invoice_policies` | Environment-scoped draft/issue eligibility, payment terms, due days, currency and exact seller/numbering relationships |
+| `invoices` | Accepted-commercial financial claim, immutable issue-time snapshots, exact totals, lifecycle and generated outstanding balance |
+| `invoice_items` | Frozen bilingual Quote/Booking lines with exact money, VAT, measurement and optional Job-item provenance |
+| `payments` | Manually recorded external receipts with explicit confirmation/reversal and generated unallocated balance |
+| `payment_allocations` | Append-oriented allocation and compensating-reversal ledger between a Payment and Invoice |
+| `payment_reversals` | One immutable, reasoned reversal fact for an original Payment |
+| `finance_audit_events` | Separate allowlisted Invoice, Payment, allocation, reversal and settlement evidence |
+
+Financial amounts use integer EUR minor units, VAT uses integer basis points,
+and generated balances are exact differences. Invoice line sums must reproduce
+the stored net/VAT/gross totals. Draft creation copies the Quote Acceptance,
+Booking, Booking items and issued Quote/Quote-item evidence. It does not run
+pricing, normalization or CRM repair. Exact composite restrictive foreign keys
+bind each Invoice and item to that source graph; missing, stale or inconsistent
+evidence remains review-gated.
+
+`JOB_COMPLETED` at draft eligibility blocks insertion until the exact Job/item
+graph is complete. `BOOKING_ACCEPTED` draft eligibility paired with
+`JOB_COMPLETED` issue eligibility may insert only a completion-waiting `DRAFT`
+with sole reason `JOB_COMPLETION_REQUIRED`; issue later revalidates every source,
+item, configuration and Job fact without modifying the frozen snapshots.
+
+Customer billing, seller, numbering and invoice policy use `DRAFT`, `APPROVED`
+and `SUPERSEDED` history. Seller, numbering and policy authority is also scoped
+to `DEVELOPMENT` or `PRODUCTION`. The migration seeds none of these facts.
+Production issue requires approved, non-provisional production configuration;
+development placeholders cannot become production authority implicitly.
+
+One live standard Invoice may exist per Booking. Formal number allocation locks
+and increments one approved numbering policy during issue; unique constraints
+protect both the formatted number and source sequence. Issued Invoice headers,
+items and configuration already referenced by history are protected from
+ordinary mutation. `OVERDUE` remains derived from due date and outstanding
+balance rather than stored as a scheduled transition.
+
+Payments are recorded as `RECORDED`, explicitly move to `CONFIRMED`, and only
+then become allocatable. Allocation requires matching customer/currency, locks
+Payment before Invoice, and cannot exceed either unallocated Payment value or
+Invoice outstanding value. Partial and exact coverage derive
+`PARTIALLY_PAID`/`PAID`. Excess value remains unallocated; there is no customer-
+credit asset or automatic overpayment policy.
+
+Reversal deletes nothing. It appends one `payment_reversals` row and one
+compensating `payment_allocations` row per effective allocation, restores
+Invoice balances and marks the Payment `REVERSED` atomically. Idempotency keys
+and payload fingerprints protect payment recording, allocation and reversal
+retries. Append-only ledger/audit enforcement, production least-privilege and
+RLS remain deployment gates. The additive
+`0010_phase_3h_finance_invoicing.sql` migration creates no Auth object and is
+authorized only for Neon development. See
+`docs/FINANCE_AND_INVOICING.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
@@ -347,7 +407,8 @@ The implemented durable hierarchy foundation is:
 The implemented commercial-intake relationship is:
 
 > Customer or anonymous intake → Service Request → Estimate versions → Quote
-> versions → Quote Acceptance → Booking → occupancy versions → Job
+> versions → Quote Acceptance → Booking → occupancy versions → Job → Invoice
+> → Payment allocations
 
 Expected cardinalities:
 
@@ -355,7 +416,10 @@ Expected cardinalities:
 - one property contains many rooms;
 - one room contains many durable cleaning items;
 - one cleaning asset may appear in many Booking and Job events; and
-- one cleaning asset may accumulate many append-only Cleaning Passport entries.
+- one cleaning asset may accumulate many append-only Cleaning Passport entries;
+- one Booking may create at most one live standard Invoice; and
+- one Payment may allocate across several Invoices while one Invoice may receive
+  several Payments.
 
 A Booking item can retain an indirect relationship to a cleaning asset through
 its source request item. It does not own or replace that asset. This distinction
@@ -479,7 +543,7 @@ objects held by a separate storage provider.
 
 ### Commercial
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
 | price_rules | Implemented versioned pricing inputs and applicability |
 | price_books | Implemented version, segment, currency, VAT and lifecycle authority |
@@ -487,8 +551,13 @@ objects held by a separate storage provider.
 | quotes | Implemented proposed commercial scope, version, validity and immutable issued history |
 | quote_items | Implemented itemized quoted work with frozen bilingual descriptions and exact amounts |
 | discounts | Explicit discount definitions and approvals |
-| payments | Payment intent and settlement records |
-| invoices | Invoice identity, totals, status, and document reference |
+| customer_billing_profiles | Implemented versioned invoice-time customer billing identity |
+| business_legal_profiles | Implemented versioned seller legal-identity configuration; no real values seeded |
+| invoice_numbering_policies, invoice_policies | Implemented environment-scoped issue/terms/numbering configuration; no operational values seeded |
+| invoices, invoice_items | Implemented immutable accepted-commercial financial documents and line provenance |
+| payments | Implemented manual external-receipt record and confirmation/reversal lifecycle; no provider processing |
+| payment_allocations | Implemented allocation/compensation ledger for partial and full settlement |
+| payment_reversals | Implemented append-only payment reversal fact; no money-out refund |
 
 ### Customer experience
 
@@ -516,6 +585,7 @@ objects held by a separate storage provider.
 | inventory | Consumable stock and movement basis |
 | business_audit_events | Implemented request/estimate/quote business events; broader business-audit coverage remains planned |
 | booking_audit_events, job_audit_events | Implemented owning streams for acceptance/Booking and Job execution respectively |
+| finance_audit_events | Implemented owning stream for Invoice, Payment, allocation, reversal and settlement evidence |
 | audit_logs | Planned broader cross-domain critical-operation audit records or reviewed extensions of the owned streams |
 | activity_logs | Lower-risk operational activity stream |
 

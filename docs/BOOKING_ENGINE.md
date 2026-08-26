@@ -28,6 +28,9 @@ Phase 3G likewise schedules only from the immutable Booking/issued-Quote chain
 and an explicit staff-frozen operational requirements review. It never uses a
 current request normalization, estimate recalculation, mutable CRM repair or
 repricing step as schedule authority.
+Phase 3H consumes the accepted commercial chain for finance without updating
+the Booking, acceptance or Quote and without using execution differences to
+silently change price.
 
 ## Domain separation
 
@@ -41,6 +44,7 @@ repricing step as schedule authority.
 | `booking_occupancies` | A versioned operational interval for one team and optional equipment resource |
 | `booking_audit_events` | Append-oriented acceptance, booking, scheduling, rescheduling, assignment, review, cancellation and occupancy-release evidence |
 | Phase 3F `jobs` and Job items | Field execution scope copied from the immutable Booking/issued-Quote chain; never a Booking rewrite |
+| Phase 3H Invoices and items | Financial claim copied from the exact accepted Quote/Booking lines; never a Booking reprice |
 
 Booking creation does not change the accepted quote into a mutable order. The
 quote remains `ISSUED`, and its request remains `QUOTED`. The unique acceptance
@@ -92,6 +96,33 @@ snapshot version with a controlled reason. It never edits historical
 provenance or commercial values. A `READY` Job cannot be silently rebound; the
 reschedule command fails closed to explicit staff Job review. See
 `docs/SCHEDULING_AND_DISPATCH.md`.
+
+## Phase 3H downstream finance boundary
+
+An Invoice is not a mutable commercial extension of a Booking. Draft creation
+locks the exact Booking, Quote Acceptance, issued Quote, Booking items and Quote
+items, and copies their accepted integer amounts, VAT, bilingual descriptions,
+measurements and calculation evidence. Issue repeats the complete source,
+item-graph and aggregate checks. Neither operation normalizes the Request,
+recalculates the Estimate, refreshes CRM commercial facts, reprices a Job
+difference or modifies this Booking.
+
+Invoice policy may allow a draft after `BOOKING_ACCEPTED` or require a completed
+Job before draft and/or issue. Draft-level `JOB_COMPLETED` blocks creation.
+Booking-level draft plus Job-level issue may preserve the immutable accepted
+snapshot as a `DRAFT` with only `JOB_COMPLETION_REQUIRED`; later issue must
+reprove the entire source/configuration/item/Job graph. When completion is
+required, every completed Job item must still match its Booking item quantity
+and planned measurement. Omitted, declined, referred, additional or materially
+changed work does not rewrite the Booking or become an automatic Invoice
+adjustment; it remains controlled finance review.
+
+An Invoice holds restrictive composite provenance back to the same acceptance,
+Booking, Quote, request, customer and property. Each Invoice item is bound to
+the same Booking/Quote item pair and optionally the matching Job item. A source
+mismatch, stale commercial snapshot, missing line, aggregate difference or
+incomplete billing/legal/VAT gate produces no issued number. See
+`docs/FINANCE_AND_INVOICING.md`.
 
 ## Eligibility and authorization
 
@@ -406,6 +437,12 @@ development. Static SQL inspection is supplemented by guarded direct
 integration tests for same-team/equipment conflict, different-team concurrency,
 cancelled release and no-partial-state failure. Production remains a separate
 authorization gate.
+
+The separate additive Phase 3H migration adds exact composite source keys that
+allow Invoice/item provenance to reference this existing Booking graph, but it
+does not rewrite migration 0007/0009 or any acceptance, Booking, item,
+occupancy or Booking-audit row. The finance migration and any synthetic
+integration fixture remain development-only; production is a separate gate.
 
 ## Remaining policy decisions
 

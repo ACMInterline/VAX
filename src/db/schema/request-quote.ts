@@ -620,6 +620,7 @@ export const quoteItems = pgTable(
       table.quoteId,
       table.sortOrder,
     ),
+    uniqueIndex("quote_items_id_quote_unique").on(table.id, table.quoteId),
     index("quote_items_quote_idx").on(table.quoteId),
     check(
       "quote_items_descriptions_not_blank",

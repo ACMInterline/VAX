@@ -1,6 +1,6 @@
 # Customer CRM and Privacy
 
-## Scope through Phase 3G
+## Scope through Phase 3H
 
 Phase 3C introduced the first persistent VAX business records: customers,
 contacts, identity-to-customer links, properties, property areas and physical
@@ -18,10 +18,14 @@ performed treatment, completion evidence and append-only Cleaning Passport
 history. Phase 3G adds explicit operational-requirements review, exact
 appointments, append-oriented occupancy revisions, a staff daily dispatch
 board, a row-scoped technician-today view and a safe linked-customer
-appointment view. Payment, invoice, file, message and notification records
-remain absent. The commercial, Booking, execution and scheduling contracts are
-defined in `docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md`,
-`docs/JOB_EXECUTION.md` and `docs/SCHEDULING_AND_DISPATCH.md`.
+appointment view. Phase 3H adds versioned customer-billing/seller policy,
+accepted-commercial Invoices, manually recorded Payments, append-oriented
+allocations/reversals and linked-customer Invoice views. File, message,
+notification, payment-provider and refund records remain absent. The
+commercial, Booking, execution, scheduling and finance contracts are defined in
+`docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md`,
+`docs/JOB_EXECUTION.md`, `docs/SCHEDULING_AND_DISPATCH.md` and
+`docs/FINANCE_AND_INVOICING.md`.
 
 The model serves one VAX cleaning business. It is not a general multi-tenant
 platform and does not claim that future organization, retention or data-subject
@@ -72,6 +76,14 @@ application profile and never accepts a client-selected ownership scope. An
 unlinked customer receives a safe empty state. Missing and unauthorized record
 identifiers are not distinguished to the caller.
 
+Finance access is narrower again. Owner/Admin staff finance reads and mutations
+use dedicated finance permissions. Dispatcher and Technician receive none.
+Linked customers use `OWN_CUSTOMER_DATA_READ` plus the current exact identity/
+customer link and may see only their own issued/partially paid/paid Invoice
+projection. Invoice references do not grant access. Customer responses exclude
+draft/review/cancelled records, Payments, internal notes, staff audit and
+commercial/provenance internals.
+
 ## Data categories and purpose
 
 | Category | Examples | Current purpose |
@@ -88,6 +100,9 @@ identifiers are not distinguished to the caller.
 | Dispatch and capacity data | Team/equipment assignment, travel and buffer evidence, working-hour/policy versions, warnings and daily utilization | Confirm operational feasibility and coordinate authorized staff without exposing other customers or mutable commercial calculations |
 | Job and inspection history | Assigned team, visit lifecycle, immutable planned scope, observed condition/material/construction/issues/risks and treatment feasibility | Execute the accepted scope safely while preserving reported, normalized and observed facts separately |
 | Treatment and Cleaning Passport history | Confirmed plan, treatment actually performed, outcome, completion time, customer-safe summaries and evidence-scoped care recommendation | Explain completed asset service without exposing commercial calculations or internal technician notes |
+| Billing and seller snapshots | Invoice-time customer billing identity/address, company/VAT identifier state and approved seller legal/payment-instruction facts | Preserve the financial document without depending on later CRM/configuration changes |
+| Invoice and line history | Number, dates, status, frozen accepted lines, net/VAT/gross, paid/outstanding value and customer-visible note | Explain an issued financial claim and settlement without repricing historical work |
+| Payment and allocation history | Manual receipt method/reference, confirmation, allocations, reversals and unapplied value | Reconcile recorded money to Invoices without processing funds or exposing staff-only evidence to customers |
 
 Full addresses and coordinates are sensitive operational data. They are shown
 only to staff with CRM access or to application profiles explicitly linked to
@@ -134,6 +149,14 @@ rather than cascading deletion. Retention, anonymization and lawful deletion
 must reconcile request contact data, address/schedule/visit history,
 commercial evidence, operational history and audit integrity before production.
 
+Approved customer billing/seller/policy versions and issued Invoice/items are
+historical financial evidence, not mutable mirrors of current CRM. Revoking an
+identity link removes future customer access but does not delete the retained
+Invoice. Payment allocation/reversal and finance-audit history is append-
+oriented; normal correction uses compensating facts rather than deletion.
+Retention, erasure/anonymization and legal-hold policy must reconcile privacy
+rights with accountant/legal requirements before production.
+
 ## Cleaning Passport foundation
 
 Each `cleaning_assets.id` is a stable identity for one physical item. Phase 3C
@@ -171,6 +194,13 @@ Phase 3F adds a separate Job event stream for controlled lifecycle, inspection,
 treatment, completion and Passport creation. Eligible completion and Passport
 insertion are atomic.
 
+Phase 3H adds a separate finance event stream for Invoice readiness/issue/
+cancellation, Payment recording/confirmation/allocation/reversal and settlement.
+Its metadata excludes billing addresses, company/VAT identifiers, external
+payment references, bank details and free-form notes. Allocations and reversals
+are append-oriented, and issue/settlement facts are written atomically with the
+owning state change.
+
 Safe metadata excludes contact details, addresses, notes, provider subjects,
 tokens and secrets, and ordinary application code has no update/delete
 operation for these event streams or Passport entries.
@@ -199,11 +229,14 @@ production CRM deployment, the owner must approve and test:
   to retained Job history;
 - inspection, internal technician note, treatment, completion, Cleaning
   Passport and maintenance-recommendation retention and amendment policy;
+- customer billing/seller snapshots, issued Invoice/line, Payment, allocation,
+  reversal and finance-audit retention, correction and lawful-access policy,
+  reviewed with a qualified accountant/legal adviser;
 - production least-privilege grants and reviewed row-level security;
 - monitoring for unauthorized access and an incident/recovery procedure; and
 - a separate authorized production migration and deployment review.
 
 Direct browser database access remains prohibited. The enabled development
 Data API is not an application integration, and no CRM, request/quote, Booking,
-scheduling/dispatch, Job or Cleaning Passport route receives a database
-credential or provider token.
+scheduling/dispatch, Job, Cleaning Passport or finance route receives a
+database credential or provider token.

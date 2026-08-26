@@ -1,6 +1,6 @@
 # Identity and Access
 
-## Phase 3A–3G decision
+## Phase 3A–3H decision
 
 VAX uses Neon Auth's managed Better Auth service through the supported
 `@neondatabase/auth` Next.js server adapter. The selected package is
@@ -21,7 +21,8 @@ The integration is deliberately split into three concepts:
    Bookings; Phase 3F extends it to Jobs and Cleaning Passport history while
    adding exact assigned-team scope for technicians; Phase 3G adds staff
    scheduling/dispatch, technician-today and customer appointment projections
-   without expanding provider authority.
+   without expanding provider authority; Phase 3H adds staff finance and
+   linked-customer Invoice projections without expanding provider authority.
 
 These concepts must not be collapsed. A provider account is not a CRM customer,
 and a `CUSTOMER` role alone never proves ownership of a business record.
@@ -134,6 +135,9 @@ mapping on migration runs.
 | Customer records read/manage | ✓ | ✓ | ✓ | — | — |
 | Field jobs read | ✓ | ✓ | ✓ | ✓ | — |
 | Field jobs update | ✓ | ✓ | — | ✓ | — |
+| Finance read/manage | ✓ | ✓ | — | — | — |
+| Invoice issue | ✓ | ✓ | — | — | — |
+| Payment record/allocate | ✓ | ✓ | — | — | — |
 | Own customer data read/update | ✓ | — | — | — | ✓ |
 | Audit read | ✓ | ✓ | — | — | — |
 
@@ -284,6 +288,40 @@ active identity-to-customer link and exposes only that customer's safe
 appointment. Neither route grants a schedule mutation. Assigning a team to an
 occupancy never creates a user membership, role or permission. See
 `docs/SCHEDULING_AND_DISPATCH.md`.
+
+## Phase 3H finance and invoicing authorization
+
+Phase 3H adds four permission codes and no new role:
+
+- `FINANCE_READ` authorizes staff dashboard, Invoice and Payment reads;
+- `FINANCE_MANAGE` authorizes draft creation/cancellation and is required for
+  high-risk reversal;
+- `INVOICE_ISSUE` authorizes the explicit immutable issue transition; and
+- `PAYMENT_RECORD` authorizes payment recording, confirmation and allocation
+  and is required for reversal.
+
+Owner and Admin receive all four. Dispatcher and Technician receive none.
+Reversal requires the conjunction of `FINANCE_READ`, `FINANCE_MANAGE` and
+`PAYMENT_RECORD`; a broad staff role label or any one permission is
+insufficient. The existing canonical `CUSTOMER` role receives no staff finance
+permission. Its own-invoice read uses `OWN_CUSTOMER_DATA_READ` plus the current
+exact active identity/customer link.
+
+`/app/finance`, `/app/invoices` and
+`/app/invoices/[invoiceReference]` reauthenticate and require staff finance
+authority. `/app/my-invoices` and
+`/app/my-invoices/[invoiceReference]` derive customer scope only from the
+authenticated application profile. Customer-supplied customer IDs, invoice or
+payment references, hidden form values and navigation visibility are never
+authority. Missing and forbidden records share the same safe outcome.
+
+The PostgreSQL repository repeats current application-profile, permission,
+ownership, lifecycle and exact commercial/configuration checks inside each
+read or mutation. Staff and customer projections are separate. Customers see
+only their own issued/partially paid/paid Invoice documents and never draft or
+review state, internal notes, Payment records, staff audit, commercial
+internals, actor identifiers or another customer's data. See
+`docs/FINANCE_AND_INVOICING.md`.
 
 ## Central authorization
 
@@ -486,12 +524,15 @@ linked-customer My Properties, My Requests, My Quotes and My Bookings
 destinations. Phase 3F adds staff/assigned-team Jobs and customer/staff Cleaning
 Passport asset history under the same server-mediated namespace. Phase 3G adds
 the staff Schedule destination, the row-scoped technician today view and
-confirmed appointment details on the existing customer Booking route.
-`/app/customers`, `/app/requests`, `/app/bookings` and `/app/jobs` repeat their
-respective permission and record checks on the server; own-record routes always
-derive linked-only scope. Draft quotes, estimate internals, staff acceptance
-evidence, operational Booking snapshots and internal Job notes have no customer
-route. Authorized identities additionally see Administration → Users. The root
+confirmed appointment details on the existing customer Booking route. Phase 3H
+adds staff Finance/Invoices and linked-customer My Invoices destinations.
+`/app/customers`, `/app/requests`, `/app/bookings`, `/app/jobs`, `/app/finance`
+and `/app/invoices` repeat their respective permission and record checks on the
+server; own-record routes always derive linked-only scope. Draft quotes,
+draft/review/cancelled Invoices, estimate internals, staff acceptance evidence,
+operational Booking snapshots, internal Job/finance notes, staff finance audit
+and Payment records have no customer route. Authorized identities additionally
+see Administration → Users. The root
 document language and skip-link copy are derived from the validated
 application-profile locale.
 
@@ -502,9 +543,9 @@ authentication does not convert them into deployable internal pages.
 ## Rate limiting
 
 Login, signup, reset, verification, anonymous request intake, privileged
-identity mutation, Booking/scheduling mutation and Job mutation Server Actions
-use bounded in-memory limiting for loopback/local development.
-Auth/Booking/scheduling/Job keys are
+identity mutation, Booking/scheduling mutation, Job mutation and finance
+mutation Server Actions use bounded in-memory limiting for loopback/local
+development. Auth/Booking/scheduling/Job/finance keys are
 one-way hashes of the submitted account/actor key and available forwarded
 address; public intake uses an address-scoped constant instead of contact
 details. Keys are not logged. Process-local memory is not reliable across
@@ -550,6 +591,13 @@ uses controlled operational codes rather than contact/address content or
 internal/customer free text. It is separate from authentication, request/Quote
 and Booking audit vocabulary, and production append-only grants remain gated.
 
+Phase 3H uses `finance_audit_events` for Invoice readiness/issue/cancellation,
+Payment recording/confirmation/allocation/reversal and settlement. It stores
+safe references, controlled status/configuration codes and integer amounts,
+not provider subjects, billing addresses, bank details, credentials or free-
+form notes. It remains separate from all earlier audit vocabularies, and
+production append-only grants remain gated.
+
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
@@ -562,7 +610,10 @@ Phase 3F similarly adds only application-owned team-membership, Job,
 inspection, treatment, Cleaning Passport and Job-audit tables. None queries or
 mutates Auth-managed tables. The Phase 3G additive migration creates no new
 business table and changes only application-owned occupancy revision checks and
-Booking audit vocabulary. Production remains unmigrated.
+Booking audit vocabulary. The Phase 3H additive migration creates only
+application-owned billing/configuration, Invoice, Payment, allocation,
+reversal and finance-audit structures. It neither queries nor mutates Auth-
+managed tables. Production remains unmigrated.
 Migration and owner-bootstrap commands additionally require an explicit
 development label and exact approved database hostname before opening the
 database client.
@@ -600,7 +651,7 @@ Deployment remains blocked until at least:
   with mandatory verification exercised against real delivery;
 - a distributed or provider-backed shared rate limiter for authentication,
   anonymous request intake, privileged identity mutations, Booking/scheduling
-  mutations and Job mutations is selected and tested;
+  mutations, Job mutations and finance mutations is selected and tested;
 - sanitized authentication monitoring, alerting, session-revocation response,
   backup and recovery procedures are defined and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
@@ -608,7 +659,11 @@ Deployment remains blocked until at least:
   identity created for that validation is cleaned up afterward;
 - the browser Data API remains unused until each reachable table has reviewed
   least-privilege database grants and row-level security policies, including
-  append-only audit enforcement;
+  append-only audit and finance-ledger enforcement;
+- owner-approved, qualified-accountant/legal-reviewed production seller,
+  numbering, Invoice/VAT, payment terms, cash/fiscal-device, credit-note/refund
+  and retention policy is represented by approved non-provisional production
+  configuration;
 - reliable provider-attested recent authentication, authoritative session
   invalidation, and the provider session-list/revoke contracts are proven on a
   disposable development identity before enabling high-risk operations;
@@ -624,11 +679,12 @@ quotes; Phase 3E applies it to acceptance and Bookings with a further scoped
 event stream. Phase 3F adds exact assigned-team Job access and separate safe
 Cleaning Passport projections; Phase 3G adds staff schedule management plus
 separate technician/customer appointment projections without expanding
-provider authority. Direct
-browser database access remains prohibited. Organization
-scope, reviewed production
+provider authority; Phase 3H adds finance-specific staff authority and an exact
+linked-customer Invoice projection. Direct browser database access remains
+prohibited. Organization scope, reviewed production
 least-privilege/RLS and append-only grants, final privacy/retention policy,
 data-subject workflows and broader business-audit coverage remain production or
 future-phase gates; see `docs/CRM_AND_PRIVACY.md`,
 `docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md` and
-`docs/JOB_EXECUTION.md`, plus `docs/SCHEDULING_AND_DISPATCH.md`.
+`docs/JOB_EXECUTION.md`, plus `docs/SCHEDULING_AND_DISPATCH.md` and
+`docs/FINANCE_AND_INVOICING.md`.

@@ -17,7 +17,8 @@ records deliberately separate:
 Phase 3D ends at authenticated access to an issued quote. Phase 3E consumes
 that exact issued record without changing the request/estimate/quote contract.
 Neither phase creates a payment, invoice, work order, message, notification or
-document file.
+document file. Phase 3H later consumes the accepted Quote/Booking evidence for
+an Invoice, but it does not change or reinterpret any Phase 3D source.
 
 ## Request sources and identity
 
@@ -215,6 +216,16 @@ source record. Any inconsistency returns staff review and writes no partial
 acceptance or booking.
 See `docs/BOOKING_ENGINE.md`.
 
+Phase 3H treats that immutable issued and accepted chain as its only commercial
+amount authority. Invoice draft and issue compare the exact Quote/Booking items,
+currency, price basis, VAT and totals and copy the frozen bilingual
+descriptions/calculation evidence. They do not rerun this workflow's
+normalization, estimate or Quote operations and do not update the Request,
+Estimate, Quote or acceptance source snapshot. Missing, stale or inconsistent
+evidence remains `FINANCE_REVIEW_REQUIRED`; it is not repaired by a current
+price book, CRM record or Job observation. See
+`docs/FINANCE_AND_INVOICING.md`.
+
 Safe replacement is explicit: normalize if needed, append a fresh estimate for
 the current request version, create the latest quote draft from that estimate,
 then issue it. The new issue and supersession of the earlier active quote occur
@@ -295,7 +306,9 @@ Before confirmed scheduling or production, the owner must review:
 - anonymous quote access token design, if ever required;
 - approved scheduling configuration and the frozen operational-requirements
   contract used after acceptance;
-- document/PDF rendering, storage and version retention.
+- document/PDF rendering, storage and version retention; and
+- qualified accountant/legal approval of Invoice/VAT, seller, numbering,
+  payment, credit-note/refund and retention policy.
 
 Phase 3E creates a Booking only from an authorized, still-valid issued quote,
 records a unique immutable acceptance and copies the frozen commercial

@@ -12,6 +12,10 @@ view without changing Job scope authority or execution states. Scheduling
 consumes the immutable Booking/issued-Quote chain and cannot reinterpret the
 Job plan.
 
+Phase 3H may use exact completed Job/item state as an Invoice eligibility gate,
+but the Job is never commercial authority and cannot reprice or rewrite the
+accepted Quote/Booking scope.
+
 This phase does not add payments, invoices, fiscal documents, uploads,
 messaging, automated notifications, route optimisation, payroll, inventory,
 recurring-maintenance automation, offline synchronisation, production
@@ -159,6 +163,27 @@ minutes/team-hours. An immutable quoted-revenue aggregate may be supplied by a
 future authorised analytics caller, but the Job module does not read or
 recalculate commercial amounts.
 
+## Finance eligibility relationship
+
+An approved Invoice policy may use `BOOKING_ACCEPTED` or require
+`JOB_COMPLETED` before draft and/or issue. Draft-level `JOB_COMPLETED` creates
+no Invoice before exact completion. Booking-level draft plus Job-level issue may
+create an immutable completion-waiting `DRAFT` whose sole reason is
+`JOB_COMPLETION_REQUIRED`; later issue must reprove the complete source,
+configuration and item graph without refreshing it. When completion is
+required, Phase 3H verifies the exact Job linked to the Booking, its `COMPLETED`
+state, complete item count and each Job item's quantity/planned-measurement
+equality with the immutable Booking item. The finance module does not use
+observed inspection, performed treatment, actual duration or current CRM as a
+replacement price input.
+
+Declined, referred, omitted, additional, changed-quantity or otherwise
+materially different execution is not silently converted to a lower/higher
+Invoice. It remains `FINANCE_REVIEW_REQUIRED` and receives no issued number
+until an authorized future commercial/correction workflow resolves it. No
+Invoice operation modifies the Job, completion snapshot, Cleaning Passport,
+Booking or Quote. See `docs/FINANCE_AND_INVOICING.md`.
+
 ## Cleaning Passport
 
 A Cleaning Passport entry is an append-only asset history record derived only
@@ -205,4 +230,6 @@ exceptional post-readiness overrides, split/multi-visit Jobs, amendments to
 completed work, customer handover or signature policy, notifications, uploads,
 offline/mobile synchronisation, route optimisation,
 inventory/product-consumption details, recurring maintenance automation,
-payments and invoicing. None is implied by the Phase 3F/3G schema or UI.
+provider-verified payments, credit notes, refunds and accounting exports. Phase
+3H provides only the controlled Invoice/manual-payment/allocation foundation;
+none of those later integrations is implied by the Phase 3F–3H schema or UI.

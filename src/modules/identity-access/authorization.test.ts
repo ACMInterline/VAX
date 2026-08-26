@@ -57,6 +57,7 @@ describe("server authorization policy", () => {
       "MY_REQUESTS",
       "MY_QUOTES",
       "MY_BOOKINGS",
+      "MY_INVOICES",
     ]);
     expect(customerNavigation).toEqual(
       expect.arrayContaining([
@@ -70,6 +71,11 @@ describe("server authorization policy", () => {
           href: "/app/my-bookings",
           requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
         }),
+        expect.objectContaining({
+          code: "MY_INVOICES",
+          href: "/app/my-invoices",
+          requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+        }),
       ]),
     );
     expect(visible).not.toContain("OPERATIONS");
@@ -77,6 +83,46 @@ describe("server authorization policy", () => {
     expect(() => requirePermission(customer, "OPERATIONS_READ")).toThrowError(
       new AuthorizationError("PERMISSION_DENIED"),
     );
+  });
+
+  it("shows finance navigation only for the matching staff or own-record permission", () => {
+    const financeReader = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set(["FINANCE_READ"] as const),
+    } satisfies AuthorizationContext;
+    const ownCustomerReader = {
+      status: "ACTIVE",
+      roles: new Set<ApplicationRoleCode>(),
+      permissions: new Set(["OWN_CUSTOMER_DATA_READ"] as const),
+    } satisfies AuthorizationContext;
+
+    expect(visibleNavigationItems(financeReader)).toEqual([
+      expect.objectContaining({
+        code: "FINANCE",
+        href: "/app/finance",
+        requiredPermissions: ["FINANCE_READ"],
+      }),
+    ]);
+    expect(visibleNavigationItems(ownCustomerReader)).toEqual([
+      expect.objectContaining({
+        code: "CUSTOMER_WORKSPACE",
+      }),
+      expect.objectContaining({ code: "MY_REQUESTS" }),
+      expect.objectContaining({ code: "MY_QUOTES" }),
+      expect.objectContaining({ code: "MY_BOOKINGS" }),
+      expect.objectContaining({
+        code: "MY_INVOICES",
+        href: "/app/my-invoices",
+        requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+      }),
+    ]);
+    expect(
+      visibleNavigationItems(context("DISPATCHER")).map((item) => item.code),
+    ).not.toContain("FINANCE");
+    expect(
+      visibleNavigationItems(context("TECHNICIAN")).map((item) => item.code),
+    ).not.toContain("FINANCE");
   });
 
   it("requires the complete staff booking and dispatch read boundary", () => {

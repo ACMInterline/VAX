@@ -141,4 +141,39 @@ describe("protected application shell", () => {
       expect(operationsOnly).not.toContain('href="/app/schedule"');
     },
   );
+
+  it.each([
+    ["bg", "Финанси", "Моите фактури"],
+    ["en", "Finance", "My invoices"],
+  ] as const)(
+    "renders localized %s staff and customer finance links only for matching permissions",
+    (locale, financeLabel, myInvoicesLabel) => {
+      const html = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(
+            new Set(["FINANCE_READ", "OWN_CUSTOMER_DATA_READ"]),
+          )}
+        >
+          <h1>Finance routes</h1>
+        </ApplicationShell>,
+      );
+
+      expect(html).toContain('href="/app/finance"');
+      expect(html).toContain(financeLabel);
+      expect(html).toContain('href="/app/my-invoices"');
+      expect(html).toContain(myInvoicesLabel);
+
+      const operationsOnly = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(new Set(["OPERATIONS_READ"]))}
+        >
+          <h1>Operations route</h1>
+        </ApplicationShell>,
+      );
+      expect(operationsOnly).not.toContain('href="/app/finance"');
+      expect(operationsOnly).not.toContain('href="/app/my-invoices"');
+    },
+  );
 });
