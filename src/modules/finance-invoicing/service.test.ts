@@ -111,6 +111,26 @@ describe("finance service", () => {
     expect(input?.paymentReference).toMatch(/^PAY-[A-F0-9]{24}$/);
   });
 
+  it("rejects future payment receipt timestamps before repository access", async () => {
+    const repo = repository();
+    const service = createFinanceService(repo, {
+      clock: () => new Date("2026-08-26T12:00:00.000Z"),
+    });
+
+    await expect(
+      service.recordPayment(actor(["FINANCE_READ", "PAYMENT_RECORD"]), {
+        invoiceReference: "INV-0123456789ABCDEF01234567",
+        amountMinorUnits: 5_000,
+        method: "BANK_TRANSFER",
+        receivedAt: new Date("2026-08-26T12:00:00.001Z"),
+        externalReference: null,
+        internalNote: null,
+        idempotencyKey: "00000000-0000-4000-8000-000000000001",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    expect(repo.recordPayment).not.toHaveBeenCalled();
+  });
+
   it("derives overdue and dashboard dates from the Sofia civil day", async () => {
     const repo = repository();
     const service = createFinanceService(repo, {

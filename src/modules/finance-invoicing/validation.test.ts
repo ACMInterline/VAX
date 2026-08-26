@@ -3,7 +3,7 @@ import {
   allocatePaymentSchema,
   createInvoiceDraftSchema,
   issueInvoiceSchema,
-  recordPaymentSchema,
+  recordPaymentSchemaAt,
 } from "./validation";
 
 describe("finance input validation", () => {
@@ -37,7 +37,7 @@ describe("finance input validation", () => {
       }).success,
     ).toBe(false);
     expect(
-      recordPaymentSchema.safeParse({
+      recordPaymentSchemaAt(new Date()).safeParse({
         invoiceReference: "INV-0123456789ABCDEF01234567",
         amountMinorUnits: 5_000,
         method: "BANK_TRANSFER",
@@ -46,6 +46,44 @@ describe("finance input validation", () => {
         internalNote: null,
         idempotencyKey: "00000000-0000-4000-8000-000000000001",
         status: "CONFIRMED",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects future payment receipt timestamps before persistence", () => {
+    const now = new Date("2026-08-26T12:00:00.000Z");
+    const schema = recordPaymentSchemaAt(now);
+    const payment = {
+      invoiceReference: "INV-0123456789ABCDEF01234567",
+      amountMinorUnits: 5_000,
+      method: "BANK_TRANSFER",
+      externalReference: null,
+      internalNote: null,
+      idempotencyKey: "00000000-0000-4000-8000-000000000001",
+    } as const;
+
+    expect(
+      schema.safeParse({
+        ...payment,
+        receivedAt: "2026-08-26T11:59:59.999Z",
+      }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({
+        ...payment,
+        receivedAt: "2026-08-26T12:00:00.000Z",
+      }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({
+        ...payment,
+        receivedAt: "2026-08-26T15:00:00.000+03:00",
+      }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({
+        ...payment,
+        receivedAt: "2026-08-26T12:00:00.001Z",
       }).success,
     ).toBe(false);
   });

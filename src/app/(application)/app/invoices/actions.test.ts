@@ -348,6 +348,64 @@ describe("Phase 3H finance Server Action trust boundary", () => {
     );
   });
 
+  it("truthfully reports persisted review-required invoice drafts", async () => {
+    doubles.service.createInvoiceDraft.mockResolvedValueOnce({
+      status: "FINANCE_REVIEW_REQUIRED",
+      invoiceReference,
+      reasonCodes: ["QUOTE_PROVENANCE_INVALID"],
+    });
+
+    const persisted = await createInvoiceDraftAction(
+      initialState,
+      form([["bookingReference", bookingReference]]),
+    );
+
+    expect(persisted).toEqual({
+      status: "SUCCESS",
+      message: "The invoice draft was created and requires finance review.",
+      invoiceReference,
+    });
+    expect(JSON.stringify(persisted)).not.toContain("QUOTE_PROVENANCE_INVALID");
+    expect(doubles.revalidatePath).toHaveBeenCalledWith(
+      `/app/invoices/${invoiceReference}`,
+    );
+
+    doubles.service.createInvoiceDraft.mockResolvedValueOnce({
+      status: "FINANCE_REVIEW_REQUIRED",
+      reasonCodes: ["JOB_COMPLETION_REQUIRED"],
+    });
+    const notPersisted = await createInvoiceDraftAction(
+      initialState,
+      form([["bookingReference", bookingReference]]),
+    );
+    expect(notPersisted).toEqual({
+      status: "ERROR",
+      message: "Finance review is required. No automatic change was made.",
+    });
+    expect(notPersisted).not.toHaveProperty("invoiceReference");
+
+    doubles.requireAuthenticatedUser.mockResolvedValueOnce({
+      ...principal,
+      profile: { ...principal.profile, preferredLocale: "bg" },
+    });
+    doubles.service.createInvoiceDraft.mockResolvedValueOnce({
+      status: "FINANCE_REVIEW_REQUIRED",
+      invoiceReference,
+      reasonCodes: ["VAT_STATE_UNRESOLVED"],
+    });
+    const localized = await createInvoiceDraftAction(
+      initialState,
+      form([["bookingReference", bookingReference]]),
+    );
+    expect(localized).toEqual({
+      status: "SUCCESS",
+      message:
+        "Черновата на фактурата е създадена и изисква финансов преглед.",
+      invoiceReference,
+    });
+    expect(JSON.stringify(localized)).not.toContain("VAT_STATE_UNRESOLVED");
+  });
+
   it("rejects duplicate scalar fields and non-integer minor units", async () => {
     const duplicate = await issueInvoiceAction(
       initialState,
@@ -374,6 +432,23 @@ describe("Phase 3H finance Server Action trust boundary", () => {
     );
     expect(decimalAmount.status).toBe("ERROR");
     expect(decimalAmount.fieldErrors?.amountMinorUnits).toBeDefined();
+    expect(doubles.service.recordPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects future payment receipt timestamps before service access", async () => {
+    const result = await recordPaymentAction(
+      initialState,
+      form([
+        ["invoiceReference", invoiceReference],
+        ["amountMinorUnits", "5000"],
+        ["method", "BANK_TRANSFER"],
+        ["receivedAt", "2099-01-01T00:00:00.000Z"],
+        ["idempotencyKey", idempotencyKey],
+      ]),
+    );
+
+    expect(result.status).toBe("ERROR");
+    expect(result.fieldErrors?.receivedAt).toBeDefined();
     expect(doubles.service.recordPayment).not.toHaveBeenCalled();
   });
 
