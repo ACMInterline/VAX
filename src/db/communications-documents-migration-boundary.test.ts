@@ -225,11 +225,14 @@ describe("Phase 3I communications and documents migration boundary", () => {
     const journal = JSON.parse(await readFile(journalPath, "utf8")) as {
       entries: Array<{ idx: number; tag: string }>;
     };
-    expect(journal.entries.at(-2)).toMatchObject({
+    const phase3hIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0010_phase_3h_finance_invoicing",
+    );
+    expect(journal.entries[phase3hIndex]).toMatchObject({
       idx: 10,
       tag: "0010_phase_3h_finance_invoicing",
     });
-    expect(journal.entries.at(-1)).toMatchObject({
+    expect(journal.entries[phase3hIndex + 1]).toMatchObject({
       idx: 11,
       tag: "0011_phase_3i_communications_documents",
     });

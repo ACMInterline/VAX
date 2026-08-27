@@ -13,6 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:provision-roles": "tsx src/db/provision-database-roles.ts",
+    "db:verify-security": "tsx src/db/verify-database-security.ts",
     "auth:bootstrap-owner": "tsx src/db/bootstrap-owner.ts",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build && npm run db:check && npm audit && git diff --check"
   },

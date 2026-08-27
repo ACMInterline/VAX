@@ -71,10 +71,13 @@ Create a local environment file:
 
     cp .env.example .env.local
 
-Add the Neon PostgreSQL connection value for the VAX `development` branch and
-`neondb` database to DATABASE_URL in .env.local. The production branch must not
-be used for ordinary development. Never put the value in source code or commit
-the local environment file.
+Phase 3K uses separate Neon PostgreSQL credentials for the VAX `development`
+branch and `neondb` database. `DATABASE_URL` is the non-owner server runtime;
+`MIGRATION_DATABASE_URL` is the migrator; `DATABASE_ADMIN_URL` is accepted only
+by explicit role provisioning. The production branch must not be used for
+ordinary development. Never put a value in source code or commit the local
+environment file. See
+[docs/DATABASE_SECURITY.md](docs/DATABASE_SECURITY.md).
 
 `PUBLIC_SITE_URL` is optional for local development. Leave it empty until an
 approved public HTTPS origin exists. Without it, canonical and business schema
@@ -86,22 +89,31 @@ least 32 characters. Keep both server-only. Production email verification and
 rate limiting are intentionally blocked pending deployment decisions; see
 [docs/IDENTITY_AND_ACCESS.md](docs/IDENTITY_AND_ACCESS.md).
 
-Database mutation commands also require
+Database mutation commands also require exact expected Neon project and branch
+IDs, plus
 `DATABASE_MUTATION_ENVIRONMENT=development` and
 `DATABASE_MUTATION_EXPECTED_HOST` set to the exact hostname from the approved
 development `DATABASE_URL` (hostname only, never the connection string), plus
-`DATABASE_MUTATION_EXPECTED_DATABASE=neondb`. These inputs are intentional
-wrong-target interlocks. Apply the committed migration only after every check
-identifies the intended development database:
+`DATABASE_MUTATION_EXPECTED_DATABASE=neondb`. These non-secret inputs are
+intentional wrong-target interlocks. The live connection is checked again for
+the exact project, branch, database and role. Apply the committed migration
+only after every check identifies the intended development database:
 
     npm run db:migrate
 
-The migration command uses Next.js environment loading, so local development
-can use `.env.local`. It refuses production mode, a non-development mutation
-label, or a database hostname/name that differs from the explicit expected
-target.
+The migration command uses only `MIGRATION_DATABASE_URL`; it never falls back
+to the runtime or administrator URL. It refuses production mode, a
+non-development mutation label, or a database identity that differs from the
+explicit expected target.
 Future staging or production migration needs a separately reviewed command and
-explicit authorization; this Phase 3A command is development-only.
+explicit authorization; the repository mutation command is development-only.
+
+The first Phase 3K development conversion uses the explicit one-time command
+documented in
+[docs/DATABASE_SECURITY.md](docs/DATABASE_SECURITY.md). It requires the exact
+development environment, project, branch, hostname and `neondb` name as command
+arguments. It never prints generated credentials and safely reuses existing
+roles without rotating them.
 
 Start the application:
 
@@ -144,7 +156,9 @@ Neither response exposes connection details or errors.
 | npm run test:watch | Run Vitest in watch mode |
 | npm run db:generate | Generate SQL migrations from the Drizzle schema |
 | npm run db:check | Validate the committed migration history |
-| npm run db:migrate | Apply committed migrations and canonical reference seeds using DATABASE_URL |
+| npm run db:provision-roles | Provision and verify the development-only migrator/runtime boundary |
+| npm run db:migrate | Apply committed migrations and canonical reference seeds using MIGRATION_DATABASE_URL |
+| npm run db:verify-security | Run focused static and guarded live database-security checks |
 | npm run auth:bootstrap-owner | Explicitly assign the first owner to an existing active application profile |
 | npm run validate | Run the full local completion gate, including migration and dependency checks |
 
@@ -191,10 +205,10 @@ behavior.
 2. Run npm run db:generate with a descriptive migration name when appropriate.
 3. Inspect both the SQL and Drizzle metadata.
 4. Review backward compatibility and rollback implications.
-5. Confirm `DATABASE_URL`, `DATABASE_MUTATION_ENVIRONMENT=development`, the
-   exact `DATABASE_MUTATION_EXPECTED_HOST`, and
-   `DATABASE_MUTATION_EXPECTED_DATABASE=neondb` identify the intended
-   development branch and database.
+5. Confirm `MIGRATION_DATABASE_URL`,
+   `DATABASE_MUTATION_ENVIRONMENT=development`, and the exact expected Neon
+   project, branch, host and `neondb` database identify the intended
+   development target.
 6. Apply migrations and deterministic canonical seeds with npm run db:migrate
    only against that explicitly selected database.
 
@@ -259,7 +273,10 @@ external delivery; email, SMS, provider adapters and binary PDF remain
 deferred. Phase 3J upgrades the synchronized Next.js packages to the patched
 16.3.3 release, makes production Auth and callback origins HTTPS-only, rejects
 credential-bearing origins and adds an exact database-name mutation interlock.
-It adds no product workflow or schema migration. All current operational
+Phase 3K then separates administrator, migrator and non-owner server-runtime
+authority, removes browser/Data API access, adds exact grants/defaults and
+role/command RLS on development, and documents the staging/production gate. It
+adds no product workflow and does not migrate production. All current operational
 configuration remains visibly
 DRAFT/provisional and no phase migrates production or deploys. See
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),

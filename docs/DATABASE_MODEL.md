@@ -676,3 +676,11 @@ Every schema change requires:
 6. explicit authorization before applying to production.
 
 Destructive edits must never be hidden inside an unrelated migration.
+
+Phase 3K classifies all 97 VAX public tables and makes the classification a
+checked migration contract. VAX/Drizzle objects are migrator-owned; runtime
+grants are limited to observed server repository behavior; only mutable draft
+request children retain runtime DELETE; audit/history and immutable evidence
+do not. All VAX tables have role/command-scoped RLS, while customer/team row
+isolation remains explicit server authorization until a safe transaction-local
+actor adapter exists. See `docs/DATABASE_SECURITY.md`.

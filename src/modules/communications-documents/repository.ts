@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { sql, type SQL } from "drizzle-orm";
 import type { Database } from "@/db/client";
 import {
@@ -105,7 +106,8 @@ function json(value: unknown): string {
 }
 
 function strings(value: unknown): readonly string[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  return Array.isArray(value) &&
+    value.every((entry) => typeof entry === "string")
     ? value
     : [];
 }
@@ -444,7 +446,9 @@ export async function resolveDeliveryContext(
   return { preferences, contact, locale: row.templateLocale, template };
 }
 
-function mutationResult(row: MutationRow | undefined): CommunicationMutationResult {
+function mutationResult(
+  row: MutationRow | undefined,
+): CommunicationMutationResult {
   if (!row) return { status: "REVIEW_REQUIRED" };
   if (row.result === "CREATED" || row.result === "EXISTING") {
     if (
@@ -535,6 +539,7 @@ export async function persistCommunication(
   const jobId = source.sourceType === "JOB" ? source.sourceId : null;
   const invoiceId = source.sourceType === "INVOICE" ? source.sourceId : null;
   const paymentId = source.sourceType === "PAYMENT" ? source.sourceId : null;
+  const deliveryAttemptId = randomUUID();
 
   try {
     const result = await database.execute<MutationRow>(sql`
@@ -638,11 +643,12 @@ export async function persistCommunication(
       ),
       inserted_attempt as (
         insert into ${deliveryAttempts} (
-          delivery_reference, communication_intent_id, document_id,
+          id, delivery_reference, communication_intent_id, document_id,
           customer_id, attempt_number, channel, adapter_key, status,
           idempotency_key, attempted_by_profile_id, started_at, completed_at
         )
-        select ${input.deliveryReference}, intent.id, document.id,
+        select ${deliveryAttemptId}::uuid, ${input.deliveryReference},
+          intent.id, document.id,
           intent.customer_id, 1, 'PORTAL', 'PORTAL_LOCAL', 'COMPLETED',
           ${input.idempotencyKey}::uuid, ${input.actorProfileId}::uuid,
           now(), now()
@@ -650,17 +656,18 @@ export async function persistCommunication(
         join inserted_document document
           on document.communication_intent_id = intent.id
         where ${input.channel} = 'PORTAL'
-        returning *
+        returning 1
       ),
       inserted_result as (
         insert into ${deliveryResults} (
           delivery_attempt_id, customer_id, outcome, result_code,
           retryable, safe_evidence, completed_at
         )
-        select attempt.id, attempt.customer_id, 'DELIVERED_LOCAL',
+        select ${deliveryAttemptId}::uuid, intent.customer_id, 'DELIVERED_LOCAL',
           'PORTAL_PUBLISHED', false,
           jsonb_build_object('scope', 'CUSTOMER_PORTAL'), now()
-        from inserted_attempt attempt
+        from inserted_intent intent
+        where exists (select 1 from inserted_attempt)
         returning *
       ),
       inserted_history as (
@@ -675,10 +682,8 @@ export async function persistCommunication(
         from inserted_intent intent
         join inserted_document document
           on document.communication_intent_id = intent.id
-        join inserted_attempt attempt
-          on attempt.communication_intent_id = intent.id
         join inserted_result result
-          on result.delivery_attempt_id = attempt.id
+          on result.delivery_attempt_id = ${deliveryAttemptId}::uuid
         returning *
       ),
       intent_audit as (
@@ -692,7 +697,7 @@ export async function persistCommunication(
             'channel', ${input.channel}::text,
             'templateKey', ${input.template.templateKey}::text,
             'templateVersion', ${input.template.version}::integer
-          ) from inserted_intent intent returning id
+          ) from inserted_intent intent returning 1
       ),
       rendered_audit as (
         insert into ${communicationAuditEvents} (
@@ -704,7 +709,7 @@ export async function persistCommunication(
           'SYSTEM', jsonb_build_object(
             'documentType', ${input.documentType}::text,
             'rendererVersion', 1
-          ) from inserted_document document returning id
+          ) from inserted_document document returning 1
       ),
       finalized_audit as (
         insert into ${communicationAuditEvents} (
@@ -715,7 +720,7 @@ export async function persistCommunication(
           document.id, 'DOCUMENT_FINALIZED', ${input.actorProfileId}::uuid,
           'SYSTEM', jsonb_build_object(
             'documentType', ${input.documentType}::text
-          ) from inserted_document document returning id
+          ) from inserted_document document returning 1
       ),
       delivery_audit as (
         insert into ${communicationAuditEvents} (
@@ -723,17 +728,16 @@ export async function persistCommunication(
           delivery_attempt_id, history_entry_id, event_type,
           actor_profile_id, source, safe_metadata
         )
-        select intent.customer_id, intent.id, document.id, attempt.id,
+        select intent.customer_id, intent.id, document.id,
+          ${deliveryAttemptId}::uuid,
           history.id, 'PORTAL_PUBLISHED', ${input.actorProfileId}::uuid,
           'SYSTEM', jsonb_build_object('resultCode', 'PORTAL_PUBLISHED')
         from inserted_intent intent
         join inserted_document document
           on document.communication_intent_id = intent.id
-        join inserted_attempt attempt
-          on attempt.communication_intent_id = intent.id
         join inserted_history history
           on history.communication_intent_id = intent.id
-        returning id
+        returning 1
       ),
       deferred_audit as (
         insert into ${communicationAuditEvents} (
@@ -750,7 +754,7 @@ export async function persistCommunication(
         join inserted_document document
           on document.communication_intent_id = intent.id
         where ${input.channel} in ('EMAIL_FUTURE', 'SMS_FUTURE')
-        returning id
+        returning 1
       )
       select 'CREATED'::text as result,
         intent.communication_reference as "communicationReference",
@@ -1048,9 +1052,9 @@ export async function updateOwnCommunicationPreferences(
       select changed.customer_id, 'PREFERENCES_UPDATED',
         ${actorProfileId}::uuid, 'CUSTOMER', jsonb_build_object(
           'preferenceVersion', changed.version,
-          'marketingConsent', ${input.marketingConsent}
+          'marketingConsent', ${input.marketingConsent}::boolean
         )
-      from changed returning id
+      from changed returning 1
     )
     select case when changed.customer_id is not null
           and exists (select 1 from audited) then 'UPDATED'

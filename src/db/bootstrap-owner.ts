@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDatabase } from "./client";
 import {
+  assertDevelopmentDatabaseIdentity,
   assertDevelopmentDatabaseMutationTarget,
   loadMigrationEnvironment,
 } from "./migration-environment";
@@ -23,6 +24,7 @@ async function bootstrapOwner(): Promise<"assigned" | "already-owner"> {
   }
 
   const database = getDatabase();
+  await assertDevelopmentDatabaseIdentity(database, "runtime");
   const [target] = await database
     .select({ id: userProfiles.id, status: userProfiles.status })
     .from(userProfiles)
