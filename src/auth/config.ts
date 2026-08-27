@@ -1,3 +1,5 @@
+import { isLiteralLoopbackOrUnspecifiedHostname } from "@/lib/url-security";
+
 export type AuthRuntimeConfiguration = {
   baseUrl: string;
   cookieSecret: string;
@@ -23,10 +25,23 @@ export function getAuthRuntimeConfiguration(
   } catch {
     throw new Error("Authentication service is not configured.");
   }
+  const isLoopback = isLiteralLoopbackOrUnspecifiedHostname(
+    parsedUrl.hostname,
+  );
   const localHttp =
+    environment.NODE_ENV !== "production" &&
     parsedUrl.protocol === "http:" &&
-    (parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1");
-  if (parsedUrl.protocol !== "https:" && !localHttp) {
+    isLoopback;
+  if (
+    (parsedUrl.protocol !== "https:" && !localHttp) ||
+    (environment.NODE_ENV === "production" && isLoopback) ||
+    parsedUrl.username !== "" ||
+    parsedUrl.password !== "" ||
+    parsedUrl.search !== "" ||
+    parsedUrl.hash !== "" ||
+    baseUrl.includes("?") ||
+    baseUrl.includes("#")
+  ) {
     throw new Error("Authentication service is not configured.");
   }
 

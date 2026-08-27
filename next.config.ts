@@ -16,6 +16,7 @@ const privatePageHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   experimental: {
     // Avoid socket-backed PostCSS child processes in restricted build workers.
     turbopackPluginRuntimeStrategy: "workerThreads",

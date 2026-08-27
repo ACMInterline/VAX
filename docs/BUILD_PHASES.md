@@ -389,6 +389,24 @@ publication and no-partial-state proofs, database immutability/append-only
 guards, bilingual responsive accessibility, reviewed additive development-only
 migration, full validation and protected-main CI.
 
+### Phase 3J — Production-readiness security repair
+
+Closes repository-owned deployment findings without adding product behavior:
+adopt the patched Next.js 16.3.3 release across synchronized packages, require
+HTTPS for production Auth and password-reset origins, reject credential-bearing
+or ambiguous Auth URLs, and strengthen development mutation targeting with the
+exact database name.
+
+No broad RLS/grant migration is applied while runtime uses the table-owning
+development credential and the server-mediated architecture supplies no
+transaction-local database actor. Production runtime/migration roles, reviewed
+grants and RLS, distributed rate limiting, trusted origins/SMTP, monitoring,
+recovery rehearsal, production migration and deployment remain separate gates.
+
+Gate: locked clean install, focused production-configuration and mutation-
+interlock regression tests, full validation, exact-snapshot security review,
+credential scan, protected-main CI, and proof that Neon production is untouched.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,

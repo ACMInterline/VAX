@@ -391,10 +391,10 @@ calendar, rewrite historical Booking/occupancy data, touch Neon Auth, remove
 constraints or alter commercial provenance.
 
 Migration validation is authorized only for Neon VAX `development` / `neondb`
-after the explicit development label and exact-host interlock succeed. Review
-generated SQL, indexes, checks and GiST constraints first; apply the committed
-migration; then verify its checksum, Drizzle ledger entry, expected schema and
-unchanged prior migration checksums. Production remains untouched.
+after the explicit development label and exact host/database interlocks succeed.
+Review generated SQL, indexes, checks and GiST constraints first; apply the
+committed migration; then verify its checksum, Drizzle ledger entry, expected
+schema and unchanged prior migration checksums. Production remains untouched.
 
 Static migration inspection is not evidence that PostgreSQL exclusion
 constraints work at runtime. The guarded development integration suite uses a

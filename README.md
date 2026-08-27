@@ -89,15 +89,17 @@ rate limiting are intentionally blocked pending deployment decisions; see
 Database mutation commands also require
 `DATABASE_MUTATION_ENVIRONMENT=development` and
 `DATABASE_MUTATION_EXPECTED_HOST` set to the exact hostname from the approved
-development `DATABASE_URL` (hostname only, never the connection string). This
-second input is an intentional wrong-branch interlock. Apply the committed
-migration only after both checks identify the intended development database:
+development `DATABASE_URL` (hostname only, never the connection string), plus
+`DATABASE_MUTATION_EXPECTED_DATABASE=neondb`. These inputs are intentional
+wrong-target interlocks. Apply the committed migration only after every check
+identifies the intended development database:
 
     npm run db:migrate
 
 The migration command uses Next.js environment loading, so local development
 can use `.env.local`. It refuses production mode, a non-development mutation
-label, or a database hostname that differs from the explicit expected host.
+label, or a database hostname/name that differs from the explicit expected
+target.
 Future staging or production migration needs a separately reviewed command and
 explicit authorization; this Phase 3A command is development-only.
 
@@ -189,9 +191,10 @@ behavior.
 2. Run npm run db:generate with a descriptive migration name when appropriate.
 3. Inspect both the SQL and Drizzle metadata.
 4. Review backward compatibility and rollback implications.
-5. Confirm `DATABASE_URL`, `DATABASE_MUTATION_ENVIRONMENT=development`, and the
-   exact `DATABASE_MUTATION_EXPECTED_HOST` identify the intended development
-   branch.
+5. Confirm `DATABASE_URL`, `DATABASE_MUTATION_ENVIRONMENT=development`, the
+   exact `DATABASE_MUTATION_EXPECTED_HOST`, and
+   `DATABASE_MUTATION_EXPECTED_DATABASE=neondb` identify the intended
+   development branch and database.
 6. Apply migrations and deterministic canonical seeds with npm run db:migrate
    only against that explicitly selected database.
 
@@ -253,7 +256,11 @@ and linked-customer Invoice views. Phase 3I adds explicit staff materialization
 of eligible immutable business events into bilingual checksummed HTML/print
 documents and local authenticated portal history. Portal publication is not
 external delivery; email, SMS, provider adapters and binary PDF remain
-deferred. All current operational configuration remains visibly
+deferred. Phase 3J upgrades the synchronized Next.js packages to the patched
+16.3.3 release, makes production Auth and callback origins HTTPS-only, rejects
+credential-bearing origins and adds an exact database-name mutation interlock.
+It adds no product workflow or schema migration. All current operational
+configuration remains visibly
 DRAFT/provisional and no phase migrates production or deploys. See
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
 [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),

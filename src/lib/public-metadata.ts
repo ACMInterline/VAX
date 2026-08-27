@@ -5,6 +5,7 @@ import {
   type PublicLocale,
 } from "@/config/public-site";
 import { localizePublicPath } from "@/content/public-site/routes";
+import { isLiteralLoopbackOrUnspecifiedHostname } from "@/lib/url-security";
 
 const localMetadataBaseUrl = new URL("http://localhost:3000");
 
@@ -19,12 +20,20 @@ export function getConfiguredPublicUrl(
 
   try {
     const url = new URL(candidate);
+    const isLoopback = isLiteralLoopbackOrUnspecifiedHostname(url.hostname);
+    const isProduction = environment.NODE_ENV === "production";
     const isSecure = url.protocol === "https:";
     const isLocalHttp =
-      url.protocol === "http:" &&
-      (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+      !isProduction && url.protocol === "http:" && isLoopback;
+    const hasNonOriginComponents =
+      url.pathname !== "/" || url.search !== "" || url.hash !== "";
 
-    if (!isSecure && !isLocalHttp) {
+    if (
+      (!isSecure && !isLocalHttp) ||
+      (isProduction && (isLoopback || hasNonOriginComponents)) ||
+      url.username !== "" ||
+      url.password !== ""
+    ) {
       return undefined;
     }
 

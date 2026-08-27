@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3I
+## Security posture through Phase 3J
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -10,25 +10,20 @@ of legal, fiscal, tax, accounting or payment-provider security readiness. The
 communications foundation publishes locally only and makes no external-
 delivery, customer-read or messaging-provider claim.
 
-## Time-bound framework advisory
+## Framework security baseline
 
-Next.js has announced an upcoming 26 August 2026 security release for the 16.3
-line that includes a critical fix. Local installed, locked and cached package
-metadata was rechecked on 23 August 2026 and contains only 16.3.0 through
-16.3.2. This repository therefore remains on 16.3.2 without dependency churn
-and must not be deployed until the patched stable release is locally available,
-adopted and followed by the full validation suite. Update or remove this note
-after that upgrade.
+Phase 3J upgrades `next`, `@next/env` and `eslint-config-next` together from
+16.3.2 to the patched 16.3.3 Active LTS release. Next.js identifies the prior
+16.3.2 baseline as affected by two critical August 2026 vulnerabilities. The
+synchronized upgrade, locked clean install, full validation and exact-snapshot
+security review close the scheduled framework-update gate; they do not
+authorize deployment.
 
-Reference: [Upcoming Next.js August Security Release](https://nextjs.org/blog/upcoming-nextjs-security-release-august-2026)
+Reference: [August 2026 Security Release](https://nextjs.org/blog/august-2026-security-release)
 
-Deployment remains blocked until all of the following are complete:
-
-1. The scheduled patched stable Next.js 16.3 release is available.
-2. The repository is upgraded to that patched release.
-3. The full validation suite passes again.
-4. A security review is complete.
-5. Deployment is explicitly authorized.
+Deployment remains blocked on the independent operational, provider, database
+least-privilege, recovery and explicit authorization gates below. Future
+framework advisories must be assessed before any later release.
 
 ## Secrets and environment configuration
 
@@ -43,8 +38,9 @@ Deployment remains blocked until all of the following are complete:
 - Local development must use the VAX Neon `development` branch, never the
   production branch.
 - Database mutation commands require an explicit `development` acknowledgement
-  and an exact expected development database hostname in addition to
-  `DATABASE_URL`; those non-secret controls must never contain credentials.
+  plus the exact expected development database hostname and database name in
+  addition to `DATABASE_URL`; those non-secret controls must never contain
+  credentials.
 - Future staging and production environments must inject DATABASE_URL through
   their deployment platform rather than use a committed environment file.
 - GitHub Actions must validate without a live database credential and must not
@@ -122,9 +118,19 @@ authorized only for Neon development after SQL/checksum review. Production
 remains untouched and separately gated.
 
 The current migration and owner-bootstrap commands refuse production mode,
-non-development mutation labels and unexpected database hostnames before
-opening a database client. Applying any migration to production requires a
-separately designed command and explicit authorization.
+non-development mutation labels, unexpected database hostnames and unexpected
+database names, and alternate target/identity query parameters before opening a
+database client. Normal Neon TLS parameters remain supported. Applying any
+migration to production requires a separately designed command and explicit
+authorization.
+
+Phase 3J deliberately adds no RLS or grant migration. The current development
+connection owns the application tables, table owners bypass ordinary RLS, and
+the server-mediated adapter does not yet establish a transaction-local database
+actor. A permissive policy would create false assurance, while deny-by-default
+policies would break the application. Production therefore still requires
+externally provisioned, distinct non-owner runtime and migration roles, reviewed
+grants/default privileges and a real RLS design before any browser Data API use.
 
 ## Health endpoint
 

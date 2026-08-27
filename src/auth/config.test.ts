@@ -44,6 +44,72 @@ describe("authentication runtime configuration", () => {
     ).toBe(true);
   });
 
+  it("allows loopback HTTP only outside production", () => {
+    expect(
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: "http://127.0.0.1:3001/auth",
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        NODE_ENV: "development",
+      }).baseUrl,
+    ).toBe("http://127.0.0.1:3001/auth");
+
+    expect(() =>
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: "http://127.0.0.1:3001/auth",
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        NODE_ENV: "production",
+      }),
+    ).toThrowError("Authentication service is not configured.");
+  });
+
+  it.each([
+    ["https://operator:password@auth.example.invalid/path", "operator"],
+    ["https://auth.example.invalid/path?token=not-allowed", "not-allowed"],
+    ["https://auth.example.invalid/path#not-allowed", "not-allowed"],
+    ["https://auth.example.invalid/path?", "path?"],
+    ["https://auth.example.invalid/path#", "path#"],
+    ["https://auth.example.invalid/path?#", "path?#"],
+  ])("rejects unsafe provider URL components without echoing them", (supplied, sentinel) => {
+    expect(() =>
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: supplied,
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        NODE_ENV: "production",
+      }),
+    ).toThrowError("Authentication service is not configured.");
+
+    try {
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: supplied,
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        NODE_ENV: "production",
+      });
+    } catch (error) {
+      expect(String(error)).not.toContain(supplied);
+      expect(String(error)).not.toContain(sentinel);
+    }
+  });
+
+  it.each([
+    "https://localhost/auth",
+    "https://auth.localhost/auth",
+    "https://127.0.0.1/auth",
+    "https://0.0.0.0/auth",
+    "https://[::]/auth",
+    "https://[::1]/auth",
+    "https://[::127.0.0.1]/auth",
+    "https://[::ffff:127.0.0.1]/auth",
+    "https://[::ffff:0.0.0.0]/auth",
+  ])("rejects a production loopback provider endpoint", (baseUrl) => {
+    expect(() =>
+      getAuthRuntimeConfiguration({
+        NEON_AUTH_BASE_URL: baseUrl,
+        NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+        NODE_ENV: "production",
+      }),
+    ).toThrowError("Authentication service is not configured.");
+  });
+
   it("rejects unsafe configuration without echoing a supplied value", () => {
     const supplied = "sensitive-but-too-short";
     expect(() =>

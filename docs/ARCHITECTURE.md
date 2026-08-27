@@ -551,7 +551,8 @@ enforcement remain a separate deployment gate.
 - Every migration must be reviewed before execution. Production migration
   requires separate explicit authorization.
 - Current mutation scripts additionally require an explicit development label
-  and exact approved database hostname; they are not production migration tools.
+  plus the exact approved database hostname and database name; they are not
+  production migration tools.
 
 ## Health flow
 
