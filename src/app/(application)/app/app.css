@@ -1256,11 +1256,13 @@ html[lang="en"] .crm-route-state__copy--bg {
     padding: 0;
   }
 
-  [data-print-document="invoice"] {
+  [data-print-document="invoice"],
+  [data-print-document="communication"] {
     display: block;
   }
 
-  [data-print-document="invoice"] .crm-card {
+  [data-print-document="invoice"] .crm-card,
+  [data-print-document="communication"] .crm-card {
     break-inside: avoid;
     margin-bottom: 1rem;
     border-color: #bbb;

@@ -8,6 +8,7 @@ import {
 import { seedAvailabilityEngine } from "./seed-availability-engine";
 import { seedCommercialEngine } from "./seed-commercial-engine";
 import { seedIdentityAccess } from "./seed-identity-access";
+import { seedCommunicationsDocuments } from "./seed-communications-documents";
 import { seedCanonicalServiceCatalogue } from "./seed-service-catalogue";
 
 loadMigrationEnvironment();
@@ -23,6 +24,7 @@ async function runMigrations(): Promise<void> {
   await seedCommercialEngine(database);
   await seedAvailabilityEngine(database);
   await seedIdentityAccess(database);
+  await seedCommunicationsDocuments(database);
 }
 
 runMigrations()

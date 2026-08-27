@@ -348,6 +348,47 @@ development fixture cleanup, reviewed additive development-only migration,
 full validation, protected-main CI and explicit accountant/legal production
 configuration gates.
 
+### Phase 3I — Communications and immutable customer documents
+
+Adds a provider-neutral communication/document boundary without changing the
+authority of Phase 3D–3H records. Authorized staff explicitly materialize one
+eligible immutable Quote, Booking, Job, Invoice or Payment event. The owning
+domain audit row remains the event authority; the operation never scans for
+events automatically, rereads mutable CRM as historical truth, renormalizes a
+request, reprices work, reschedules a Booking or repairs finance provenance.
+
+Phase 3I adds versioned Bulgarian/English plain-text templates with exact
+allowlisted variables, customer communication preferences, source-bound
+communication intents, immutable structured `HTML_PRINT` document snapshots,
+SHA-256 integrity checks, local portal delivery evidence, linked-customer
+history and a sanitized communication audit stream. Current portal publication
+creates the intent, final document, local attempt/result, history and audit
+evidence atomically and idempotently.
+
+`COMMUNICATIONS_READ` and `COMMUNICATIONS_MANAGE` are additive permissions, not
+a new role. Every materialization also requires the relevant source-domain read
+conjunction. Customer history requires `OWN_CUSTOMER_DATA_READ` plus the exact
+active identity/customer link; preference updates additionally require
+`OWN_CUSTOMER_DATA_UPDATE` and optimistic versioning.
+
+`DELIVERED_LOCAL` means published in authenticated VAX portal history only. It
+does not claim customer read/open state or external delivery. Email/SMS/manual
+free-form messaging, provider adapters/callbacks/retries, binary PDF/object
+storage, automatic event materialization, production migration and deployment
+remain deferred.
+
+The supplied Phase 3I attachment is truncated in section 20 after the words
+`and explicitly defer`. This phase claims only the visible requirements; the
+missing remainder must be recovered and reconciled before a later expansion or
+production gate. See `docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
+
+Gate: exact event/customer/template/source-version provenance, customer-safe
+projection and placeholder-contract tests, deterministic checksum and
+idempotency tests, permission/IDOR/contact/preference isolation, atomic portal
+publication and no-partial-state proofs, database immutability/append-only
+guards, bilingual responsive accessibility, reviewed additive development-only
+migration, full validation and protected-main CI.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,
@@ -370,8 +411,9 @@ customer acknowledgement, and audited amendments.
 ## Phase 10 — Customer portal
 
 Expand the secure customer surface beyond Phase 3D's request/issued-Quote
-history, Phase 3E Bookings and Phase 3F Cleaning Passport to appointments,
-documents, messages and relevant service status.
+history, Phase 3E Bookings, Phase 3F Cleaning Passport and Phase 3I immutable
+document history to richer appointments, conversations and relevant service
+status.
 
 Gate: object-level authorization, privacy review, responsive accessibility,
 empty and error states, and account-recovery behavior.
@@ -397,8 +439,9 @@ permission controls, audit logs, and financial review.
 
 ## Phase 13 — Communications/notifications
 
-Implement template ownership, customer messages, notification preferences,
-email and SMS adapters, delivery status, retries, and opt-out controls.
+Expand Phase 3I's local portal templates, preferences, intents, immutable
+documents and delivery history with approved customer conversations, email/SMS
+adapters, external delivery status, retries, suppression and opt-out controls.
 
 Gate: consent and legal review, idempotency, suppression behavior, provider
 failure recovery, and sanitized logging.

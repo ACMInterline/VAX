@@ -1,12 +1,14 @@
 # Security
 
-## Security posture through Phase 3H
+## Security posture through Phase 3I
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
 rate limiting, email delivery, trusted origins, monitoring, recovery and
 production data governance remain gated. The finance foundation adds no claim
-of legal, fiscal, tax, accounting or payment-provider security readiness.
+of legal, fiscal, tax, accounting or payment-provider security readiness. The
+communications foundation publishes locally only and makes no external-
+delivery, customer-read or messaging-provider claim.
 
 ## Time-bound framework advisory
 
@@ -110,6 +112,14 @@ integrity functions they require. It seeds no legal seller, VAT, bank, billing,
 invoice policy or numbering value, never names `neon_auth`, and is authorized
 only for Neon development after SQL/checksum review. Production remains
 unmigrated and separately gated.
+
+The additive `0011_phase_3i_communications_documents.sql` migration creates
+only application-owned template, preference, intent, immutable document, local
+delivery, customer-history and communication-audit structures plus supporting
+same-customer indexes and integrity guards. It rewrites no prior migration,
+never names `neon_auth`, stores no binary PDF/provider credential and is
+authorized only for Neon development after SQL/checksum review. Production
+remains untouched and separately gated.
 
 The current migration and owner-bootstrap commands refuse production mode,
 non-development mutation labels and unexpected database hostnames before
@@ -640,6 +650,56 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   VAT, invoice, cash-receipt, fiscal or accounting compliance claim. See
   `docs/FINANCE_AND_INVOICING.md`.
 
+## Phase 3I communications and documents safeguards
+
+- Publication starts only from an explicit authorized staff action over an
+  eligible immutable owning audit event. No background observer silently
+  publishes historical or new business rows.
+- Materialization rechecks `COMMUNICATIONS_READ` + `COMMUNICATIONS_MANAGE` and
+  the exact source permission conjunction in both the service and database
+  repository. Quote requires customer/operations read; Booking additionally
+  requires schedule read; Job/Passport additionally requires field-job read;
+  Invoice/Payment requires customer/finance read.
+- Source-specific restrictive and composite foreign keys bind customer,
+  contact, source, owning audit event, template, document and delivery graph.
+  Booking confirmation/reschedule also binds the exact occupancy revision.
+  Missing or inconsistent provenance fails closed to review; source data is not
+  renormalized, repriced, rescheduled, repaired or refreshed.
+- The source projector allowlists customer-safe facts. Access notes,
+  coordinates, request free text, estimate internals, staff/technician notes,
+  external payment references and provider details do not enter the document
+  snapshot.
+- Templates are versioned plain text with exact allowlisted placeholder
+  contracts. Unknown, missing, duplicate, malformed or mismatched variables
+  fail closed. The renderer evaluates no code and stores no arbitrary HTML.
+- Final documents bind canonical structured content to template key/version,
+  locale and renderer version with SHA-256. Referenced templates and intents,
+  final/superseded documents, attempts, results, history and audit evidence are
+  protected by database immutability/append-only guards.
+- Event/template/channel uniqueness, payload-bound idempotency and one atomic
+  insert graph prevent duplicate/conflicting retries and partial portal
+  publication.
+- `DELIVERED_LOCAL`/`PORTAL_PUBLISHED` means only that VAX published the final
+  document to authenticated portal history. It is not customer-read evidence
+  and cannot represent email, SMS, postal or provider acceptance.
+- Linked-customer reads require `OWN_CUSTOMER_DATA_READ` plus the exact active,
+  non-revoked identity/customer link. Preference updates additionally require
+  `OWN_CUSTOMER_DATA_UPDATE`, exactly one link and optimistic versioning.
+  References and matching email/contact values never grant ownership.
+- Portal, operational and billing choices remain separate from future email/
+  SMS and marketing consent. Future channels and marketing default off; the
+  database prohibits automated marketing intents in this phase.
+- Communication audit metadata is allowlisted and excludes bodies, contact
+  values, addresses, notes, external payment references, provider responses,
+  credentials and tokens.
+- The bounded communication mutation limiter is defense in depth only.
+  Production still requires a shared limiter, monitoring/recovery, reviewed
+  RLS/least-privilege grants and retention/contact-authority/consent policy.
+- External email/SMS providers, callbacks, retries, suppression/bounce
+  handling, manual free-form messages, customer-open tracking, binary PDF/
+  object storage, production migration and deployment are absent. See
+  `docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
@@ -650,6 +710,9 @@ Phase 3F separately records Job lifecycle, assignment,
 inspection, treatment, review, completion and Passport creation.
 Phase 3H separately records Invoice readiness/issue/cancellation, Payment
 recording/confirmation/allocation/reversal and settlement changes.
+Phase 3I separately records communication materialization, rendering, local
+portal publication and preference changes while keeping each owning domain
+event as the source authority.
 Authentication and role/status events remain in `auth_audit_events`. Broader
 sensitive-read and future-domain operations still require durable audit
 coverage, including:
@@ -657,6 +720,8 @@ coverage, including:
 - role and permission changes;
 - access to sensitive customer information;
 - discounts, future Invoice/Payment correction and exceptional reconciliation;
+- future communication correction/supersession, external delivery
+  reconciliation, suppression and consent exceptions;
 - multi-team assignment and exceptional job/schedule overrides beyond the
   implemented ordinary Phase 3G scheduling history;
 - inspection, damage, treatment, Passport amendments and claim changes;

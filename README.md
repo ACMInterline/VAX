@@ -41,14 +41,19 @@ The current repository contains:
   inspection, treatment, completion and append-only Cleaning Passport history;
 - a bilingual staff scheduling surface with an unscheduled queue, deterministic
   candidate review, exact appointment confirmation, append-only rescheduling,
-  daily dispatch and privacy-scoped technician/customer appointment views; and
+  daily dispatch and privacy-scoped technician/customer appointment views;
+- a controlled finance foundation with immutable issued-Invoice snapshots,
+  manually recorded Payments and append-oriented allocation/reversal evidence;
+- staff-materialized bilingual customer documents from exact immutable Quote,
+  Booking, Job, Invoice and Payment events, with checksummed HTML/print
+  snapshots and authenticated local portal history; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
 Production invitations/session administration, operational configuration
-approval, paid/live routing, payments, invoices, automated notifications,
-object storage, offline technician synchronization, final branding and
-deployment are not implemented.
+approval, paid/live routing, live payment processing, external email/SMS or
+other messaging-provider delivery, binary PDF/object storage, offline
+technician synchronization, final branding and deployment are not implemented.
 
 ## Requirements
 
@@ -169,6 +174,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/content/public-site | Localized content contract, routes, services, FAQ, and claim controls |
 | src/modules | Provider-neutral domain vocabulary and application-facing modules |
 | src/modules/scheduling-dispatch | Scheduling authorization, validation, ranking, Sofia time, dispatch projections and persistence contract |
+| src/modules/communications-documents | Immutable event projection, bilingual templates, checksummed document rendering, local portal publication and communication policy |
 | src/db | PostgreSQL schema, connection adapter, health probe, and migrator |
 | src/lib | Small cross-cutting utilities such as environment validation |
 | drizzle | Generated SQL migrations and Drizzle migration metadata |
@@ -241,10 +247,18 @@ history without changing accepted commercial authority. Phase 3G adds explicit
 staff-reviewed operational requirements, deterministic candidate scheduling,
 exact team/equipment appointments, durable occupancy revisions, daily dispatch,
 technician-today and safe customer appointment views, Sofia DST handling and
-read-only capacity metrics. All current operational configuration remains
-visibly DRAFT/provisional and no phase migrates production or deploys. See
+read-only capacity metrics. Phase 3H adds accepted-commercial Invoice snapshots,
+manual Payment recording/confirmation, append-oriented allocations/reversals
+and linked-customer Invoice views. Phase 3I adds explicit staff materialization
+of eligible immutable business events into bilingual checksummed HTML/print
+documents and local authenticated portal history. Portal publication is not
+external delivery; email, SMS, provider adapters and binary PDF remain
+deferred. All current operational configuration remains visibly
+DRAFT/provisional and no phase migrates production or deploys. See
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
 [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),
 [docs/BOOKING_ENGINE.md](docs/BOOKING_ENGINE.md),
-[docs/JOB_EXECUTION.md](docs/JOB_EXECUTION.md) and
-[docs/SCHEDULING_AND_DISPATCH.md](docs/SCHEDULING_AND_DISPATCH.md).
+[docs/JOB_EXECUTION.md](docs/JOB_EXECUTION.md),
+[docs/SCHEDULING_AND_DISPATCH.md](docs/SCHEDULING_AND_DISPATCH.md),
+[docs/FINANCE_AND_INVOICING.md](docs/FINANCE_AND_INVOICING.md) and
+[docs/COMMUNICATIONS_AND_DOCUMENTS.md](docs/COMMUNICATIONS_AND_DOCUMENTS.md).

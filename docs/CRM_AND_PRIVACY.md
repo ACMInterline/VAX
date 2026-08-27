@@ -1,6 +1,6 @@
 # Customer CRM and Privacy
 
-## Scope through Phase 3H
+## Scope through Phase 3I
 
 Phase 3C introduced the first persistent VAX business records: customers,
 contacts, identity-to-customer links, properties, property areas and physical
@@ -20,12 +20,16 @@ appointments, append-oriented occupancy revisions, a staff daily dispatch
 board, a row-scoped technician-today view and a safe linked-customer
 appointment view. Phase 3H adds versioned customer-billing/seller policy,
 accepted-commercial Invoices, manually recorded Payments, append-oriented
-allocations/reversals and linked-customer Invoice views. File, message,
-notification, payment-provider and refund records remain absent. The
+allocations/reversals and linked-customer Invoice views. Phase 3I adds explicit
+staff materialization of eligible immutable business events into bilingual,
+checksummed HTML/print documents and authenticated local portal history.
+External message/provider, binary file, payment-provider and refund records
+remain absent. The
 commercial, Booking, execution, scheduling and finance contracts are defined in
 `docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md`,
 `docs/JOB_EXECUTION.md`, `docs/SCHEDULING_AND_DISPATCH.md` and
-`docs/FINANCE_AND_INVOICING.md`.
+`docs/FINANCE_AND_INVOICING.md`; the communication privacy boundary is defined
+in `docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
 
 The model serves one VAX cleaning business. It is not a general multi-tenant
 platform and does not claim that future organization, retention or data-subject
@@ -45,8 +49,8 @@ An active `customer_identity_links` row is the only application-owned
 relationship that can grant a signed-in customer profile access to a CRM
 customer. Matching an email address never creates or proves that relationship.
 Removing or revoking a link does not delete the customer, contacts, properties,
-assets, requests, estimates, historical quotes, acceptances, Bookings, Jobs or
-Cleaning Passport entries.
+assets, requests, estimates, historical quotes, acceptances, Bookings, Jobs,
+Cleaning Passport entries or communication/document history.
 
 Staff access requires the existing CRM permissions. `OWNER`, `ADMIN` and
 `DISPATCHER` may read and manage CRM records under the application policy.
@@ -84,6 +88,21 @@ projection. Invoice references do not grant access. Customer responses exclude
 draft/review/cancelled records, Payments, internal notes, staff audit and
 commercial/provenance internals.
 
+Communication administration requires `COMMUNICATIONS_READ` and
+`COMMUNICATIONS_MANAGE` plus the source-domain read conjunction. Quote material
+requires customer and operations read; Booking material also requires schedule
+read; Job/Passport material also requires field-job read; Invoice/Payment
+material requires customer and finance read. The service and repository both
+recheck these permissions. A Dispatcher can therefore materialize authorized
+operational documents but cannot cross into finance merely because the role has
+communication permissions.
+
+Customer communication/history reads require `OWN_CUSTOMER_DATA_READ` and the
+exact active, non-revoked profile/customer link for the owning customer.
+Preference updates also require `OWN_CUSTOMER_DATA_UPDATE` and exactly one
+active linked customer. A public document reference, matching email or current
+contact value never grants access.
+
 ## Data categories and purpose
 
 | Category | Examples | Current purpose |
@@ -103,6 +122,8 @@ commercial/provenance internals.
 | Billing and seller snapshots | Invoice-time customer billing identity/address, company/VAT identifier state and approved seller legal/payment-instruction facts | Preserve the financial document without depending on later CRM/configuration changes |
 | Invoice and line history | Number, dates, status, frozen accepted lines, net/VAT/gross, paid/outstanding value and customer-visible note | Explain an issued financial claim and settlement without repricing historical work |
 | Payment and allocation history | Manual receipt method/reference, confirmation, allocations, reversals and unapplied value | Reconcile recorded money to Invoices without processing funds or exposing staff-only evidence to customers |
+| Communication preferences | Portal/future-channel choices, operational/billing allowance, separate marketing consent, durable locale and optimistic version | Apply explicit customer choices without treating browser locale or email equality as authority |
+| Communication and document history | Event/source/template versions, customer-safe content snapshot, checksum, local publication result and visible timeline | Preserve exactly what VAX published in the authenticated portal without claiming external delivery or rereading mutable CRM/source data |
 
 Full addresses and coordinates are sensitive operational data. They are shown
 only to staff with CRM access or to application profiles explicitly linked to
@@ -157,6 +178,13 @@ oriented; normal correction uses compensating facts rather than deletion.
 Retention, erasure/anonymization and legal-hold policy must reconcile privacy
 rights with accountant/legal requirements before production.
 
+Final communication documents, local delivery results, customer history and
+their audit evidence are historical records, not mutable copies of current CRM.
+Current contact, preference, locale or source-record changes never rewrite a
+published snapshot. Revoking an identity link removes access but does not
+delete or reassign the record. Any correction must create a reviewed new
+version/supersession relationship rather than overwrite final evidence.
+
 ## Cleaning Passport foundation
 
 Each `cleaning_assets.id` is a stable identity for one physical item. Phase 3C
@@ -201,6 +229,13 @@ payment references, bank details and free-form notes. Allocations and reversals
 are append-oriented, and issue/settlement facts are written atomically with the
 owning state change.
 
+Phase 3I keeps the owning domain audit row as business-event authority and adds
+a separate append-only communication stream for intent creation, rendering,
+finalization, local portal publication and preference changes. Materialization
+stores an allowlisted customer-safe projection; its audit metadata excludes
+document bodies, contact values, addresses, external payment references and
+provider details.
+
 Safe metadata excludes contact details, addresses, notes, provider subjects,
 tokens and secrets, and ordinary application code has no update/delete
 operation for these event streams or Passport entries.
@@ -232,6 +267,11 @@ production CRM deployment, the owner must approve and test:
 - customer billing/seller snapshots, issued Invoice/line, Payment, allocation,
   reversal and finance-audit retention, correction and lawful-access policy,
   reviewed with a qualified accountant/legal adviser;
+- communication preferences/marketing-consent evidence, contact authority,
+  immutable documents/checksums, portal history, correction/supersession and
+  communication-audit retention/export/erasure policy;
+- recovery and reconciliation for local publication plus any future external
+  delivery, including suppression, retries and provider evidence;
 - production least-privilege grants and reviewed row-level security;
 - monitoring for unauthorized access and an incident/recovery procedure; and
 - a separate authorized production migration and deployment review.

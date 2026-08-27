@@ -7,6 +7,7 @@ export type AuthAttemptScope =
   | "BOOKING_MUTATION"
   | "JOB_MUTATION"
   | "FINANCE_MUTATION"
+  | "COMMUNICATION_MUTATION"
   | "PUBLIC_REQUEST";
 
 export type AuthRateLimitResult =
@@ -29,6 +30,7 @@ const scopePolicies: Record<
   BOOKING_MUTATION: { limit: 10, windowMilliseconds: 5 * 60 * 1000 },
   JOB_MUTATION: { limit: 30, windowMilliseconds: 5 * 60 * 1000 },
   FINANCE_MUTATION: { limit: 20, windowMilliseconds: 5 * 60 * 1000 },
+  COMMUNICATION_MUTATION: { limit: 20, windowMilliseconds: 5 * 60 * 1000 },
   PUBLIC_REQUEST: { limit: 5, windowMilliseconds: 60 * 60 * 1000 },
 };
 

@@ -600,6 +600,7 @@ export const invoices = pgTable(
       table.customerId,
       table.currency,
     ),
+    uniqueIndex("invoices_id_customer_unique").on(table.id, table.customerId),
     uniqueIndex("invoices_id_booking_quote_unique").on(
       table.id,
       table.bookingId,
@@ -855,6 +856,7 @@ export const payments = pgTable(
       table.customerId,
       table.currency,
     ),
+    uniqueIndex("payments_id_customer_unique").on(table.id, table.customerId),
     uniqueIndex("payments_reversal_provenance_unique").on(
       table.id,
       table.customerId,

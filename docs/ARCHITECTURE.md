@@ -48,6 +48,7 @@ introduced.
 | src/modules/scheduling-dispatch | Staff-reviewed scheduling eligibility, candidate ranking, Sofia time conversion, dispatch readiness, capacity projections and atomic occupancy revision ports | Repricing, request renormalization, CRM repair, user-team membership, provider credentials or Job execution |
 | src/modules/job-execution | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments |
 | src/modules/finance-invoicing | Accepted-commercial invoice eligibility, immutable financial snapshots, finance authorization, exact settlement, payment-allocation and reversal ports | Repricing, request/CRM repair, provider payment processing, tax advice or accounting export |
+| src/modules/communications-documents | Exact event projection, communication authorization, bilingual template contracts, immutable rendering, idempotency and portal-publication ports | Source-domain mutation, CRM repair, repricing, external provider delivery, executable templates or binary storage |
 | src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
 | src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
 | src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
@@ -145,6 +146,16 @@ pricing or CRM repair. Issue revalidates that entire graph and serializes the
 approved numbering counter. Payment recording remains separate from explicit
 confirmation, and allocation/reversal use an append-oriented, database-guarded
 ledger. Customer and staff projections remain distinct.
+
+Phase 3I adds `src/modules/communications-documents`. Authorized staff
+explicitly materialize one eligible owning audit event; there is no automatic
+table observer or provider send. The service resolves an allowlisted
+customer-safe projection, exact locale and active template, then the PostgreSQL
+repository rechecks the actor, source-domain permission conjunction, source and
+audit provenance, active customer/contact, preference and template before one
+atomic write creates the final document and local portal history. Linked-
+customer reads require the exact active identity/customer link. Source records
+are never repaired, recalculated or reinterpreted during materialization.
 
 ## Public website boundary
 
@@ -422,6 +433,34 @@ processing, bank API, fiscal-device automation, accounting export, full
 credit-note/refund workflow or compliance claim. See
 `docs/FINANCE_AND_INVOICING.md`.
 
+## Communications and documents boundary
+
+Phase 3I adds a customer-safe publication layer without becoming a new source
+of Quote, Booking, Job or finance truth:
+
+> immutable owning event → explicit staff materialization → intent → immutable
+> render snapshot → local portal result → customer history
+
+The event's existing business, Booking, Job or finance audit row remains the
+event authority. Communication intent columns and restrictive composite
+foreign keys bind the exact source, customer, source version, schedule
+occupancy where applicable and template version. Missing or inconsistent
+authority fails closed to staff review. No source domain is renormalized,
+repriced, rescheduled, repaired or refreshed.
+
+Templates are bilingual, versioned plain text with exact allowlisted variable
+contracts. Rendering creates a validated structured `HTML_PRINT` snapshot and
+a SHA-256 checksum bound to the template, locale, renderer and content. Final
+documents and delivery/history records are immutable or append-only. Customer
+projections expose only final/superseded documents with a matching local portal
+publication and an exact active identity/customer link.
+
+`DELIVERED_LOCAL` means published in the VAX portal; it is not external delivery
+or customer-read evidence. Email/SMS adapters, manual free-form messages,
+provider callbacks/retries, binary PDF/object storage, automatic event
+materialization, production migration and deployment remain deferred. See
+`docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
+
 ## Database boundary
 
 src/db/client.ts is the single connection construction point. It:
@@ -433,8 +472,8 @@ src/db/client.ts is the single connection construction point. It:
 - prevents provider setup from spreading into business modules.
 
 The current Neon HTTP adapter supports the bounded transactions used by the
-CRM, request/Quote, Booking, Job and finance repositories. Transactional
-invariants stay in the database adapter rather than the domain policy. If a
+CRM, request/Quote, Booking, Job, finance and communications repositories.
+Transactional invariants stay in the database adapter rather than the domain policy. If a
 later workflow requires interactive session semantics that the HTTP transport
 cannot provide, the adapter may change without changing domain rules.
 
@@ -538,11 +577,13 @@ contracts and permission policy; provider session, Admin API and token shapes
 stay inside `src/auth/neon-provider.ts` and its projection helper.
 Provider-managed `neon_auth`, application `user_profiles`, and CRM customer
 records are separate ownership boundaries. Implemented customer, request,
-quote, acceptance, Booking, Job, Cleaning Passport and finance authorization
-remains application-owned and never changes the provider schema. See
+quote, acceptance, Booking, Job, Cleaning Passport, finance and communications
+authorization remains application-owned and never changes the provider schema.
+See
 `docs/IDENTITY_AND_ACCESS.md`, `docs/REQUEST_AND_QUOTE.md`,
 `docs/BOOKING_ENGINE.md`, `docs/JOB_EXECUTION.md` and
-`docs/FINANCE_AND_INVOICING.md`.
+`docs/FINANCE_AND_INVOICING.md`, plus
+`docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
 
 ### Object storage
 
@@ -556,6 +597,9 @@ Email, SMS, mapping, and payment providers must follow the same adapter rule.
 Provider-specific webhooks terminate at transport adapters and are converted to
 validated internal commands. Phase 3H implements no payment adapter or webhook;
 its `CARD_MANUAL_REFERENCE` value records only a staff-entered external fact.
+Phase 3I implements only the application-owned `PORTAL_LOCAL` adapter. A local
+portal publication is not an email/SMS/provider delivery receipt. Future
+channels remain disabled and provider-free until separately approved.
 
 ## Cross-cutting requirements
 
@@ -570,8 +614,10 @@ its `CARD_MANUAL_REFERENCE` value records only a staff-entered external fact.
   occupancy-release evidence. Phase 3F separately covers Job lifecycle,
   inspection, treatment, completion and Cleaning Passport creation. Phase 3H
   separately covers Invoice, Payment, allocation, reversal and settlement.
-- Preserve the implemented Booking and finance idempotency boundaries and
-  design idempotency before adding messages, notifications or provider webhooks.
+  Phase 3I separately covers communication intent, rendering, local portal
+  publication and preference changes.
+- Preserve the implemented Booking, finance and communication idempotency
+  boundaries before adding provider webhooks or retry workers.
 - Avoid irreversible deletes for records that contribute to service history.
 - Implement accessible, responsive loading, empty, error, and recovery states.
 
@@ -583,6 +629,10 @@ The following remain deliberately undecided:
 - object-storage provider;
 - hosting platform;
 - live-payment, live-routing, email, and SMS providers;
+- binary PDF rendering/storage, provider delivery receipts and customer-open
+  tracking;
+- automatic communication materialization, external retry/suppression policy
+  and legally reviewed contact/consent handling;
 - privileged identity administration and organization scope;
 - customer merge/shared-household/company authority and production CRM retention workflows;
 - final commercial identity and owner-approved content workflow;

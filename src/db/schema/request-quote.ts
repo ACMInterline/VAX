@@ -505,6 +505,7 @@ export const quotes = pgTable(
       table.customerId,
       table.propertyId,
     ),
+    uniqueIndex("quotes_id_customer_unique").on(table.id, table.customerId),
     uniqueIndex("quotes_active_issued_request_unique")
       .on(table.requestId)
       .where(sql`${table.status} = 'ISSUED'`),

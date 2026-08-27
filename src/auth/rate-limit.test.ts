@@ -72,4 +72,19 @@ describe("authentication rate-limit boundary", () => {
       limiter.consume("BOOKING_MUTATION", "technician-key"),
     ).resolves.toEqual({ allowed: true });
   });
+
+  it("bounds communication materialization on its own protected scope", async () => {
+    const limiter = new InMemoryAuthRateLimiter();
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await expect(
+        limiter.consume("COMMUNICATION_MUTATION", "staff-key"),
+      ).resolves.toEqual({ allowed: true });
+    }
+    await expect(
+      limiter.consume("COMMUNICATION_MUTATION", "staff-key"),
+    ).resolves.toMatchObject({ allowed: false });
+    await expect(
+      limiter.consume("FINANCE_MUTATION", "staff-key"),
+    ).resolves.toEqual({ allowed: true });
+  });
 });

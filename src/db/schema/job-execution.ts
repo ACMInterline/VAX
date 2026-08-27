@@ -216,6 +216,7 @@ export const jobs = pgTable(
       table.bookingId,
       table.propertyId,
     ),
+    uniqueIndex("jobs_id_customer_unique").on(table.id, table.customerId),
     index("jobs_staff_status_schedule_idx").on(
       table.status,
       table.scheduledStartSnapshot,
