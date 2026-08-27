@@ -130,6 +130,10 @@ export const customerContacts = pgTable(
       table.customerId,
       table.active,
     ),
+    uniqueIndex("customer_contacts_id_customer_unique").on(
+      table.id,
+      table.customerId,
+    ),
     index("customer_contacts_email_idx")
       .on(sql`lower(${table.email})`)
       .where(sql`${table.email} is not null`),

@@ -58,6 +58,7 @@ describe("server authorization policy", () => {
       "MY_QUOTES",
       "MY_BOOKINGS",
       "MY_INVOICES",
+      "MY_COMMUNICATIONS",
     ]);
     expect(customerNavigation).toEqual(
       expect.arrayContaining([
@@ -74,6 +75,11 @@ describe("server authorization policy", () => {
         expect.objectContaining({
           code: "MY_INVOICES",
           href: "/app/my-invoices",
+          requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+        }),
+        expect.objectContaining({
+          code: "MY_COMMUNICATIONS",
+          href: "/app/my-communications",
           requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
         }),
       ]),
@@ -114,6 +120,11 @@ describe("server authorization policy", () => {
       expect.objectContaining({
         code: "MY_INVOICES",
         href: "/app/my-invoices",
+        requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+      }),
+      expect.objectContaining({
+        code: "MY_COMMUNICATIONS",
+        href: "/app/my-communications",
         requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
       }),
     ]);

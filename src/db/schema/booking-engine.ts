@@ -202,6 +202,7 @@ export const bookings = pgTable(
       table.customerId,
       table.propertyId,
     ),
+    uniqueIndex("bookings_id_customer_unique").on(table.id, table.customerId),
     uniqueIndex("bookings_id_commercial_provenance_unique").on(
       table.id,
       table.requestId,

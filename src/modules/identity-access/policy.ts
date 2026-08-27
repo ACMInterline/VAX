@@ -32,6 +32,8 @@ export const permissionCodes = [
   "FINANCE_MANAGE",
   "INVOICE_ISSUE",
   "PAYMENT_RECORD",
+  "COMMUNICATIONS_READ",
+  "COMMUNICATIONS_MANAGE",
   "OWN_CUSTOMER_DATA_READ",
   "OWN_CUSTOMER_DATA_UPDATE",
   "AUDIT_READ",
@@ -103,6 +105,10 @@ const permissionDescriptions: Record<PermissionCode, string> = {
   FINANCE_MANAGE: "Manage authorized draft finance records.",
   INVOICE_ISSUE: "Issue immutable invoices through authorized workflows.",
   PAYMENT_RECORD: "Record, allocate, and reverse authorized payment facts.",
+  COMMUNICATIONS_READ:
+    "Read authorized customer communication and document-delivery records.",
+  COMMUNICATIONS_MANAGE:
+    "Create controlled communication intents and customer-safe documents.",
   OWN_CUSTOMER_DATA_READ: "Read only the customer's own future business records.",
   OWN_CUSTOMER_DATA_UPDATE: "Update only the customer's own future business records.",
   AUDIT_READ: "Read authorized application audit records.",
@@ -138,6 +144,8 @@ export const rolePermissionMatrix = {
     "FINANCE_MANAGE",
     "INVOICE_ISSUE",
     "PAYMENT_RECORD",
+    "COMMUNICATIONS_READ",
+    "COMMUNICATIONS_MANAGE",
     "AUDIT_READ",
   ],
   DISPATCHER: [
@@ -152,6 +160,8 @@ export const rolePermissionMatrix = {
     "CUSTOMER_RECORDS_READ",
     "CUSTOMER_RECORDS_MANAGE",
     "FIELD_JOBS_READ",
+    "COMMUNICATIONS_READ",
+    "COMMUNICATIONS_MANAGE",
   ],
   TECHNICIAN: [
     "IDENTITY_SELF_READ",

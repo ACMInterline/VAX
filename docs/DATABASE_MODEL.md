@@ -398,6 +398,50 @@ RLS remain deployment gates. The additive
 authorized only for Neon development. See
 `docs/FINANCE_AND_INVOICING.md`.
 
+Phase 3I adds customer-safe communication and immutable document structures:
+
+| Structure | Responsibility |
+| --- | --- |
+| `communication_templates` | Versioned Bulgarian/English plain-text templates with exact allowlisted-variable contracts |
+| `customer_communication_preferences` | Customer channel, service-purpose, marketing-consent and durable locale choices |
+| `communication_intents` | Exact customer, source/audit event, source version, template, channel, snapshots, lifecycle and idempotency evidence |
+| `documents` | Final structured HTML/print content, template/renderer/source versions, SHA-256 checksum and supersession relationship |
+| `delivery_attempts` | Append-only local portal attempt evidence; the database permits only `PORTAL_LOCAL` in this phase |
+| `delivery_results` | One append-only local terminal result per attempt |
+| `customer_communication_history_entries` | Customer-visible publication timeline tied to the exact intent, document and result |
+| `communication_audit_events` | Sanitized intent/render/publication/preference lifecycle evidence |
+
+The owning request/Quote, Booking, Job and finance audit streams remain the
+business-event authority. Staff explicitly materialize an eligible event; the
+application does not automatically scan or reinterpret source tables.
+Source-specific restrictive foreign keys and database checks bind each intent
+to exactly one matching customer/source/audit graph. Booking confirmations and
+reschedules also bind the exact occupancy revision.
+
+The customer-safe projection excludes source payloads such as access notes,
+coordinates, staff notes, request free text, estimate internals, external
+payment references and provider details. Templates render only an exact
+allowlisted variable contract into validated structured content. A stable
+SHA-256 checksum binds that content to template key/version, locale and
+renderer version. Unique source-event and payload-bound idempotency keys block
+duplicate or conflicting materialization.
+
+Current portal publication atomically inserts the `DELIVERED_LOCAL` intent,
+final document, completed local attempt, `PORTAL_PUBLISHED` result, customer
+history and audit evidence. `DELIVERED_LOCAL` is an application-local state,
+not external delivery or customer-read proof. Customer reads require the exact
+active profile/customer link and return only final/superseded documents with a
+matching local result.
+
+Migration `0011_phase_3i_communications_documents.sql` also adds the supporting
+same-customer unique indexes needed by its composite foreign keys and installs
+template/intent/document/delivery graph and append-only guards. It rewrites no
+prior migration, creates no Auth/provider object, stores no binary PDF and is
+authorized only for Neon development. Email/SMS/provider delivery, external
+retries/callbacks, manual free-form messages, automatic event materialization,
+binary storage, production migration and deployment remain deferred. See
+`docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
+
 ## Long-term relationship
 
 The implemented durable hierarchy foundation is:
@@ -410,6 +454,11 @@ The implemented commercial-intake relationship is:
 > versions → Quote Acceptance → Booking → occupancy versions → Job → Invoice
 > → Payment allocations
 
+The implemented customer-document relationship is:
+
+> owning immutable audit event → Communication Intent → final Document → local
+> Delivery Result → Customer Communication History
+
 Expected cardinalities:
 
 - one customer may own or manage many properties;
@@ -419,7 +468,10 @@ Expected cardinalities:
 - one cleaning asset may accumulate many append-only Cleaning Passport entries;
 - one Booking may create at most one live standard Invoice; and
 - one Payment may allocate across several Invoices while one Invoice may receive
-  several Payments.
+  several Payments; and
+- one eligible source event/template/channel combination may materialize at
+  most one communication intent, while a customer may retain many history
+  entries.
 
 A Booking item can retain an indirect relationship to a cleaning asset through
 its source request item. It does not own or replace that asset. This distinction
@@ -561,12 +613,16 @@ objects held by a separate storage provider.
 
 ### Customer experience
 
-| Planned table | Responsibility |
+| Implemented or planned table | Responsibility |
 | --- | --- |
+| `communication_templates`, `communication_intents` | Implemented versioned template and exact immutable event-to-intent authority |
+| `documents` | Implemented checksummed customer-safe HTML/print snapshot; binary PDF remains planned |
+| `delivery_attempts`, `delivery_results` | Implemented local portal publication evidence; external adapters/results remain planned |
+| `customer_communication_history_entries`, `customer_communication_preferences` | Implemented linked-customer history and separate channel/purpose/marketing/locale choices |
 | reviews | Customer feedback and publication state |
 | claims | Complaint or damage-claim lifecycle |
 | messages | Conversation records across supported channels |
-| notifications | Delivery intent and outcome |
+| external notification adapters | Email/SMS provider delivery, retries, suppression, callbacks and external results |
 
 ### Maintenance
 
@@ -586,6 +642,7 @@ objects held by a separate storage provider.
 | business_audit_events | Implemented request/estimate/quote business events; broader business-audit coverage remains planned |
 | booking_audit_events, job_audit_events | Implemented owning streams for acceptance/Booking and Job execution respectively |
 | finance_audit_events | Implemented owning stream for Invoice, Payment, allocation, reversal and settlement evidence |
+| communication_audit_events | Implemented sanitized communication/render/local-publication/preference evidence |
 | audit_logs | Planned broader cross-domain critical-operation audit records or reviewed extensions of the owned streams |
 | activity_logs | Lower-risk operational activity stream |
 

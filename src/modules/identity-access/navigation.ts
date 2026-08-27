@@ -13,10 +13,12 @@ export type ApplicationNavigationItem = {
     | "MY_QUOTES"
     | "MY_BOOKINGS"
     | "MY_INVOICES"
+    | "MY_COMMUNICATIONS"
     | "CUSTOMERS"
     | "REQUESTS"
     | "BOOKINGS"
     | "FINANCE"
+    | "COMMUNICATIONS"
     | "OPERATIONS"
     | "SCHEDULE"
     | "FIELD_WORK"
@@ -80,6 +82,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     audience: "CUSTOMER",
   },
   {
+    code: "MY_COMMUNICATIONS",
+    labelBg: "Моите документи",
+    labelEn: "My documents",
+    href: "/app/my-communications",
+    requiredPermissions: ["OWN_CUSTOMER_DATA_READ"],
+    audience: "CUSTOMER",
+  },
+  {
     code: "CUSTOMERS",
     labelBg: "Клиенти",
     labelEn: "Customers",
@@ -115,6 +125,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     labelEn: "Finance",
     href: "/app/finance",
     requiredPermissions: ["FINANCE_READ"],
+    audience: "STAFF",
+  },
+  {
+    code: "COMMUNICATIONS",
+    labelBg: "Комуникации",
+    labelEn: "Communications",
+    href: "/app/communications",
+    requiredPermissions: ["COMMUNICATIONS_READ"],
     audience: "STAFF",
   },
   {

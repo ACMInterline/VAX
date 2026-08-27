@@ -14,7 +14,7 @@ describe("canonical identity and access policy", () => {
   it("defines unique stable role and permission seeds", () => {
     expect(applicationRoleCodes).toHaveLength(5);
     expect(applicationRoleCodes).not.toContain("ACCOUNTANT");
-    expect(permissionCodes).toHaveLength(26);
+    expect(permissionCodes).toHaveLength(28);
     expect(new Set(applicationRoleCodes).size).toBe(applicationRoleCodes.length);
     expect(new Set(permissionCodes).size).toBe(permissionCodes.length);
     expect(canonicalRoles.map((role) => role.code)).toEqual(applicationRoleCodes);
@@ -41,6 +41,7 @@ describe("canonical identity and access policy", () => {
     expect(rolePermissionMatrix.CUSTOMER).not.toContain("FINANCE_MANAGE");
     expect(rolePermissionMatrix.CUSTOMER).not.toContain("INVOICE_ISSUE");
     expect(rolePermissionMatrix.CUSTOMER).not.toContain("PAYMENT_RECORD");
+    expect(rolePermissionMatrix.CUSTOMER).not.toContain("COMMUNICATIONS_READ");
   });
 
   it("keeps technician permissions field-oriented", () => {
@@ -53,6 +54,7 @@ describe("canonical identity and access policy", () => {
     expect(rolePermissionMatrix.TECHNICIAN).not.toContain("FINANCE_MANAGE");
     expect(rolePermissionMatrix.TECHNICIAN).not.toContain("INVOICE_ISSUE");
     expect(rolePermissionMatrix.TECHNICIAN).not.toContain("PAYMENT_RECORD");
+    expect(rolePermissionMatrix.TECHNICIAN).not.toContain("COMMUNICATIONS_READ");
   });
 
   it("grants dispatch operations without protected settings", () => {
@@ -61,6 +63,8 @@ describe("canonical identity and access policy", () => {
         "OPERATIONS_MANAGE",
         "SCHEDULE_MANAGE",
         "CUSTOMER_RECORDS_MANAGE",
+        "COMMUNICATIONS_READ",
+        "COMMUNICATIONS_MANAGE",
       ]),
     );
     expect(rolePermissionMatrix.DISPATCHER).not.toContain("SYSTEM_SETTINGS_READ");
@@ -95,7 +99,7 @@ describe("canonical identity and access policy", () => {
 
   it("produces one deterministic mapping per role and permission pair", () => {
     const rows = rolePermissionRows();
-    expect(rows).toHaveLength(70);
+    expect(rows).toHaveLength(76);
     const keys = rows.map((row) => `${row.roleCode}:${row.permissionCode}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
