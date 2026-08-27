@@ -58,6 +58,7 @@ The server-side variables are:
 | `DATABASE_URL` | Drizzle connection to the selected application database | Yes |
 | `DATABASE_MUTATION_ENVIRONMENT` | Explicit `development` acknowledgement for migration/bootstrap commands | No |
 | `DATABASE_MUTATION_EXPECTED_HOST` | Exact approved development database hostname interlock | Treat as server configuration |
+| `DATABASE_MUTATION_EXPECTED_DATABASE` | Exact approved development database-name interlock | Treat as server configuration |
 | `NEON_AUTH_BASE_URL` | Branch-specific managed Auth service endpoint | Treat as server configuration |
 | `NEON_AUTH_COOKIE_SECRET` | At least 32 characters; signs the local session-data cache cookie | Yes |
 | `AUTH_REQUIRE_VERIFIED_EMAIL` | Optional development override; production always requires verification and ignores `false` | No |
@@ -68,6 +69,14 @@ All remain empty in `.env.example`. Local values belong only in ignored
 `.env.local`; deployment platforms must inject environment-specific values.
 Importing application pages does not construct the provider, so credential-free
 CI builds remain supported.
+
+Production accepts only a non-loopback HTTPS Auth endpoint and an exact HTTPS
+public callback origin. Literal loopback aliases, unspecified-address endpoints
+and embedded URL credentials are rejected; the Auth endpoint must not contain a
+query string or fragment, and the public origin must not contain a path, query
+string or fragment.
+Loopback HTTP remains available only outside production for local provider-flow
+testing.
 
 `AUTH_REQUIRE_VERIFIED_EMAIL=true` enables the verification gate during local
 development. A development-only `false` value leaves that gate disabled for
@@ -366,11 +375,12 @@ development-only mutation variables described above, and run:
 
     npm run auth:bootstrap-owner
 
-The command refuses production mode and any database hostname other than the
-explicit approved development host. Its transaction uses a database advisory
-lock and assigns `OWNER` only when no owner assignment has ever existed. It is
-idempotent while the same owner remains active and cannot reactivate bootstrap
-after that assignment is revoked. It emits a sanitized audit event and records
+The command refuses production mode and any database hostname or database name
+other than the explicit approved development target. Its transaction uses a
+database advisory lock and assigns `OWNER` only when no owner assignment has
+ever existed. It is idempotent while the same owner remains active and cannot
+reactivate bootstrap after that assignment is revoked. It emits a sanitized
+audit event and records
 the bootstrapped profile as the subject, not as the unauthenticated operator
 actor. It never prints the provider identifier. Remove the temporary variable
 after use.
@@ -615,8 +625,8 @@ application-owned billing/configuration, Invoice, Payment, allocation,
 reversal and finance-audit structures. It neither queries nor mutates Auth-
 managed tables. Production remains unmigrated.
 Migration and owner-bootstrap commands additionally require an explicit
-development label and exact approved database hostname before opening the
-database client.
+development label plus the exact approved database hostname and database name
+before opening the database client.
 
 The inspected development branch currently has the Neon Data API enabled while
 the new application tables do not have reviewed row-level security policies.
@@ -641,10 +651,6 @@ Organization scope must be designed before VAX becomes multi-organization.
 
 Deployment remains blocked until at least:
 
-- the scheduled patched Next.js 16.3 security release is available locally,
-  adopted and validated; local installed, locked and cached package metadata
-  checked on 23 August 2026 contains only 16.3.0 through 16.3.2, so dependency
-  changes remain a later security-upgrade gate;
 - Neon Auth Beta suitability, provider-admin breadth and its transitive
   dependency tree are re-reviewed;
 - owner-approved production trusted origins and custom SMTP are configured,
@@ -671,6 +677,12 @@ Deployment remains blocked until at least:
   elevation are approved and rehearsed; and
 - production migration and deployment receive later, separate authorization
   and verification.
+
+Phase 3J adopts and validates the patched Next.js 16.3.3 release, requires HTTPS
+for production Auth and reset-callback configuration, rejects credential-bearing
+origins, and strengthens development mutation targeting with the exact database
+name. Those repository controls close their specific findings only; they do not
+complete any operational gate in the list above.
 
 Phase 3C implements the initial Customer and Property CRM with application
 identity separate from explicit CRM ownership and server-side per-record

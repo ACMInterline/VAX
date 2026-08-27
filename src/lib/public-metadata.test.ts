@@ -31,6 +31,52 @@ describe("localized public metadata", () => {
     ).toBeUndefined();
   });
 
+  it("requires HTTPS for a production public origin", () => {
+    expect(
+      getConfiguredPublicUrl({
+        PUBLIC_SITE_URL: "http://127.0.0.1:3000",
+        NODE_ENV: "production",
+      }),
+    ).toBeUndefined();
+    expect(
+      getConfiguredPublicUrl({
+        PUBLIC_SITE_URL: "https://fabric.example",
+        NODE_ENV: "production",
+      })?.href,
+    ).toBe("https://fabric.example/");
+  });
+
+  it.each([
+    "https://localhost",
+    "https://public.localhost",
+    "https://127.0.0.1",
+    "https://0.0.0.0",
+    "https://[::]",
+    "https://[::1]",
+    "https://[::127.0.0.1]",
+    "https://[::ffff:127.0.0.1]",
+    "https://[::ffff:0.0.0.0]",
+    "https://fabric.example/path",
+    "https://fabric.example?query=not-allowed",
+    "https://fabric.example#not-allowed",
+  ])("rejects an ambiguous production public origin", (publicSiteUrl) => {
+    expect(
+      getConfiguredPublicUrl({
+        PUBLIC_SITE_URL: publicSiteUrl,
+        NODE_ENV: "production",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("rejects embedded credentials without exposing them as public metadata", () => {
+    expect(
+      getConfiguredPublicUrl({
+        PUBLIC_SITE_URL: "https://operator:password@fabric.example",
+        NODE_ENV: "production",
+      }),
+    ).toBeUndefined();
+  });
+
   it("creates paired Bulgarian and English canonical URLs", () => {
     expect(
       getLocalizedUrls(

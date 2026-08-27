@@ -41,7 +41,7 @@ task normally owns one disposable worktree and branch.
 | Production database | Never use for normal development |
 | Local application | Loopback only unless deployment is explicitly authorized |
 | Runtime secret | Ignored `.env.local`; never commit, print, or copy into tracked configuration |
-| Database mutation interlock | Explicit development label plus exact approved development database hostname |
+| Database mutation interlock | Explicit development label plus exact approved development database hostname and database name |
 | Local authentication | Neon Auth endpoint for the VAX `development` branch only; synthetic identities only |
 | CI | Credential-free; no live database, migration, or deployment step |
 
@@ -67,9 +67,11 @@ local worktrees promptly.
 `npm run db:migrate` and `npm run auth:bootstrap-owner` additionally require
 `DATABASE_MUTATION_ENVIRONMENT=development` and
 `DATABASE_MUTATION_EXPECTED_HOST` matching the hostname parsed from the approved
-development `DATABASE_URL`. The expected-host value contains no username,
-password or connection string. These scripts intentionally cannot be reused as
-production mutation commands.
+development `DATABASE_URL`, plus `DATABASE_MUTATION_EXPECTED_DATABASE` matching
+its exact database name. These values contain no username, password or
+connection string. Alternate host, database, port or identity query parameters
+fail closed, while normal Neon TLS parameters remain supported. The scripts
+intentionally cannot be reused as production mutation commands.
 
 The Neon management integration is not an application runtime connection. Do
 not request a connection string from it when `.env.local` already provides the
@@ -99,8 +101,8 @@ team/equipment fixtures; it persists no occupancy or reservation.
 Phase 3A adds a deterministic canonical role/permission seed plus runtime
 application profile, assignment and sanitized auth-event records. Migration and
 test identities target development only; mutation commands enforce the explicit
-development label and exact-host interlock, and no script may query or mutate
-`neon_auth` directly.
+development label and exact-host-and-database interlock, and no script may query
+or mutate `neon_auth` directly.
 
 Phase 3C–3F add only application-owned CRM, request/Quote, acceptance/Booking,
 occupancy, Job, inspection, treatment, Cleaning Passport and business-audit
@@ -122,8 +124,8 @@ synthetic Booking/occupancy fixtures to prove same-team and same-equipment
 conflicts, different-team concurrency, cancelled-capacity release and no
 partial writes. Clean the fixtures and any safely supported synthetic Auth
 identity afterward. Do not create an identity when its cleanup cannot be
-proved, and never weaken or skip the development host interlock to run this
-test.
+proved, and never weaken or skip the development host/database interlocks to
+run this test.
 
 ## Validation automation
 
@@ -161,8 +163,8 @@ automatically.
 
 ## Deployment gate
 
-Local work and CI may continue, but deployment remains blocked while the
-repository uses Next.js 16.3.2. After the official patched stable 16.3 release
-is available, perform a focused dependency-security upgrade, rerun the full
-validation suite, complete security review, and obtain explicit deployment
-authorization.
+Phase 3J adopts the official patched Next.js 16.3.3 release and re-runs the
+locked validation and security gates. That closes the time-bound framework
+advisory only. Deployment remains blocked until the separate trusted-origin,
+SMTP, shared-rate-limit, monitoring/recovery, least-privilege/RLS, production
+configuration, production-migration and explicit authorization gates pass.

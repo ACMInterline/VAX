@@ -417,10 +417,10 @@ no backfill, data rewrite, destructive statement, payment, invoice, Job,
 treatment, message or file table and never names provider-managed `neon_auth`.
 
 The reviewed migration is authorized only for VAX Neon `development` →
-`neondb`, behind the existing development label and exact-host interlocks.
-Neon production is untouched. Production migration, least-privilege/RLS and
-append-only grants, backup/recovery, monitoring and deployment require a later
-separately authorized gate.
+`neondb`, behind the existing development label and exact host/database
+interlocks. Neon production is untouched. Production migration,
+least-privilege/RLS and append-only grants, backup/recovery, monitoring and
+deployment require a later separately authorized gate.
 
 The separate additive Phase 3F migration references these Booking structures
 but does not rewrite migration 0007 or any acceptance, Booking, item, occupancy
