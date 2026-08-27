@@ -101,10 +101,26 @@ describe("authentication route and schema boundaries", () => {
   });
 
   it("requires the exact development mutation guard on privileged database scripts", async () => {
-    for (const file of ["migrate.ts", "bootstrap-owner.ts"]) {
-      const source = await readFile(path.join(root, "src/db", file), "utf8");
-      expect(source).toContain("assertDevelopmentDatabaseMutationTarget()");
-    }
+    const migrationSource = await readFile(
+      path.join(root, "src/db/migrate.ts"),
+      "utf8",
+    );
+    const bootstrapSource = await readFile(
+      path.join(root, "src/db/bootstrap-owner.ts"),
+      "utf8",
+    );
+    expect(migrationSource).toContain(
+      'assertDevelopmentDatabaseMutationTarget(process.env, "migration")',
+    );
+    expect(migrationSource).toContain(
+      'assertDevelopmentDatabaseIdentity(database, "migration")',
+    );
+    expect(bootstrapSource).toContain(
+      "assertDevelopmentDatabaseMutationTarget()",
+    );
+    expect(bootstrapSource).toContain(
+      'assertDevelopmentDatabaseIdentity(database, "runtime")',
+    );
   });
 
   it("retains the development-only internal-lab gate", async () => {

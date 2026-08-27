@@ -1,7 +1,9 @@
 import path from "node:path";
 import { migrate } from "drizzle-orm/neon-http/migrator";
-import { getDatabase } from "./client";
+import { getMigrationDatabaseUrl } from "@/lib/environment";
+import { createDatabaseConnection } from "./client";
 import {
+  assertDevelopmentDatabaseIdentity,
   assertDevelopmentDatabaseMutationTarget,
   loadMigrationEnvironment,
 } from "./migration-environment";
@@ -12,10 +14,12 @@ import { seedCommunicationsDocuments } from "./seed-communications-documents";
 import { seedCanonicalServiceCatalogue } from "./seed-service-catalogue";
 
 loadMigrationEnvironment();
-assertDevelopmentDatabaseMutationTarget();
+assertDevelopmentDatabaseMutationTarget(process.env, "migration");
 
 async function runMigrations(): Promise<void> {
-  const database = getDatabase();
+  const database = createDatabaseConnection(getMigrationDatabaseUrl());
+
+  await assertDevelopmentDatabaseIdentity(database, "migration");
 
   await migrate(database, {
     migrationsFolder: path.resolve(process.cwd(), "drizzle"),

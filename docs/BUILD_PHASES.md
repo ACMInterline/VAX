@@ -407,6 +407,38 @@ Gate: locked clean install, focused production-configuration and mutation-
 interlock regression tests, full validation, exact-snapshot security review,
 credential scan, protected-main CI, and proof that Neon production is untouched.
 
+### Phase 3K — Database security and staging readiness
+
+Separates database administration, reviewed migration/ownership and server
+runtime identities. The runtime is a non-owner, non-DDL, non-role-admin,
+non-`BYPASSRLS` login with an exhaustive 97-table DML matrix. The development
+Data API and anonymous/PUBLIC roles receive no VAX schema, table, sequence or
+trigger-function access. Deny-by-default migrator privileges prevent future
+objects from silently reopening those paths.
+
+Migration 0012 enables role/command-scoped RLS for all VAX public tables. This
+is meaningful defense against Data API/grant drift, but it does not pretend to
+provide customer-row or technician-team isolation: current Neon HTTP queries
+do not carry tamper-proof transaction-local actor context. Server repository
+authorization remains authoritative. Actor-aware RLS requires a separate
+adapter design and security review.
+
+Migration 0013 preserves repository concurrency locks without granting
+ordinary write authority: only one primary-key column per lock-only table is
+eligible for UPDATE at the ACL layer, and restrictive RLS permits locking while
+rejecting all changed rows.
+
+No staging branch is created, no production object or credential is changed,
+and no deployment is authorized. The staging runbook requires isolated
+credentials/Auth, exact target guards, the same live low-privilege harness,
+recovery rehearsal and later explicit approval.
+
+Gate: complete catalog/grant inventory, unchanged migrations 0000–0011 and
+provider Auth fingerprint, zero business-data loss, reviewed role bootstrap
+and additive development-only migration, real runtime/migrator denial and
+allowed-path tests, full validation, exact-snapshot security review,
+protected-main CI, and proof that production remains unmigrated.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,

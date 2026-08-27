@@ -967,7 +967,7 @@ export async function acceptQuoteRecord(
           case when ${input.actorType} = 'CUSTOMER'
             then 'CUSTOMER_PORTAL' else 'STAFF' end,
           jsonb_build_object(
-            'actorType', ${input.actorType},
+            'actorType', ${input.actorType}::text,
             'quoteVersion', integrity.quote_version,
             'schedulingStatus', 'REVIEW_REQUIRED'
           )

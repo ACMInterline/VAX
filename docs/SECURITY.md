@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3J
+## Security posture through Phase 3K
 
 The repository now has a development authentication, session and RBAC boundary,
 but it does not claim production security readiness. Production-grade shared
@@ -30,6 +30,8 @@ framework advisories must be assessed before any later release.
 - Runtime secret-bearing variables include `DATABASE_URL` and
   `NEON_AUTH_COOKIE_SECRET`; Auth endpoint and bootstrap subject configuration
   must also remain server-only.
+- `MIGRATION_DATABASE_URL` and `DATABASE_ADMIN_URL` are separate operator-only
+  secrets. Runtime code must never import or fall back to them.
 - Read it from the environment through the validated server-side boundary.
 - Never hard-code, log, return, test-fixture, or commit a real connection value.
 - Never commit .env, .env.local, credentials, tokens, keys, or certificates.
@@ -38,9 +40,9 @@ framework advisories must be assessed before any later release.
 - Local development must use the VAX Neon `development` branch, never the
   production branch.
 - Database mutation commands require an explicit `development` acknowledgement
-  plus the exact expected development database hostname and database name in
-  addition to `DATABASE_URL`; those non-secret controls must never contain
-  credentials.
+  plus the exact expected project, branch, hostname and database name for the
+  selected runtime or migrator credential; those non-secret controls must
+  never contain credentials.
 - Future staging and production environments must inject DATABASE_URL through
   their deployment platform rather than use a committed environment file.
 - GitHub Actions must validate without a live database credential and must not
@@ -124,13 +126,17 @@ database client. Normal Neon TLS parameters remain supported. Applying any
 migration to production requires a separately designed command and explicit
 authorization.
 
-Phase 3J deliberately adds no RLS or grant migration. The current development
-connection owns the application tables, table owners bypass ordinary RLS, and
-the server-mediated adapter does not yet establish a transaction-local database
-actor. A permissive policy would create false assurance, while deny-by-default
-policies would break the application. Production therefore still requires
-externally provisioned, distinct non-owner runtime and migration roles, reviewed
-grants/default privileges and a real RLS design before any browser Data API use.
+Phase 3K replaces the owner-equivalent development runtime with distinct
+`vax_migrator` and non-owner `vax_runtime` roles. Migration 0012 removes Data
+API/PUBLIC table and sequence access, removes direct trigger-function EXECUTE,
+defines deny-by-default future privileges, enables RLS on every VAX table and
+creates only the exact runtime command policies. It deliberately does not claim
+customer-row RLS: the current Neon HTTP repositories do not establish safe
+transaction-local actor context on every query. Server-side per-record
+authorization remains authoritative. Migration 0013 preserves existing
+transactional row locks with UPDATE on one primary-key column only and
+restrictive RLS checks that deny actual updates on lock-only tables. See
+`docs/DATABASE_SECURITY.md`.
 
 ## Health endpoint
 
@@ -283,9 +289,9 @@ phase authorization. No map credential or live provider is introduced.
 - Auth and `/app` routes are private/no-store and noindex, with deny framing,
   MIME-sniffing, referrer and browser-permission headers.
 - The enabled development Data API is not an application/browser integration.
-  Because application tables do not yet have reviewed RLS, browser token access
-  is prohibited until least-privilege grants and row-level policies are designed
-  and verified.
+  Phase 3K revokes its VAX schema/table/sequence/function access and creates no
+  Data API policy. Browser token access remains prohibited; server-runtime
+  policies do not authorize a future browser integration.
 
 Detailed roles, sessions, audit events and remaining production blockers are in
 `docs/IDENTITY_AND_ACCESS.md`.
@@ -323,8 +329,8 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   remains fail-closed until a shared limiter is configured.
 - The focused review found no browser database access, provider-table write,
   role injection, client-only enforcement, raw provider error or sensitive
-  audit payload. Runtime least-privilege grants, RLS/Data API policy and audit
-  immutability remain explicit deployment gates.
+  audit payload. Phase 3K implements the development runtime/Data API grant and
+  RLS boundary; production topology review and migration remain explicit gates.
 
 ## Phase 3C CRM and record-ownership safeguards
 
@@ -351,9 +357,9 @@ Detailed roles, sessions, audit events and remaining production blockers are in
 - At the Phase 3C gate the public request form remained client-only; Phase 3D
   replaces that historical boundary without making CRM creation public.
 - Direct browser SQL/Data API access remains prohibited. Application record
-  policy is server-mediated; production least-privilege grants and fully
-  reviewed RLS are still mandatory deployment gates, not partially implemented
-  controls.
+  policy is server-mediated; Phase 3K supplies role/command defense in depth on
+  development, while actor-row isolation and production topology review remain
+  separate gates.
 - Addresses, coordinates and operational notes are treated as sensitive. Free
   text must not contain credentials or payment/identity secrets. Retention,
   export, erasure, merge and data-subject workflows remain unresolved and are
@@ -519,8 +525,8 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   staff history uses a separate authorized projection. Internal technician
   notes never enter customer history.
 - `job_audit_events` accepts only controlled event/source/status metadata and
-  has no ordinary update/delete path. Production database roles, RLS and
-  append-only grants remain required; server authorization is not a substitute.
+  has no ordinary update/delete path. Phase 3K denies runtime update/delete on
+  development; production migration and exact-topology review remain required.
 - Job mutations use a bounded local limiter only for development. Production
   remains blocked on shared abuse controls, monitoring/recovery, privacy/
   retention decisions, reviewed least-privilege/RLS, a separately authorized
@@ -699,8 +705,9 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   values, addresses, notes, external payment references, provider responses,
   credentials and tokens.
 - The bounded communication mutation limiter is defense in depth only.
-  Production still requires a shared limiter, monitoring/recovery, reviewed
-  RLS/least-privilege grants and retention/contact-authority/consent policy.
+  Production still requires a shared limiter, monitoring/recovery, promotion
+  of the reviewed database boundary and retention/contact-authority/consent
+  policy.
 - External email/SMS providers, callbacks, retries, suppression/bounce
   handling, manual free-form messages, customer-open tracking, binary PDF/
   object storage, production migration and deployment are absent. See

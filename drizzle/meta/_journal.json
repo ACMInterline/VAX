@@ -85,6 +85,20 @@
       "when": 1787784768012,
       "tag": "0011_phase_3i_communications_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787851719777,
+      "tag": "0012_phase_3k_database_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787854657991,
+      "tag": "0013_phase_3k_runtime_locking",
+      "breakpoints": true
     }
   ]
 }

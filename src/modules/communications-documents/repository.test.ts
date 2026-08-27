@@ -302,7 +302,9 @@ describe("communication source SQL provenance boundaries", () => {
     expect(query.sql).toContain("job.source_provenance_snapshot");
     expect(query.sql).toContain("event.safe_metadata ->> 'passportEntryCount'");
     expect(query.sql).toContain("select count(*)::integer");
-    expect(query.sql).toContain("passport_entry.source_execution_status = 'COMPLETED'");
+    expect(query.sql).toContain(
+      "passport_entry.source_execution_status = 'COMPLETED'",
+    );
     expect(query.sql).toMatch(
       /passport_entry\.customer_safe_snapshot\s*->> 'schemaVersion' = '1'/,
     );
@@ -408,7 +410,9 @@ describe("communications repository authorization and delivery graph", () => {
     expect(query.sql).toContain("job.status = 'COMPLETED'");
     expect(query.sql).toContain("event.safe_metadata ->> 'passportEntryCount'");
     expect(query.sql).toContain("select count(*)::integer");
-    expect(query.sql).toContain("passport_entry.source_execution_status = 'COMPLETED'");
+    expect(query.sql).toContain(
+      "passport_entry.source_execution_status = 'COMPLETED'",
+    );
     expect(query.sql).toMatch(
       /passport_entry\.customer_safe_snapshot\s*->> 'schemaVersion' = '1'/,
     );
@@ -448,7 +452,7 @@ describe("communications repository authorization and delivery graph", () => {
       '"communication_intents"."source_type" = \'JOB\'',
     );
     expect(query.sql).toContain(
-      '"communication_intents"."source_type" in (\'INVOICE\', \'PAYMENT\')',
+      "\"communication_intents\".\"source_type\" in ('INVOICE', 'PAYMENT')",
     );
   });
 
@@ -556,7 +560,10 @@ describe("communications repository authorization and delivery graph", () => {
       query.sql.match(/insert into "communication_audit_events"/g),
     ).toHaveLength(5);
     expect(query.sql).toContain("from inserted_intent intent");
-    expect(query.sql).toContain("from inserted_attempt attempt");
+    expect(query.sql).toContain("exists (select 1 from inserted_attempt)");
+    expect(query.sql).toMatch(
+      /insert into "delivery_attempts"[\s\S]*?returning 1\s*\),\s*inserted_result/,
+    );
     expect(query.sql).toContain("join inserted_history history");
     expect(query.sql).toContain("exists (select 1 from intent_audit)");
     expect(query.sql).toContain("exists (select 1 from rendered_audit)");
@@ -635,7 +642,9 @@ describe("communications repository authorization and delivery graph", () => {
     expect(sources).not.toMatch(
       /from\s+["'](?:node:)?(?:http|https|net|tls|dgram|dns)["']/,
     );
-    expect(sources).not.toMatch(/\b(?:axios|nodemailer|twilio|sendgrid|postmark|resend)\b/i);
+    expect(sources).not.toMatch(
+      /\b(?:axios|nodemailer|twilio|sendgrid|postmark|resend)\b/i,
+    );
     expect(sources).not.toMatch(/process\.env|DATABASE_URL/);
     expect(dependencies).toEqual(
       expect.not.arrayContaining([

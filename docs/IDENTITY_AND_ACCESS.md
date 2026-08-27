@@ -55,8 +55,13 @@ The server-side variables are:
 
 | Variable | Purpose | Secret |
 | --- | --- | --- |
-| `DATABASE_URL` | Drizzle connection to the selected application database | Yes |
+| `DATABASE_URL` | Server runtime connection; must authenticate as `vax_runtime` | Yes |
+| `MIGRATION_DATABASE_URL` | Migration/seed connection; must authenticate as `vax_migrator` | Yes |
+| `DATABASE_ADMIN_URL` | Explicit role-provisioning/recovery connection only | Yes |
+| `DATABASE_ADMIN_EXPECTED_ROLE` | Exact expected administrator role name | Treat as server configuration |
 | `DATABASE_MUTATION_ENVIRONMENT` | Explicit `development` acknowledgement for migration/bootstrap commands | No |
+| `DATABASE_MUTATION_EXPECTED_PROJECT_ID` | Exact approved Neon project interlock | Treat as server configuration |
+| `DATABASE_MUTATION_EXPECTED_BRANCH_ID` | Exact approved Neon branch interlock | Treat as server configuration |
 | `DATABASE_MUTATION_EXPECTED_HOST` | Exact approved development database hostname interlock | Treat as server configuration |
 | `DATABASE_MUTATION_EXPECTED_DATABASE` | Exact approved development database-name interlock | Treat as server configuration |
 | `NEON_AUTH_BASE_URL` | Branch-specific managed Auth service endpoint | Treat as server configuration |
@@ -628,12 +633,12 @@ Migration and owner-bootstrap commands additionally require an explicit
 development label plus the exact approved database hostname and database name
 before opening the database client.
 
-The inspected development branch currently has the Neon Data API enabled while
-the new application tables do not have reviewed row-level security policies.
-VAX therefore exposes no provider token route and does not use the Data API from
-the browser. Any future browser Data API design must first define least-privilege
-grants and reviewed RLS for every reachable application table; until then it is
-a deployment blocker, not an application connection path.
+The development branch may retain its Neon Data API configuration, but Phase
+3K removes `authenticated`, `anonymous` and PUBLIC access to VAX tables and
+creates no policy for those roles. VAX exposes no provider token route and does
+not use the Data API from the browser. The implemented RLS is server-role and
+command scoped; it is not a claim of customer-row isolation. Any future browser
+Data API design requires a separate authorization model and review.
 
 CI does not receive database or Auth secrets and therefore validates build,
 types and pure policy contracts without contacting Neon. Live flow testing must
@@ -663,9 +668,8 @@ Deployment remains blocked until at least:
 - reset links and verification OTPs receive live end-to-end validation without
   retaining tokens or provider details, and every synthetic development
   identity created for that validation is cleaned up afterward;
-- the browser Data API remains unused until each reachable table has reviewed
-  least-privilege database grants and row-level security policies, including
-  append-only audit and finance-ledger enforcement;
+- the browser Data API remains unused; Phase 3K's server-runtime policies do
+  not authorize a future browser integration or replace actor-aware review;
 - owner-approved, qualified-accountant/legal-reviewed production seller,
   numbering, Invoice/VAT, payment terms, cash/fiscal-device, credit-note/refund
   and retention policy is represented by approved non-provisional production
@@ -693,8 +697,8 @@ Cleaning Passport projections; Phase 3G adds staff schedule management plus
 separate technician/customer appointment projections without expanding
 provider authority; Phase 3H adds finance-specific staff authority and an exact
 linked-customer Invoice projection. Direct browser database access remains
-prohibited. Organization scope, reviewed production
-least-privilege/RLS and append-only grants, final privacy/retention policy,
+prohibited. Organization scope, promotion and exact-topology review of the
+Phase 3K database controls, actor-row RLS, final privacy/retention policy,
 data-subject workflows and broader business-audit coverage remain production or
 future-phase gates; see `docs/CRM_AND_PRIVACY.md`,
 `docs/REQUEST_AND_QUOTE.md`, `docs/BOOKING_ENGINE.md` and

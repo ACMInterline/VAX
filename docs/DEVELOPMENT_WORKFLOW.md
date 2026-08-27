@@ -59,7 +59,10 @@ local worktrees promptly.
   database administration only when the task explicitly authorizes it.
 - Application runtime database access comes only from `DATABASE_URL` in the
   ignored local `.env.local` during development, or from a future authorized
-  hosting environment.
+  hosting environment. It must authenticate as the non-owner `vax_runtime`.
+- Reviewed migrations and canonical seeds use only `MIGRATION_DATABASE_URL`
+  as `vax_migrator`. Explicit development role provisioning uses
+  `DATABASE_ADMIN_URL`; neither is imported by runtime modules.
 - Application runtime authentication uses branch-specific
   `NEON_AUTH_BASE_URL` plus a local `NEON_AUTH_COOKIE_SECRET`; the management
   integration is not a browser/session connection.
@@ -67,11 +70,12 @@ local worktrees promptly.
 `npm run db:migrate` and `npm run auth:bootstrap-owner` additionally require
 `DATABASE_MUTATION_ENVIRONMENT=development` and
 `DATABASE_MUTATION_EXPECTED_HOST` matching the hostname parsed from the approved
-development `DATABASE_URL`, plus `DATABASE_MUTATION_EXPECTED_DATABASE` matching
-its exact database name. These values contain no username, password or
-connection string. Alternate host, database, port or identity query parameters
-fail closed, while normal Neon TLS parameters remain supported. The scripts
-intentionally cannot be reused as production mutation commands.
+credential, plus exact expected database, Neon project and Neon branch values.
+These controls contain no username, password or connection string. Alternate
+host, database, port or identity query parameters fail closed, and the live
+connection must report the exact project, branch, database and required role.
+Normal Neon TLS parameters remain supported. The scripts intentionally cannot
+be reused as production mutation commands.
 
 The Neon management integration is not an application runtime connection. Do
 not request a connection string from it when `.env.local` already provides the
@@ -90,6 +94,16 @@ Never use schema push or a schema reset as a substitute for reviewed
 migrations. Never alter the Neon-managed `neon_auth` schema unless a future task
 explicitly concerns Neon Auth. Production migration requires separate explicit
 authorization and an impact review.
+
+Phase 3K requires the controlled role-provisioning step before migrations 0012
+and 0013.
+The step is idempotent, never rotates an existing role password, transfers only
+repository-owned VAX/Drizzle objects, and does not touch provider-managed Auth.
+The initial adoption command requires explicit `--environment development`,
+`--project-id`, `--branch-id`, `--host` and `--database neondb` arguments in
+addition to `--adopt-current-database-url`; inferred or partial targets fail
+closed.
+See [DATABASE_SECURITY.md](DATABASE_SECURITY.md).
 
 Phase 2 catalogue definitions are code-controlled and upserted after migrations
 by `npm run db:migrate`. The seed is intentionally safe to rerun and contains no
@@ -163,8 +177,9 @@ automatically.
 
 ## Deployment gate
 
-Phase 3J adopts the official patched Next.js 16.3.3 release and re-runs the
-locked validation and security gates. That closes the time-bound framework
-advisory only. Deployment remains blocked until the separate trusted-origin,
-SMTP, shared-rate-limit, monitoring/recovery, least-privilege/RLS, production
+Phase 3J adopts the official patched Next.js 16.3.3 release. Phase 3K adds the
+reviewed database role/grant/default-privilege and role/command-scoped RLS
+boundary on development. Deployment remains blocked until staging and the
+exact production topology repeat that verification and the separate
+trusted-origin, SMTP, shared-rate-limit, monitoring/recovery, production
 configuration, production-migration and explicit authorization gates pass.

@@ -465,7 +465,8 @@ materialization, production migration and deployment remain deferred. See
 
 src/db/client.ts is the single connection construction point. It:
 
-- obtains DATABASE_URL through validated environment access;
+- obtains only the `vax_runtime` `DATABASE_URL` through validated environment
+  access;
 - constructs the current Neon HTTP client lazily;
 - gives Drizzle the schema;
 - avoids opening a connection during import or production build; and
@@ -476,6 +477,13 @@ CRM, request/Quote, Booking, Job, finance and communications repositories.
 Transactional invariants stay in the database adapter rather than the domain policy. If a
 later workflow requires interactive session semantics that the HTTP transport
 cannot provide, the adapter may change without changing domain rules.
+
+Migration tooling constructs a separate client from
+`MIGRATION_DATABASE_URL`, requires `vax_migrator`, and rechecks the live Neon
+project/branch/database before mutation. Administrative role provisioning is a
+separate development-only script and never enters the application runtime
+dependency graph. Phase 3K RLS is role/command scoped, not actor-row scoped;
+the rationale and complete DML matrix are in `docs/DATABASE_SECURITY.md`.
 
 Drizzle schema definitions are the source for generated migrations. Generated
 SQL must be reviewed before application. Schema push is not the production
@@ -544,15 +552,15 @@ enforcement remain a separate deployment gate.
   database.
 - `.env.local` is ignored, local-only, and must never be committed.
 - The Neon `production` branch is not an ordinary development target.
-- Future staging and production deployments must inject DATABASE_URL through
-  their hosting environment instead of relying on a repository environment
-  file. Authentication deployments must likewise inject branch-specific Auth
-  endpoint and cookie-secret configuration.
+- Future staging and production deployments must inject separate runtime and
+  migration credentials through their hosting environment instead of relying
+  on a repository environment file. Authentication deployments must likewise
+  inject branch-specific Auth endpoint and cookie-secret configuration.
 - Every migration must be reviewed before execution. Production migration
   requires separate explicit authorization.
 - Current mutation scripts additionally require an explicit development label
-  plus the exact approved database hostname and database name; they are not
-  production migration tools.
+  plus the exact approved project, branch, hostname, database and role; they
+  are not production migration tools.
 
 ## Health flow
 
@@ -560,7 +568,8 @@ GET /api/health follows this path:
 
 1. The route delegates to the health response module.
 2. The module calls the database connectivity probe.
-3. The probe executes a constant SELECT 1 query.
+3. The probe verifies connectivity and that the live role is the expected
+   non-owner, non-DDL, non-RLS-bypass runtime identity.
 4. Success maps to HTTP 200, status ok, database connected.
 5. Any configuration or connectivity failure maps to HTTP 503, status
    degraded, database unavailable.

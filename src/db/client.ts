@@ -3,18 +3,18 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { getDatabaseUrl } from "@/lib/environment";
 import * as schema from "./schema";
 
-function createDatabase(databaseUrl: string) {
+export function createDatabaseConnection(databaseUrl: string) {
   const client = neon(databaseUrl);
 
   return drizzle({ client, schema });
 }
 
-export type Database = ReturnType<typeof createDatabase>;
+export type Database = ReturnType<typeof createDatabaseConnection>;
 
 let database: Database | undefined;
 
 export function getDatabase(): Database {
-  database ??= createDatabase(getDatabaseUrl());
+  database ??= createDatabaseConnection(getDatabaseUrl());
 
   return database;
 }
