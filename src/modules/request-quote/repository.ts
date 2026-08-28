@@ -1823,7 +1823,25 @@ function quoteItemsParameter(items: readonly QuoteLineInput[]): string {
   );
 }
 
-type StaffListRow = StaffRequestSummary & { total: number | string };
+type DatabaseDate = Date | string;
+
+function dateValue(value: DatabaseDate): Date {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.valueOf())) {
+    throw new Error("Invalid database timestamp");
+  }
+  return date;
+}
+
+function nullableDateValue(value: DatabaseDate | null): Date | null {
+  return value === null ? null : dateValue(value);
+}
+
+type StaffListRow = Omit<StaffRequestSummary, "submittedAt" | "updatedAt"> & {
+  submittedAt: DatabaseDate;
+  updatedAt: DatabaseDate;
+  total: number | string;
+};
 
 function staffSummary(row: StaffListRow): StaffRequestSummary {
   return {
@@ -1844,8 +1862,8 @@ function staffSummary(row: StaffListRow): StaffRequestSummary {
     contactPhone: row.contactPhone,
     manualReviewRequired: row.manualReviewRequired,
     version: row.version,
-    submittedAt: row.submittedAt,
-    updatedAt: row.updatedAt,
+    submittedAt: dateValue(row.submittedAt),
+    updatedAt: dateValue(row.updatedAt),
   };
 }
 
@@ -1902,7 +1920,15 @@ export async function loadStaffRequestRecord(
   actorProfileId: string,
   requestId: string,
 ): Promise<StaffRequestDetail | null> {
-  const result = await database.execute<StaffRequestDetail>(sql`
+  type StaffRequestDetailRow = Omit<
+    StaffRequestDetail,
+    "submittedAt" | "updatedAt" | "closedAt"
+  > & {
+    submittedAt: DatabaseDate;
+    updatedAt: DatabaseDate;
+    closedAt: DatabaseDate | null;
+  };
+  const result = await database.execute<StaffRequestDetailRow>(sql`
     select
       request.id,
       request.request_reference as "requestReference",
@@ -2044,7 +2070,7 @@ export async function loadStaffRequestRecord(
     preferredDate: row.preferredDate,
     preferredWindowCode: row.preferredWindowCode,
     originalSubmission: row.originalSubmission,
-    closedAt: row.closedAt,
+    closedAt: nullableDateValue(row.closedAt),
     items: row.items,
     estimates: row.estimates,
     quoteHistory: row.quoteHistory,
@@ -2056,7 +2082,14 @@ export async function listCustomerRequestRecords(
   database: Database,
   actorProfileId: string,
 ): Promise<readonly CustomerRequestSummary[]> {
-  const result = await database.execute<CustomerRequestSummary>(sql`
+  type CustomerRequestRow = Omit<
+    CustomerRequestSummary,
+    "submittedAt" | "updatedAt"
+  > & {
+    submittedAt: DatabaseDate;
+    updatedAt: DatabaseDate;
+  };
+  const result = await database.execute<CustomerRequestRow>(sql`
     select
       request.request_reference as "requestReference",
       request.status,
@@ -2071,7 +2104,11 @@ export async function listCustomerRequestRecords(
     where ${customerRequestAccessSql(actorProfileId, sql`request.customer_id`, "OWN_CUSTOMER_DATA_READ")}
     order by request.submitted_at desc, request.id
   `);
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    submittedAt: dateValue(row.submittedAt),
+    updatedAt: dateValue(row.updatedAt),
+  }));
 }
 
 export async function loadCustomerRequestRecord(
@@ -2079,7 +2116,14 @@ export async function loadCustomerRequestRecord(
   actorProfileId: string,
   requestReference: string,
 ): Promise<CustomerRequestDetail | null> {
-  const result = await database.execute<CustomerRequestDetail>(sql`
+  type CustomerRequestDetailRow = Omit<
+    CustomerRequestDetail,
+    "submittedAt" | "updatedAt"
+  > & {
+    submittedAt: DatabaseDate;
+    updatedAt: DatabaseDate;
+  };
+  const result = await database.execute<CustomerRequestDetailRow>(sql`
     select
       request.request_reference as "requestReference",
       request.status,
@@ -2115,14 +2159,29 @@ export async function loadCustomerRequestRecord(
     where request.request_reference = ${requestReference}
       and ${customerRequestAccessSql(actorProfileId, sql`request.customer_id`, "OWN_CUSTOMER_DATA_READ")}
   `);
-  return result.rows[0] ?? null;
+  const row = result.rows[0];
+  return row
+    ? {
+        ...row,
+        submittedAt: dateValue(row.submittedAt),
+        updatedAt: dateValue(row.updatedAt),
+      }
+    : null;
 }
 
 export async function listCustomerQuoteRecords(
   database: Database,
   actorProfileId: string,
 ): Promise<readonly CustomerQuoteSummary[]> {
-  const result = await database.execute<CustomerQuoteSummary>(sql`
+  type CustomerQuoteRow = Omit<
+    CustomerQuoteSummary,
+    "validFrom" | "validUntil" | "issuedAt"
+  > & {
+    validFrom: DatabaseDate;
+    validUntil: DatabaseDate;
+    issuedAt: DatabaseDate;
+  };
+  const result = await database.execute<CustomerQuoteRow>(sql`
     select
       quote_record.quote_reference as "quoteReference",
       request.request_reference as "requestReference",
@@ -2149,6 +2208,9 @@ export async function listCustomerQuoteRecords(
   return result.rows.map((row) => ({
     ...row,
     status: enumValue(row.status, customerQuoteStatuses, "quote status"),
+    validFrom: dateValue(row.validFrom),
+    validUntil: dateValue(row.validUntil),
+    issuedAt: dateValue(row.issuedAt),
   }));
 }
 
@@ -2157,7 +2219,15 @@ export async function loadCustomerQuoteRecord(
   actorProfileId: string,
   quoteReference: string,
 ): Promise<CustomerQuoteDetail | null> {
-  const result = await database.execute<CustomerQuoteDetail>(sql`
+  type CustomerQuoteDetailRow = Omit<
+    CustomerQuoteDetail,
+    "validFrom" | "validUntil" | "issuedAt"
+  > & {
+    validFrom: DatabaseDate;
+    validUntil: DatabaseDate;
+    issuedAt: DatabaseDate;
+  };
+  const result = await database.execute<CustomerQuoteDetailRow>(sql`
     select
       quote_record.quote_reference as "quoteReference",
       request.request_reference as "requestReference",
@@ -2207,6 +2277,9 @@ export async function loadCustomerQuoteRecord(
   return {
     ...row,
     status: enumValue(row.status, customerQuoteStatuses, "quote status"),
+    validFrom: dateValue(row.validFrom),
+    validUntil: dateValue(row.validUntil),
+    issuedAt: dateValue(row.issuedAt),
   };
 }
 
@@ -2611,7 +2684,7 @@ type RequestMutationRow = {
     | "INVALID_TRANSITION";
   id: string | null;
   version: number | null;
-  updatedAt: Date | null;
+  updatedAt: DatabaseDate | null;
 };
 
 function requestMutationResult(
@@ -2627,7 +2700,7 @@ function requestMutationResult(
         status: row.result,
         id: row.id,
         version: row.version,
-        updatedAt: row.updatedAt,
+        updatedAt: dateValue(row.updatedAt),
       };
     case "CONFLICT":
     case "NOT_FOUND_OR_FORBIDDEN":

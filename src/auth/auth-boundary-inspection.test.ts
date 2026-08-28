@@ -100,13 +100,17 @@ describe("authentication route and schema boundaries", () => {
     expect(loginSource).toContain("withVerificationNextStep");
   });
 
-  it("requires the exact development mutation guard on privileged database scripts", async () => {
+  it("requires exact environment guards on privileged database scripts", async () => {
     const migrationSource = await readFile(
       path.join(root, "src/db/migrate.ts"),
       "utf8",
     );
     const bootstrapSource = await readFile(
       path.join(root, "src/db/bootstrap-owner.ts"),
+      "utf8",
+    );
+    const stagingBootstrapSource = await readFile(
+      path.join(root, "src/db/bootstrap-owner-staging.ts"),
       "utf8",
     );
     expect(migrationSource).toContain(
@@ -120,6 +124,26 @@ describe("authentication route and schema boundaries", () => {
     );
     expect(bootstrapSource).toContain(
       'assertDevelopmentDatabaseIdentity(database, "runtime")',
+    );
+    expect(stagingBootstrapSource).toContain(
+      "loadStagingTargetAuthorization()",
+    );
+    expect(stagingBootstrapSource).toContain(
+      "assertNonProductionDatabaseMutationTarget(",
+    );
+    expect(stagingBootstrapSource).toContain(
+      "assertStagingAuthenticationTarget(",
+    );
+    expect(stagingBootstrapSource).toContain(
+      "getAuthRuntimeConfiguration(process.env).baseUrl",
+    );
+    expect(stagingBootstrapSource).toContain(
+      '"runtime",\n    process.env,\n    stagingAuthorization',
+    );
+    expect(
+      stagingBootstrapSource.indexOf("assertStagingAuthenticationTarget("),
+    ).toBeLessThan(
+      stagingBootstrapSource.indexOf("const database = getDatabase()"),
     );
   });
 

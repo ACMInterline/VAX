@@ -1,5 +1,40 @@
 # Staging Readiness
 
+## Phase 3M hosted checkpoint
+
+Phase 3M deploys the reviewed VAX application to a dedicated Vercel project at
+`https://vax-phase3m-staging-preview.vercel.app`. The project is staging-only,
+uses the Vercel Preview environment, has no Git production-domain binding and
+injects only Neon `staging` runtime/Auth and application secrets. The migrator
+and Neon administrator URLs are not present in the hosted runtime. Staging
+responses are private/no-store, emit global noindex headers and identify the
+environment as staging. Neon `production`, production Auth, production DNS and
+production deployment remain untouched.
+
+The hosted readiness endpoint is green for the database, exact migration
+attestation, Auth, shared rate limiter and test-only email boundary. A generated
+SMTP sink is configured in Neon staging Auth with the exact hosted origin and no
+wildcard or localhost origin. Application Auth actions additionally permit only
+the exact synthetic staging recipient allowlist; disallowed signup, reset and
+verification attempts remain generic and never reach the provider.
+
+Six synthetic Auth identities cover OWNER, an ADMIN candidate, DISPATCHER,
+TECHNICIAN and two CUSTOMER scenarios. The supported staging bootstrap created
+exactly one OWNER and its audit event. Login, protected refresh, logout,
+verification, one-time password reset, suspension/reactivation and cross-
+customer denial were exercised. Managed Auth does not expose reliable session
+listing/revoke-all or provider-attested recent-authentication in the installed
+integration, so ADMIN assignment and other operations requiring those
+guarantees remained disabled rather than being bypassed.
+
+The hosted request path reached a persisted synthetic request, staff linkage,
+immutable normalization, reviewed estimate, issued quote, customer acceptance
+and exactly one Booking. Scheduling then stopped safely because the available
+duration, price and scheduling knowledge remains provisional/inactive and is
+not publication-approved. Phase 3D provenance was not reinterpreted or repaired.
+Job, Cleaning Passport, finance and final communication/document workflows were
+therefore not fabricated merely to complete a rehearsal.
+
 ## Phase 3L checkpoint
 
 VAX now has a dedicated Neon `staging` branch created from the controlled
@@ -17,7 +52,7 @@ a hosted build and is not a staging-domain substitute.
 | Environment | Database | Application | Data rule |
 | --- | --- | --- | --- |
 | Local development | Neon `development` | local | synthetic/development only |
-| Staging rehearsal | Neon `staging` | local loopback until hosting is approved | synthetic only |
+| Staging rehearsal | Neon `staging` | dedicated Vercel HTTPS staging project | synthetic only |
 | Production | Neon `production` | not deployed | untouched and unmigrated |
 
 Staging uses three distinct database authorities:
@@ -209,14 +244,16 @@ own readiness probe.
 | Auth unavailable | 200 | 503 | authentication fails generically |
 | rate-limit store unavailable | 200 | 503 | sensitive mutations remain limited by denial |
 
-The local staging result is deliberately `NOT_READY`: database, Auth,
-migrations and rate limiting are ready; email is not ready.
+The hosted staging result has database, Auth, migrations, rate limiting and the
+test-recipient-only email boundary ready. This does not make the incomplete
+business acceptance path or provider operational gates ready.
 
 Safe structured operational events allow only a correlation ID, event code,
 route, controlled actor profile ID, status, duration and sanitized error class.
 Passwords, tokens, cookies, bodies, contacts, payment data and provider errors
-are dropped. The reporter remains provider-neutral; a hosted monitoring and
-alert destination is not selected.
+are dropped. The reporter remains provider-neutral. Phase 3M adds the sanitized
+GitHub staging issue receiver described in the deployment runbook; it is not a
+production on-call service.
 
 ## Rehearsal evidence
 
@@ -238,13 +275,32 @@ Partially completed and fail-closed:
   but an established pooler frontend survived backend termination; full
   provider-level session invalidation remains unproven.
 
-Not executed as live end-to-end staging flows:
+Phase 3M additionally completed:
 
-- five-role authenticated browser/IDOR, reset/OTP and cookie inspection;
-- external email delivery/retry/backlog;
-- customer/finance/Job/document business fixtures through the UI; and
-- `pg_dump` export, because no compatible PostgreSQL client is installed in the
-  workspace. Neon branch recovery was rehearsed instead; export remains a gate.
+- hosted BG/EN public, Auth, customer and staff browser flows with no observed
+  console error or horizontal overflow at the available hosted viewport;
+- live verification and password-reset delivery through the generated
+  test-only sink, including replay denial and generic unknown-account results;
+- shared hosted login throttling and database-backed fail-closed simulations;
+- CUSTOMER A/B CRM, request, quote and Booking access checks, plus deliberate
+  cross-customer route attempts; and
+- a PostgreSQL 18 portable logical export of `public` and `drizzle`, exact
+  secret scan, clean restore into a disposable Neon branch/database, migration
+  and representative-data fingerprint verification, followed by deletion.
+
+Not fully executed or not supported:
+
+- actual browser cookie-store inspection is restricted by the available
+  browser-control boundary; source/library attributes and real HTTPS
+  create/refresh/logout behavior were verified instead;
+- exact hosted 320/375/390/430/768/1024 viewport control was unavailable; the
+  repository responsive suite remains the evidence below the hosted viewport;
+- provider session list/revoke-all, standalone OTP sign-in and
+  provider-attested recent-auth are unavailable in the configured model;
+  verification-code replay was exercised through the configured email
+  verification flow; and
+- scheduling, Job, Passport, finance and final document/communication flows are
+  blocked by the deliberate provisional-knowledge review gate described above.
 
 The credential-free CI workflow intentionally does not mutate persistent
 staging. A future manual integration workflow must use a protected staging
@@ -292,23 +348,38 @@ Deployment hosts must provide reliable NTP. PostgreSQL/server timestamps remain
 authoritative; Europe/Sofia is display/input policy only. Existing Sofia DST
 tests remain part of the full suite.
 
+## Phase 3M fixture policy
+
+The six Auth identities, six application profiles, two customers, two
+properties, two assets and the single request/quote/Booking chain are controlled
+staging fixtures. They contain synthetic labels only and no real address,
+contact, seller, bank, tax or payment data. Passwords and provider identifiers
+are excluded from Git, Vercel build output, runbooks and logs. Before reuse,
+credentials must be retrieved from an approved secret store or reset through
+the staging sink; rotate or remove fixtures when their rehearsal purpose ends.
+They must never be copied to production. Audit evidence is intentionally
+retained with the fixture chain until a separately reviewed staging reset.
+
 ## Decision
 
-**NOT READY** for a complete controlled staging rehearsal.
+**NOT READY** for complete product acceptance or production promotion.
 
 Exact blockers:
 
-1. no approved hosted HTTPS staging application/origin;
-2. no staging-only SMTP sandbox/mail sink and therefore no live verification,
-   reset, token, delivery, retry or enumeration rehearsal;
-3. no synthetic authenticated five-role browser/IDOR/session-cookie rehearsal;
-4. provider Beta acceptance, session revocation/recent-auth capability and
-   support/SLA review remain owner gates;
-5. no hosted monitoring/error/alert receiver or exercised on-call delivery;
-6. no verified portable database export; and
-7. production legal/seller/VAT/fiscal/accounting/payment configuration,
-   production topology review, migration, deployment and authorization all
-   remain absent.
+1. scheduling has no eligible publication-approved duration/price/availability
+   provenance, so Job, Passport, finance and final communication/document
+   acceptance cannot proceed without a separately approved operational rule;
+2. Neon Auth remains Beta and lacks the required session revoke-all,
+   provider-attested recent-authentication and complete privileged-ADMIN proof;
+3. exact small-viewport hosted-browser and cookie-store inspection remain
+   unavailable through the current safe browser-control boundary;
+4. the credential-rotation rehearsal still cannot invalidate a previously
+   authenticated Neon pooled frontend, even though fresh old credentials fail;
+5. alert ownership is the repository's GitHub staging environment/issue
+   receiver, not a staffed production on-call service; and
+6. production seller/VAT/fiscal/accounting/payment/privacy configuration,
+   production topology, provider acceptance, migration, deployment and explicit
+   authorization all remain absent.
 
 No operational knowledge, provider, rule, staging email path, production
 configuration or production migration was automatically approved.

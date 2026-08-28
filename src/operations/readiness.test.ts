@@ -50,6 +50,41 @@ describe("operational readiness", () => {
     });
   });
 
+  it("requires an exact recipient allowlist for hosted staging email readiness", async () => {
+    const hostedStaging = {
+      ...stagingEnvironment,
+      NODE_ENV: "production",
+      STAGING_ALLOW_LOCALHOST: undefined,
+      PUBLIC_SITE_URL: "https://staging.example.invalid",
+      AUTH_TRUSTED_ORIGINS: "https://staging.example.invalid",
+    };
+
+    await expect(
+      createReadinessSnapshot({
+        environment: hostedStaging,
+        database: async () => readyDatabase,
+        authAvailability: async () => true,
+      }),
+    ).resolves.toMatchObject({
+      status: "not_ready",
+      checks: { email: "NOT_READY" },
+    });
+
+    await expect(
+      createReadinessSnapshot({
+        environment: {
+          ...hostedStaging,
+          STAGING_AUTH_EMAIL_ALLOWLIST: "owner+phase3m@example.invalid",
+        },
+        database: async () => readyDatabase,
+        authAvailability: async () => true,
+      }),
+    ).resolves.toMatchObject({
+      status: "ready",
+      checks: { email: "READY" },
+    });
+  });
+
   it("fails readiness closed during partial dependency outages", async () => {
     const createResponse = createReadinessResponseFactory({
       dependencies: {

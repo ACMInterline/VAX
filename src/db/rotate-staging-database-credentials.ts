@@ -62,6 +62,7 @@ const managedKeys = [
   "RATE_LIMIT_HASH_SECRET",
   "VAX_TRUSTED_PROXY_HOPS",
   "EMAIL_DELIVERY_MODE",
+  "STAGING_AUTH_EMAIL_ALLOWLIST",
 ] as const;
 
 const legacyStagingTargetKeys = new Set([
@@ -655,6 +656,7 @@ async function main(): Promise<void> {
       RATE_LIMIT_HASH_SECRET: existingRateLimitSecret,
       VAX_TRUSTED_PROXY_HOPS: "",
       EMAIL_DELIVERY_MODE: "blocked",
+      STAGING_AUTH_EMAIL_ALLOWLIST: "",
     });
     rotationPhase = "pending-environment";
     await writeDurableOwnerOnlyFile(pendingPath, nextEnvironment);

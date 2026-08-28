@@ -58,7 +58,7 @@ export const authContent = {
     verify: {
       eyebrow: "Потвърждение",
       title: "Потвърдете имейла си",
-      description: "Въведете шестцифрения код или заявете нов код. Доставката в разработка използва ограничената споделена услуга на Neon.",
+      description: "Въведете шестцифрения код от съобщението или заявете нов код. Не споделяйте кода с други хора.",
       otp: "Код за потвърждение",
       submit: "Потвърждение",
       resend: "Изпращане на нов код",
@@ -115,7 +115,7 @@ export const authContent = {
     verify: {
       eyebrow: "Verification",
       title: "Verify your email",
-      description: "Enter the six-digit code or request a new one. Development delivery uses Neon's limited shared email service.",
+      description: "Enter the six-digit code from the message or request a new one. Do not share the code with anyone.",
       otp: "Verification code",
       submit: "Verify email",
       resend: "Send another code",

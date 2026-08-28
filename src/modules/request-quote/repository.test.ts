@@ -17,6 +17,8 @@ import {
   expireQuoteRecord,
   issueQuoteRecord,
   linkRequestRecord,
+  listCustomerQuoteRecords,
+  listCustomerRequestRecords,
   listStaffRequestRecords,
   loadCustomerRequestRecord,
   loadCustomerQuoteRecord,
@@ -177,6 +179,89 @@ const quoteCommercial: QuoteCommercialInput = {
 };
 
 describe("request/quote SQL authorization", () => {
+  it("normalizes Neon HTTP timestamp strings at request and quote boundaries", async () => {
+    const requestDates = {
+      submittedAt: "2026-08-28T06:00:00.000Z",
+      updatedAt: "2026-08-28T06:05:00.000Z",
+    };
+    const staff = executionDatabase([
+      {
+        id: requestId,
+        requestReference: baseRequest.requestReference,
+        source: "PUBLIC_WEB",
+        customerResolutionStatus: "UNRESOLVED",
+        customerId: null,
+        propertyId: null,
+        status: "SUBMITTED",
+        preferredLocale: "bg",
+        contactName: "Synthetic customer",
+        contactEmail: null,
+        contactPhone: null,
+        manualReviewRequired: true,
+        version: 1,
+        ...requestDates,
+        total: "1",
+      },
+    ]);
+    const staffPage = await listStaffRequestRecords(staff.database, actorId, {
+      limit: 25,
+      offset: 0,
+    });
+    expect(staffPage.items[0]?.submittedAt).toEqual(
+      new Date(requestDates.submittedAt),
+    );
+
+    const customer = executionDatabase([
+      {
+        requestReference: baseRequest.requestReference,
+        status: "SUBMITTED",
+        preferredLocale: "bg",
+        customerNotes: null,
+        preferredDate: null,
+        preferredWindowCode: null,
+        manualReviewRequired: true,
+        ...requestDates,
+      },
+    ]);
+    const customerRequests = await listCustomerRequestRecords(
+      customer.database,
+      actorId,
+    );
+    expect(customerRequests[0]?.updatedAt).toEqual(
+      new Date(requestDates.updatedAt),
+    );
+
+    const quoteDates = {
+      validFrom: "2026-08-28T06:00:00.000Z",
+      validUntil: "2026-09-28T06:00:00.000Z",
+      issuedAt: "2026-08-28T06:10:00.000Z",
+    };
+    const quote = executionDatabase([
+      {
+        quoteReference: "QUO-000000000000000000000001",
+        requestReference: baseRequest.requestReference,
+        quoteVersion: 1,
+        status: "ISSUED",
+        currency: "EUR",
+        priceBasis: "NET",
+        netAmountMinorUnits: 4_000,
+        vatRateBasisPoints: 2_000,
+        vatAmountMinorUnits: 800,
+        grossTotalMinorUnits: 4_800,
+        estimatedDurationMinutes: 60,
+        customerNotes: null,
+        ...quoteDates,
+      },
+    ]);
+    const customerQuotes = await listCustomerQuoteRecords(
+      quote.database,
+      actorId,
+    );
+    expect(customerQuotes[0]?.validUntil).toEqual(
+      new Date(quoteDates.validUntil),
+    );
+  });
+
   it("requires both current CRM and operations permissions for staff", () => {
     const read = compile(staffRequestReadSql(actorId));
     const manage = compile(staffRequestManageSql(actorId));

@@ -397,7 +397,7 @@ export async function mutateAdminRole(
     requested_role as materialized (
       select id, code
       from ${applicationRoles}
-      where code = ${input.role} and active = true
+      where code = ${input.role}::text and active = true
     ),
     active_owner_count as materialized (
       select count(distinct profile.id)::integer as value
@@ -426,18 +426,18 @@ export async function mutateAdminRole(
           then 'FORBIDDEN'
         when exists (select 1 from actor where is_admin and not is_owner)
           and (
-            ${input.role} in ('OWNER', 'ADMIN')
+            ${input.role}::text in ('OWNER', 'ADMIN')
             or exists (select 1 from target where is_owner or is_admin)
           ) then 'FORBIDDEN'
-        when ${input.operation} = 'REVOKE'
-          and ${input.role} = 'OWNER'
+        when ${input.operation}::text = 'REVOKE'
+          and ${input.role}::text = 'OWNER'
           and exists (select 1 from target where is_owner)
           and (select value from active_owner_count) <= 1
           then 'LAST_OWNER_PROTECTED'
-        when ${input.operation} = 'ASSIGN'
+        when ${input.operation}::text = 'ASSIGN'
           and exists (select 1 from current_assignment where active = true)
           then 'NO_CHANGE'
-        when ${input.operation} = 'REVOKE'
+        when ${input.operation}::text = 'REVOKE'
           and not exists (select 1 from current_assignment where active = true)
           then 'NO_CHANGE'
         else 'CHANGED'
@@ -458,7 +458,7 @@ export async function mutateAdminRole(
         null,
         null
       from requested_role, decision
-      where decision.result = 'CHANGED' and ${input.operation} = 'ASSIGN'
+      where decision.result = 'CHANGED' and ${input.operation}::text = 'ASSIGN'
       on conflict (user_profile_id, role_id) do update set
         active = true,
         assignment_source = 'PRIVILEGED_ASSIGNMENT',
@@ -478,7 +478,7 @@ export async function mutateAdminRole(
         and assignment.role_id = requested_role.id
         and assignment.active = true
         and decision.result = 'CHANGED'
-        and ${input.operation} = 'REVOKE'
+        and ${input.operation}::text = 'REVOKE'
       returning assignment.user_profile_id
     ),
     audited as (
@@ -486,12 +486,12 @@ export async function mutateAdminRole(
         event_type, outcome, actor_profile_id, subject_profile_id, safe_metadata
       )
       select
-        ${eventType},
+        ${eventType}::text,
         'SUCCESS',
         ${input.actorProfileId}::uuid,
         ${input.targetProfileId}::uuid,
         jsonb_build_object(
-          'roleCode', ${input.role},
+          'roleCode', ${input.role}::text,
           'source', 'PRIVILEGED_ADMINISTRATION'
         )
       from decision
@@ -562,7 +562,7 @@ export async function mutateAdminStatus(
         when exists (select 1 from actor where is_admin and not is_owner)
           and exists (select 1 from target where is_owner or is_admin)
           then 'FORBIDDEN'
-        when ${input.status} <> 'ACTIVE'
+        when ${input.status}::text <> 'ACTIVE'
           and exists (select 1 from target where is_owner and status = 'ACTIVE')
           and (select value from active_owner_count) <= 1
           then 'LAST_OWNER_PROTECTED'
