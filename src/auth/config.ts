@@ -1,10 +1,64 @@
 import { isLiteralLoopbackOrUnspecifiedHostname } from "@/lib/url-security";
+import { getConfiguredPublicUrl } from "@/lib/public-metadata";
+import {
+  getVaxEnvironment,
+  isStrictHostedEnvironment,
+} from "@/operations/environment";
 
 export type AuthRuntimeConfiguration = {
   baseUrl: string;
   cookieSecret: string;
   requireVerifiedEmail: boolean;
+  trustedOrigins: readonly string[];
 };
+
+function configuredTrustedOrigins(
+  environment: Readonly<Record<string, string | undefined>>,
+): readonly string[] {
+  const deployment = getVaxEnvironment(environment);
+  const configured = environment.AUTH_TRUSTED_ORIGINS?.trim();
+  if (!configured) {
+    if (deployment === "development") return [];
+    throw new Error("Authentication trusted origins are not configured.");
+  }
+
+  const strictHosted = isStrictHostedEnvironment(environment);
+  const origins = new Set<string>();
+  for (const candidate of configured.split(",")) {
+    const value = candidate.trim();
+    let parsed: URL;
+    try {
+      parsed = new URL(value);
+    } catch {
+      throw new Error("Authentication trusted origins are not configured.");
+    }
+    const loopback = isLiteralLoopbackOrUnspecifiedHostname(parsed.hostname);
+    const localHttp = !strictHosted && parsed.protocol === "http:" && loopback;
+    if (
+      !value ||
+      value.includes("*") ||
+      (parsed.protocol !== "https:" && !localHttp) ||
+      (strictHosted && loopback) ||
+      parsed.username !== "" ||
+      parsed.password !== "" ||
+      parsed.pathname !== "/" ||
+      parsed.search !== "" ||
+      parsed.hash !== ""
+    ) {
+      throw new Error("Authentication trusted origins are not configured.");
+    }
+    origins.add(parsed.origin);
+  }
+
+  const publicSiteUrl = getConfiguredPublicUrl(environment);
+  if (deployment !== "development" && !publicSiteUrl) {
+    throw new Error("Authentication trusted origins are not configured.");
+  }
+  if (publicSiteUrl && !origins.has(publicSiteUrl.origin)) {
+    throw new Error("Authentication trusted origins are not configured.");
+  }
+  return [...origins].sort();
+}
 
 export function getAuthRuntimeConfiguration(
   environment: Readonly<Record<string, string | undefined>> = process.env,
@@ -28,13 +82,14 @@ export function getAuthRuntimeConfiguration(
   const isLoopback = isLiteralLoopbackOrUnspecifiedHostname(
     parsedUrl.hostname,
   );
+  const strictHosted = isStrictHostedEnvironment(environment);
   const localHttp =
-    environment.NODE_ENV !== "production" &&
+    !strictHosted &&
     parsedUrl.protocol === "http:" &&
     isLoopback;
   if (
     (parsedUrl.protocol !== "https:" && !localHttp) ||
-    (environment.NODE_ENV === "production" && isLoopback) ||
+    (strictHosted && isLoopback) ||
     parsedUrl.username !== "" ||
     parsedUrl.password !== "" ||
     parsedUrl.search !== "" ||
@@ -49,7 +104,8 @@ export function getAuthRuntimeConfiguration(
     baseUrl: parsedUrl.toString().replace(/\/$/, ""),
     cookieSecret,
     requireVerifiedEmail:
-      environment.NODE_ENV === "production" ||
+      getVaxEnvironment(environment) !== "development" ||
       environment.AUTH_REQUIRE_VERIFIED_EMAIL === "true",
+    trustedOrigins: configuredTrustedOrigins(environment),
   };
 }

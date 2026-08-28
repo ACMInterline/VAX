@@ -448,12 +448,12 @@ reported instead of weakening the cleanup requirement.
 ## Security and production gates
 
 Phase 3G retains server-mediated database access and does not enable the
-browser Data API. Production still requires separately authorized migration
-and deployment plus reviewed least-privilege grants/RLS, trusted origins,
-custom SMTP, shared rate limiting, monitoring and recovery, live authentication
-flow validation, provider beta review, calibrated operational data, a routing-
-provider decision if needed, and the repository's framework-security release
-gate.
+browser Data API. Phase 3L adds a development/staging-verified shared limiter;
+production still requires separately authorized migration and deployment plus
+reviewed least-privilege grants/RLS, trusted origins, custom SMTP, hosted
+monitoring and alert delivery, live authentication-flow validation, provider
+beta review, calibrated operational data, a routing-provider decision if
+needed, and the repository's framework-security release gate.
 
 No DRAFT configuration, deterministic travel fallback, synthetic fixture or
 development result becomes approved operational knowledge automatically.

@@ -9,6 +9,8 @@ import {
   databaseSecurityTablePolicy,
   type RuntimeTablePrivilege,
   vaxDatabaseTableNames,
+  vaxMigrationHashes,
+  vaxOperationalFunctionNames,
   vaxRuntimeLockPolicy,
   vaxRuntimeLockTableNames,
   vaxTriggerFunctionNames,
@@ -22,6 +24,14 @@ const migrationPath = path.join(
 const lockingMigrationPath = path.join(
   root,
   "drizzle/0013_phase_3k_runtime_locking.sql",
+);
+const operationalMigrationPath = path.join(
+  root,
+  "drizzle/0014_phase_3l_shared_rate_limiting.sql",
+);
+const readinessMigrationPath = path.join(
+  root,
+  "drizzle/0015_phase_3l_readiness_attestation.sql",
 );
 
 const priorMigrationChecksums = {
@@ -51,6 +61,8 @@ const priorMigrationChecksums = {
     "a82f5a727d2f80d8b467b3ab1dbb05d7ddea8985fd80299b536e6e3564c145f8",
   "0012_phase_3k_database_security.sql":
     "4ce1cf05447457ed6ba647505c694ad16461869e15f00230cf884afa75c624fb",
+  "0013_phase_3k_runtime_locking.sql":
+    "d6bf486d01734cc61a334171dc52be76209a39a1c0cdb4ee2c5dfcfa059cdbb6",
 } as const;
 
 function schemaTableNames(): readonly string[] {
@@ -78,7 +90,7 @@ function migrationPolicy(contents: string) {
 
 describe("Phase 3K database security policy", () => {
   it("classifies every VAX table exactly once", () => {
-    expect(vaxDatabaseTableNames).toHaveLength(97);
+    expect(vaxDatabaseTableNames).toHaveLength(98);
     expect(vaxDatabaseTableNames).toEqual(schemaTableNames());
     expect(
       Object.values(databaseSecurityTablePolicy).every(
@@ -107,6 +119,7 @@ describe("Phase 3K database security policy", () => {
         .map(([table]) => table)
         .sort(),
     ).toEqual([
+      "operational_rate_limits",
       "quote_items",
       "service_request_item_addons",
       "service_request_item_issues",
@@ -116,14 +129,33 @@ describe("Phase 3K database security policy", () => {
   it("keeps the SQL migration synchronized with the reviewed DML matrix", async () => {
     const contents = await readFile(migrationPath, "utf8");
     const expected = Object.fromEntries(
-      Object.entries(databaseSecurityTablePolicy).map(([table, policy]) => [
-        table,
-        [...policy.runtime],
-      ]),
+      Object.entries(databaseSecurityTablePolicy)
+        .filter(([table]) => table !== "operational_rate_limits")
+        .map(([table, policy]) => [table, [...policy.runtime]]),
     );
 
     expect(migrationPolicy(contents)).toEqual(expected);
     expect(contents).toContain("ENABLE ROW LEVEL SECURITY");
+    expect(contents).not.toContain("FORCE ROW LEVEL SECURITY");
+    expect(contents).not.toMatch(/neon_auth\s*\./);
+    expect(contents).not.toMatch(/CREATE\s+ROLE/i);
+  });
+
+  it("applies explicit least-privilege security to the shared rate-limit table", async () => {
+    const contents = await readFile(operationalMigrationPath, "utf8");
+
+    expect(contents).toContain(
+      "Phase 3L rate-limit migration requires vax_migrator",
+    );
+    expect(contents).toContain(
+      "ALTER TABLE public.operational_rate_limits ENABLE ROW LEVEL SECURITY",
+    );
+    expect(contents).toContain(
+      "GRANT SELECT, INSERT, UPDATE, DELETE",
+    );
+    expect(contents).toContain("TO vax_runtime");
+    expect(contents).toContain("FROM PUBLIC, authenticated, anonymous, vax_runtime");
+    expect(contents).toContain("FOR DELETE TO vax_runtime USING (resets_at <= clock_timestamp())");
     expect(contents).not.toContain("FORCE ROW LEVEL SECURITY");
     expect(contents).not.toMatch(/neon_auth\s*\./);
     expect(contents).not.toMatch(/CREATE\s+ROLE/i);
@@ -137,6 +169,21 @@ describe("Phase 3K database security policy", () => {
     expect(contents).toContain(
       "FROM PUBLIC, vax_runtime",
     );
+  });
+
+  it("exposes only a narrow migration-ledger attestation to runtime", async () => {
+    const contents = await readFile(readinessMigrationPath, "utf8");
+
+    expect(vaxOperationalFunctionNames).toEqual([
+      "vax_migration_history_hashes",
+    ]);
+    expect(contents).toContain("SECURITY DEFINER");
+    expect(contents).toContain("SET search_path = pg_catalog, pg_temp");
+    expect(contents).toContain("FROM drizzle.__drizzle_migrations");
+    expect(contents).toContain("FROM PUBLIC, authenticated, anonymous");
+    expect(contents).toContain("TO vax_runtime");
+    expect(contents).not.toContain("GRANT SELECT");
+    expect(contents).not.toMatch(/neon_auth\s*\./);
   });
 
   it("keeps repository row locks distinct from runtime UPDATE authority", async () => {
@@ -176,11 +223,41 @@ describe("Phase 3K database security policy", () => {
     }
   });
 
-  it("registers both Phase 3K migrations directly after Phase 3I", async () => {
+  it("keeps the runtime readiness hash contract synchronized", async () => {
+    const migrationFiles = [
+      "0000_initialize_system_metadata.sql",
+      "0001_add_service_catalogue.sql",
+      "0002_add_commercial_engine.sql",
+      "0003_add_availability_capacity.sql",
+      "0004_add_identity_access.sql",
+      "0005_add_customer_property_crm.sql",
+      "0006_phase_3d_request_quote.sql",
+      "0007_phase_3e_booking_engine.sql",
+      "0008_phase_3f_job_execution.sql",
+      "0009_phase_3g_scheduling_dispatch.sql",
+      "0010_phase_3h_finance_invoicing.sql",
+      "0011_phase_3i_communications_documents.sql",
+      "0012_phase_3k_database_security.sql",
+      "0013_phase_3k_runtime_locking.sql",
+      "0014_phase_3l_shared_rate_limiting.sql",
+      "0015_phase_3l_readiness_attestation.sql",
+    ];
+    const hashes = await Promise.all(
+      migrationFiles.map(async (fileName) =>
+        createHash("sha256")
+          .update(await readFile(path.join(root, "drizzle", fileName)))
+          .digest("hex"),
+      ),
+    );
+
+    expect(hashes).toEqual(vaxMigrationHashes);
+  });
+
+  it("registers Phase 3L directly after both Phase 3K migrations", async () => {
     const journal = JSON.parse(
       await readFile(path.join(root, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: Array<{ idx: number; tag: string }> };
-    expect(journal.entries.slice(-3)).toEqual([
+    expect(journal.entries.slice(-5)).toEqual([
       {
         idx: 11,
         version: "7",
@@ -200,6 +277,20 @@ describe("Phase 3K database security policy", () => {
         version: "7",
         when: 1787854657991,
         tag: "0013_phase_3k_runtime_locking",
+        breakpoints: true,
+      },
+      {
+        idx: 14,
+        version: "7",
+        when: 1787866611886,
+        tag: "0014_phase_3l_shared_rate_limiting",
+        breakpoints: true,
+      },
+      {
+        idx: 15,
+        version: "7",
+        when: 1787875198634,
+        tag: "0015_phase_3l_readiness_attestation",
         breakpoints: true,
       },
     ]);

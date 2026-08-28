@@ -6,8 +6,22 @@ import {
 } from "@/config/public-site";
 import { localizePublicPath } from "@/content/public-site/routes";
 import { isLiteralLoopbackOrUnspecifiedHostname } from "@/lib/url-security";
+import {
+  getVaxEnvironment,
+  isStrictHostedEnvironment,
+} from "@/operations/environment";
 
 const localMetadataBaseUrl = new URL("http://localhost:3000");
+
+function getIndexablePublicUrl(): URL | undefined {
+  try {
+    return getVaxEnvironment() === "staging"
+      ? undefined
+      : getConfiguredPublicUrl();
+  } catch {
+    return undefined;
+  }
+}
 
 export function getConfiguredPublicUrl(
   environment: Readonly<Record<string, string | undefined>> = process.env,
@@ -21,16 +35,16 @@ export function getConfiguredPublicUrl(
   try {
     const url = new URL(candidate);
     const isLoopback = isLiteralLoopbackOrUnspecifiedHostname(url.hostname);
-    const isProduction = environment.NODE_ENV === "production";
+    const isProductionLike = isStrictHostedEnvironment(environment);
     const isSecure = url.protocol === "https:";
     const isLocalHttp =
-      !isProduction && url.protocol === "http:" && isLoopback;
+      !isProductionLike && url.protocol === "http:" && isLoopback;
     const hasNonOriginComponents =
       url.pathname !== "/" || url.search !== "" || url.hash !== "";
 
     if (
       (!isSecure && !isLocalHttp) ||
-      (isProduction && (isLoopback || hasNonOriginComponents)) ||
+      (isProductionLike && (isLoopback || hasNonOriginComponents)) ||
       url.username !== "" ||
       url.password !== ""
     ) {
@@ -70,7 +84,7 @@ export function createPageMetadata({
   description,
   path,
 }: PageMetadataInput): Metadata {
-  const baseUrl = getConfiguredPublicUrl();
+  const baseUrl = getIndexablePublicUrl();
   const urls = baseUrl ? getLocalizedUrls(path, baseUrl) : undefined;
   const canonical = urls?.[locale];
   const alternateLocale =
@@ -133,7 +147,7 @@ type BreadcrumbItem = {
 };
 
 export function buildBreadcrumbJsonLd(items: readonly BreadcrumbItem[]) {
-  const baseUrl = getConfiguredPublicUrl();
+  const baseUrl = getIndexablePublicUrl();
 
   if (!baseUrl) {
     return undefined;
@@ -152,7 +166,7 @@ export function buildBreadcrumbJsonLd(items: readonly BreadcrumbItem[]) {
 }
 
 export function buildBusinessJsonLd() {
-  const baseUrl = getConfiguredPublicUrl();
+  const baseUrl = getIndexablePublicUrl();
 
   if (!baseUrl || !publicBrand.publicIdentityVerified) {
     return undefined;

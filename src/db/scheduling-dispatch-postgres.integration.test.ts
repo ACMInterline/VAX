@@ -3,9 +3,10 @@ import {
   neon,
   type NeonQueryFunction,
 } from "@neondatabase/serverless";
+import { Client } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import { getDatabase } from "@/db/client";
-import { getDatabaseUrl } from "@/lib/environment";
+import { getDatabaseAdminUrl, getDatabaseUrl } from "@/lib/environment";
 import { cancelBookingRecord } from "@/modules/booking-engine/repository";
 import {
   executeScheduleConfirmationCandidate,
@@ -13,14 +14,35 @@ import {
 } from "@/modules/scheduling-dispatch/repository";
 import type { ScheduleCandidate } from "@/modules/scheduling-dispatch/types";
 import {
-  assertDevelopmentDatabaseMutationTarget,
+  assertNonProductionDatabaseAdministratorIdentity,
+  assertNonProductionDatabaseMutationTarget,
+  type DatabaseAdministratorIdentity,
   loadMigrationEnvironment,
 } from "./migration-environment";
+import {
+  loadStagingTargetAuthorization,
+  type StagingTargetAuthorization,
+} from "./staging-environment";
 
 vi.mock("server-only", () => ({}));
 
 const runLiveIntegration =
   process.env.RUN_PHASE3G_DATABASE_INTEGRATION === "1";
+let stagingAuthorization: StagingTargetAuthorization | undefined;
+
+async function authorizeLiveDatabase(
+  credential: "runtime" | "admin" = "runtime",
+): Promise<void> {
+  loadMigrationEnvironment();
+  if (process.env.DATABASE_MUTATION_ENVIRONMENT === "staging") {
+    stagingAuthorization ??= await loadStagingTargetAuthorization();
+  }
+  assertNonProductionDatabaseMutationTarget(
+    process.env,
+    credential,
+    stagingAuthorization,
+  );
+}
 
 type NeonQuery = NeonQueryFunction<false, false>;
 
@@ -268,56 +290,72 @@ async function createSchedulingFixture(
 }
 
 async function cleanupSchedulingFixture(
-  query: NeonQuery,
   fixture: SchedulingFixture,
 ): Promise<void> {
-  await query.query(
-    "delete from public.booking_audit_events where booking_id = $1::uuid",
-    [fixture.bookingId],
-  );
-  await query.query(
-    "delete from public.booking_occupancies where booking_id = $1::uuid",
-    [fixture.bookingId],
-  );
-  await query.query(
-    "delete from public.booking_items where booking_id = $1::uuid",
-    [fixture.bookingId],
-  );
-  await query.query("delete from public.bookings where id = $1::uuid", [
-    fixture.bookingId,
-  ]);
-  await query.query(
-    "delete from public.quote_acceptances where id = $1::uuid",
-    [fixture.acceptanceId],
-  );
-  await query.query("delete from public.quote_items where id = $1::uuid", [
-    fixture.quoteItemId,
-  ]);
-  await query.query("delete from public.quotes where id = $1::uuid", [
-    fixture.quoteId,
-  ]);
-  await query.query(
-    "delete from public.request_estimates where id = $1::uuid",
-    [fixture.estimateId],
-  );
-  await query.query("delete from public.service_requests where id = $1::uuid", [
-    fixture.requestId,
-  ]);
-  await query.query("delete from public.properties where id = $1::uuid", [
-    fixture.propertyId,
-  ]);
-  await query.query("delete from public.customers where id = $1::uuid", [
-    fixture.customerId,
-  ]);
-  await query.query(
-    "delete from public.user_roles where user_profile_id = $1::uuid",
-    [fixture.profileId],
-  );
-  await query.query("delete from public.user_profiles where id = $1::uuid", [
-    fixture.profileId,
-  ]);
+  await authorizeLiveDatabase("admin");
+  const client = new Client({ connectionString: getDatabaseAdminUrl() });
+  await client.connect();
+  try {
+    const identity = await client.query<DatabaseAdministratorIdentity>(`
+      select current_setting('neon.project_id', true) as project_id,
+        current_setting('neon.branch_id', true) as branch_id,
+        current_database() as database_name,
+        current_user as role_name
+    `);
+    assertNonProductionDatabaseAdministratorIdentity(
+      identity.rows[0],
+      process.env,
+      stagingAuthorization,
+    );
+    await client.query("begin");
+    await client.query("set local role vax_migrator");
+    await client.query(
+      "delete from public.booking_audit_events where booking_id = $1::uuid",
+      [fixture.bookingId],
+    );
+    await client.query(
+      "delete from public.booking_occupancies where booking_id = $1::uuid",
+      [fixture.bookingId],
+    );
+    await client.query(
+      "delete from public.booking_items where booking_id = $1::uuid",
+      [fixture.bookingId],
+    );
+    await client.query("delete from public.bookings where id = $1::uuid", [
+      fixture.bookingId,
+    ]);
+    await client.query(
+      "delete from public.quote_acceptances where id = $1::uuid",
+      [fixture.acceptanceId],
+    );
+    await client.query("delete from public.quote_items where id = $1::uuid", [
+      fixture.quoteItemId,
+    ]);
+    await client.query("delete from public.quotes where id = $1::uuid", [
+      fixture.quoteId,
+    ]);
+    await client.query(
+      "delete from public.request_estimates where id = $1::uuid",
+      [fixture.estimateId],
+    );
+    await client.query("delete from public.service_requests where id = $1::uuid", [
+      fixture.requestId,
+    ]);
+    await client.query("delete from public.properties where id = $1::uuid", [
+      fixture.propertyId,
+    ]);
+    await client.query("delete from public.customers where id = $1::uuid", [
+      fixture.customerId,
+    ]);
+    await client.query(
+      "delete from public.user_roles where user_profile_id = $1::uuid",
+      [fixture.profileId],
+    );
+    await client.query("delete from public.user_profiles where id = $1::uuid", [
+      fixture.profileId,
+    ]);
 
-  const residue = (await query.query(`
+    const residue = await client.query<{ residue_count: number }>(`
     select (
       (select count(*) from public.user_profiles where id = $1::uuid) +
       (select count(*) from public.customers where id = $2::uuid) +
@@ -334,27 +372,33 @@ async function cleanupSchedulingFixture(
       (select count(*) from public.booking_audit_events
         where booking_id = $9::uuid)
     )::integer as residue_count
-  `, [
-    fixture.profileId,
-    fixture.customerId,
-    fixture.propertyId,
-    fixture.requestId,
-    fixture.estimateId,
-    fixture.quoteId,
-    fixture.quoteItemId,
-    fixture.acceptanceId,
-    fixture.bookingId,
-    fixture.bookingItemId,
-  ])) as Array<{ residue_count: number }>;
-  expect(residue).toEqual([{ residue_count: 0 }]);
+    `, [
+      fixture.profileId,
+      fixture.customerId,
+      fixture.propertyId,
+      fixture.requestId,
+      fixture.estimateId,
+      fixture.quoteId,
+      fixture.quoteItemId,
+      fixture.acceptanceId,
+      fixture.bookingId,
+      fixture.bookingItemId,
+    ]);
+    expect(residue.rows).toEqual([{ residue_count: 0 }]);
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    await client.end();
+  }
 }
 
 describe.skipIf(!runLiveIntegration)(
   "Phase 3G PostgreSQL occupancy constraints",
   () => {
     it("enforces team and equipment collisions without durable fixtures", async () => {
-      loadMigrationEnvironment();
-      assertDevelopmentDatabaseMutationTarget();
+      await authorizeLiveDatabase();
       const query = neon(getDatabaseUrl());
 
       const constraints = (await query.query(`
@@ -557,8 +601,7 @@ describe.skipIf(!runLiveIntegration)(
     });
 
     it("parses and executes the locked confirmation statement without durable fixtures", async () => {
-      loadMigrationEnvironment();
-      assertDevelopmentDatabaseMutationTarget();
+      await authorizeLiveDatabase();
       const serviceStart = new Date("2026-09-08T05:00:00.000Z");
       const serviceEnd = new Date("2026-09-08T06:00:00.000Z");
       const candidate: ScheduleCandidate = {
@@ -614,8 +657,7 @@ describe.skipIf(!runLiveIntegration)(
     it(
       "serializes competing dispatchers and preserves a consistent reschedule/cancel race",
       async () => {
-        loadMigrationEnvironment();
-        assertDevelopmentDatabaseMutationTarget();
+        await authorizeLiveDatabase();
         const query = neon(getDatabaseUrl());
         let fixture: SchedulingFixture | null = null;
         try {
@@ -783,7 +825,7 @@ describe.skipIf(!runLiveIntegration)(
             });
           }
         } finally {
-          if (fixture) await cleanupSchedulingFixture(query, fixture);
+          if (fixture) await cleanupSchedulingFixture(fixture);
         }
       },
       30_000,

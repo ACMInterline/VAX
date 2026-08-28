@@ -11,11 +11,13 @@ const result = spawnSync(
     "run",
     "src/db/database-security-policy.test.ts",
     "src/db/database-security-postgres.integration.test.ts",
+    "src/db/shared-rate-limit-postgres.integration.test.ts",
   ],
   {
     env: {
       ...process.env,
       RUN_PHASE3K_DATABASE_SECURITY_INTEGRATION: "1",
+      RUN_PHASE3L_RATE_LIMIT_INTEGRATION: "1",
     },
     stdio: "inherit",
   },

@@ -29,3 +29,4 @@ export * from "./schema/booking-engine";
 export * from "./schema/job-execution";
 export * from "./schema/finance-invoicing";
 export * from "./schema/communications-documents";
+export * from "./schema/operational-readiness";

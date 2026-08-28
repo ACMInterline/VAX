@@ -148,6 +148,7 @@ Neither response exposes connection details or errors.
 | Command | Purpose |
 | --- | --- |
 | npm run dev | Run the local Next.js development server |
+| npm run dev:staging | Run the loopback application with the guarded ignored staging environment |
 | npm run build | Create a production build |
 | npm run start | Serve the production build |
 | npm run lint | Run ESLint across the repository |
@@ -158,7 +159,12 @@ Neither response exposes connection details or errors.
 | npm run db:check | Validate the committed migration history |
 | npm run db:provision-roles | Provision and verify the development-only migrator/runtime boundary |
 | npm run db:migrate | Apply committed migrations and canonical reference seeds using MIGRATION_DATABASE_URL |
+| npm run db:migrate:staging | Apply reviewed migrations/seeds to the exact staging target |
+| npm run db:rotate-staging-credentials | Rehearse fail-closed exact-target staging runtime/migrator/administrator rotation |
+| npm run db:rehearse-staging-rebuild | Rebuild/verify/remove a fixed disposable staging database |
 | npm run db:verify-security | Run focused static and guarded live database-security checks |
+| npm run db:verify-security:staging | Repeat the live least-privilege/shared-limiter suite on staging |
+| npm run db:verify-state:staging | Verify clean staging schema/RBAC/business/Auth/session state |
 | npm run auth:bootstrap-owner | Explicitly assign the first owner to an existing active application profile |
 | npm run validate | Run the full local completion gate, including migration and dependency checks |
 
@@ -276,8 +282,13 @@ credential-bearing origins and adds an exact database-name mutation interlock.
 Phase 3K then separates administrator, migrator and non-owner server-runtime
 authority, removes browser/Data API access, adds exact grants/defaults and
 role/command RLS on development, and documents the staging/production gate. It
-adds no product workflow and does not migrate production. All current operational
-configuration remains visibly
+adds no product workflow and does not migrate production. Phase 3L creates and
+hardens the isolated staging branch, adds shared PostgreSQL rate limiting,
+liveness/readiness, safe structured logging, noindex/security headers, recovery
+and cold-rebuild rehearsal plus operational runbooks. Staging remains local-only
+and not ready until hosted HTTPS, test-only email and authenticated role/IDOR/
+session rehearsals exist. It does not deploy or migrate production. All current
+operational configuration remains visibly
 DRAFT/provisional and no phase migrates production or deploys. See
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
 [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),
@@ -285,4 +296,5 @@ DRAFT/provisional and no phase migrates production or deploys. See
 [docs/JOB_EXECUTION.md](docs/JOB_EXECUTION.md),
 [docs/SCHEDULING_AND_DISPATCH.md](docs/SCHEDULING_AND_DISPATCH.md),
 [docs/FINANCE_AND_INVOICING.md](docs/FINANCE_AND_INVOICING.md) and
-[docs/COMMUNICATIONS_AND_DOCUMENTS.md](docs/COMMUNICATIONS_AND_DOCUMENTS.md).
+[docs/COMMUNICATIONS_AND_DOCUMENTS.md](docs/COMMUNICATIONS_AND_DOCUMENTS.md) and
+[docs/STAGING_READINESS.md](docs/STAGING_READINESS.md).

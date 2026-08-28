@@ -24,14 +24,20 @@ import {
   type RuntimeTablePrivilege,
   vaxDatabaseRoles,
   vaxDatabaseTableNames,
+  vaxMigrationHashes,
+  vaxOperationalFunctionNames,
   vaxRuntimeLockPolicy,
   vaxRuntimeLockTableNames,
   vaxTriggerFunctionNames,
 } from "./database-security-policy";
 import {
-  assertDevelopmentDatabaseMutationTarget,
+  assertNonProductionDatabaseMutationTarget,
   loadMigrationEnvironment,
 } from "./migration-environment";
+import {
+  loadStagingTargetAuthorization,
+  type StagingTargetAuthorization,
+} from "./staging-environment";
 
 vi.mock("server-only", () => ({}));
 
@@ -71,6 +77,28 @@ function addTransactionalBatch(database: object): Database {
   return adapted;
 }
 
+function serializedTransactionalClient(client: Client): Client {
+  let queue = Promise.resolve<unknown>(undefined);
+  return new Proxy(client, {
+    get(target, property) {
+      if (property !== "query") {
+        const value = Reflect.get(target, property, target) as unknown;
+        return typeof value === "function" ? value.bind(target) : value;
+      }
+      return (...arguments_: readonly unknown[]) => {
+        const result = queue.then(() =>
+          Reflect.apply(target.query, target, arguments_),
+        );
+        queue = result.then(
+          () => undefined,
+          () => undefined,
+        );
+        return result;
+      };
+    },
+  });
+}
+
 function token(): string {
   return randomBytes(12).toString("hex").toUpperCase();
 }
@@ -88,7 +116,7 @@ async function identity(
   return result.rows[0];
 }
 
-function expectDevelopmentIdentity(
+function expectAuthorizedIdentity(
   actual: DatabaseIdentity,
   expectedRole: string,
 ): void {
@@ -113,19 +141,35 @@ describe.runIf(runLiveIntegration)(
     let migrationUrl: string;
     let adminUrl: string;
     let admin: Client;
+    let stagingAuthorization: StagingTargetAuthorization | undefined;
 
     beforeAll(async () => {
       loadMigrationEnvironment();
-      assertDevelopmentDatabaseMutationTarget(process.env, "runtime");
-      assertDevelopmentDatabaseMutationTarget(process.env, "migration");
-      assertDevelopmentDatabaseMutationTarget(process.env, "admin");
+      if (process.env.DATABASE_MUTATION_ENVIRONMENT === "staging") {
+        stagingAuthorization = await loadStagingTargetAuthorization();
+      }
+      assertNonProductionDatabaseMutationTarget(
+        process.env,
+        "runtime",
+        stagingAuthorization,
+      );
+      assertNonProductionDatabaseMutationTarget(
+        process.env,
+        "migration",
+        stagingAuthorization,
+      );
+      assertNonProductionDatabaseMutationTarget(
+        process.env,
+        "admin",
+        stagingAuthorization,
+      );
       runtimeUrl = getDatabaseUrl();
       migrationUrl = getMigrationDatabaseUrl();
       adminUrl = getDatabaseAdminUrl();
       admin = new Client({ connectionString: adminUrl });
       await admin.connect();
       const adminIdentity = await identity(admin);
-      expectDevelopmentIdentity(
+      expectAuthorizedIdentity(
         adminIdentity,
         process.env.DATABASE_ADMIN_EXPECTED_ROLE!,
       );
@@ -143,7 +187,7 @@ describe.runIf(runLiveIntegration)(
         const client = new Client({ connectionString });
         await client.connect();
         try {
-          expectDevelopmentIdentity(await identity(client), role);
+          expectAuthorizedIdentity(await identity(client), role);
         } finally {
           await client.end();
         }
@@ -432,6 +476,42 @@ describe.runIf(runLiveIntegration)(
         ),
       ).toBe(true);
 
+      const operationalFunctions = await admin.query<{
+        function_name: string;
+        owner: string;
+        security_definer: boolean;
+        runtime_execute: boolean;
+        authenticated_execute: boolean;
+        anonymous_execute: boolean;
+      }>(
+        `
+        select function.proname as function_name, owner.rolname as owner,
+          function.prosecdef as security_definer,
+          has_function_privilege('vax_runtime', function.oid, 'EXECUTE')
+            as runtime_execute,
+          has_function_privilege('authenticated', function.oid, 'EXECUTE')
+            as authenticated_execute,
+          has_function_privilege('anonymous', function.oid, 'EXECUTE')
+            as anonymous_execute
+        from pg_proc function
+        join pg_namespace schema on schema.oid = function.pronamespace
+        join pg_roles owner on owner.oid = function.proowner
+        where schema.nspname = 'public' and function.proname = any($1::text[])
+        order by function.proname
+      `,
+        [vaxOperationalFunctionNames],
+      );
+      expect(operationalFunctions.rows).toEqual([
+        {
+          function_name: "vax_migration_history_hashes",
+          owner: vaxDatabaseRoles.migrator,
+          security_definer: true,
+          runtime_execute: true,
+          authenticated_execute: false,
+          anonymous_execute: false,
+        },
+      ]);
+
       const triggers = await admin.query<{ enabled: string; count: number }>(`
         select trigger.tgenabled as enabled, count(*)::integer as count
         from pg_trigger trigger
@@ -539,7 +619,10 @@ describe.runIf(runLiveIntegration)(
         order by schema.nspname, function_object.oid::regprocedure::text
       `);
 
-      const vaxFunctionNames = new Set<string>(vaxTriggerFunctionNames);
+      const vaxFunctionNames = new Set<string>([
+        ...vaxTriggerFunctionNames,
+        ...vaxOperationalFunctionNames,
+      ]);
       const vaxFunctions = functions.rows.filter(
         (item) =>
           item.schema_name === "public" &&
@@ -558,8 +641,10 @@ describe.runIf(runLiveIntegration)(
         (item) => !vaxFunctions.includes(item),
       );
 
-      expect(functions.rows).toHaveLength(241);
-      expect(vaxFunctions).toHaveLength(vaxTriggerFunctionNames.length);
+      expect(functions.rows).toHaveLength(242);
+      expect(vaxFunctions).toHaveLength(
+        vaxTriggerFunctionNames.length + vaxOperationalFunctionNames.length,
+      );
       expect(publicExtensionFunctions).toHaveLength(212);
       expect(
         unmanagedPublicFunctions.map((item) => ({
@@ -576,9 +661,9 @@ describe.runIf(runLiveIntegration)(
           owned_by_vax_role: false,
         },
       ]);
-      expect(providerFunctions.every((item) => !item.security_definer)).toBe(
-        true,
-      );
+      expect(
+        providerFunctions.every((item) => !item.security_definer),
+      ).toBe(true);
     });
 
     it("keeps Data API, anonymous and PUBLIC-derived access at zero", async () => {
@@ -742,6 +827,15 @@ describe.runIf(runLiveIntegration)(
           await expectDenied(runtime, statement);
         }
 
+        const migrationAttestation = await runtime.query<{
+          hashes: string[];
+        }>(
+          "select public.vax_migration_history_hashes() as hashes",
+        );
+        expect(migrationAttestation.rows[0]?.hashes).toEqual(
+          vaxMigrationHashes,
+        );
+
         await runtime.query("BEGIN");
         try {
           const lockedReference = await runtime.query(
@@ -793,7 +887,7 @@ describe.runIf(runLiveIntegration)(
       await client.connect();
       await client.query("BEGIN");
       const database = addTransactionalBatch(
-        nodePostgresDrizzle(client, { schema }),
+        nodePostgresDrizzle(serializedTransactionalClient(client), { schema }),
       );
       const actorProfileId = randomUUID();
       const suffix = token();

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { vaxDatabaseRoles } from "../db/database-security-policy";
+import { getVaxEnvironment } from "../operations/environment";
 
 const postgresUrlSchema = z.url({ protocol: /^postgres(?:ql)?$/ });
 const allowedPostgresConnectionParameters = new Set([
@@ -31,6 +32,20 @@ function configuredDatabaseUrl(
     )
   ) {
     throw new Error(`${variable} contains unsupported connection parameters.`);
+  }
+  const sslModes = [...target.searchParams.entries()]
+    .filter(([key]) => key.toLowerCase() === "sslmode")
+    .map(([, value]) => value.trim().toLowerCase());
+  const requiresStrictTls =
+    environment.NODE_ENV === "production" ||
+    getVaxEnvironment(environment) !== "development";
+  if (
+    sslModes.length > 1 ||
+    sslModes.includes("disable") ||
+    (requiresStrictTls &&
+      (sslModes.length !== 1 || sslModes[0] !== "verify-full"))
+  ) {
+    throw new Error(`${variable} does not require certificate verification.`);
   }
   if (role !== expectedRole) {
     throw new Error(`${variable} does not use the required database role.`);

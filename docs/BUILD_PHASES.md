@@ -439,6 +439,32 @@ and additive development-only migration, real runtime/migrator denial and
 allowed-path tests, full validation, exact-snapshot security review,
 protected-main CI, and proof that production remains unmigrated.
 
+### Phase 3L — Staging operations and recovery readiness
+
+Creates the isolated Neon `staging` branch from the controlled development
+base, rotates separate runtime/migrator/administrator credentials, applies and
+verifies migrations through additive 0015, and proves a cold rebuild plus
+disposable recovery branch. Adds a database-backed shared sensitive-action
+limiter, strict environment/origin/proxy contracts, safe liveness/readiness,
+structured log redaction, staging noindex/security headers and operational
+runbooks.
+
+Staging remains local-loopback only and contains no Auth user/session or
+business data. External email, live reset/OTP, authenticated five-role browser/
+IDOR/session-cookie flows, hosted monitoring/alerts and portable logical export
+are not complete. Neon Auth remains Beta. Production remains unmigrated,
+undeployed and separately unauthorized.
+
+Gate: exact migration hashes, development/staging low-privilege verification,
+multi-instance limiter proof, fail-closed credential replacement plus a
+provider-supported pooler-session invalidation procedure, cold rebuild and
+controlled migration-failure cleanup, branch recovery, safe outage/readiness
+behavior,
+browser headers/noindex checks, full validation, exact-snapshot security review,
+protected-main CI, and proof that production is untouched. A complete staging
+rehearsal still requires an approved hosted HTTPS origin and test-only mail
+transport.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,

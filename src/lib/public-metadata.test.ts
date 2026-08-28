@@ -46,6 +46,32 @@ describe("localized public metadata", () => {
     ).toBe("https://fabric.example/");
   });
 
+  it("requires an exact HTTPS origin for hosted staging", () => {
+    expect(
+      getConfiguredPublicUrl({
+        VAX_ENVIRONMENT: "staging",
+        PUBLIC_SITE_URL: "http://127.0.0.1:3000",
+      }),
+    ).toBeUndefined();
+    expect(
+      getConfiguredPublicUrl({
+        VAX_ENVIRONMENT: "staging",
+        PUBLIC_SITE_URL: "https://staging.fabric.example",
+      })?.href,
+    ).toBe("https://staging.fabric.example/");
+  });
+
+  it("allows loopback staging only for an explicit local rehearsal", () => {
+    expect(
+      getConfiguredPublicUrl({
+        NODE_ENV: "development",
+        VAX_ENVIRONMENT: "staging",
+        STAGING_ALLOW_LOCALHOST: "true",
+        PUBLIC_SITE_URL: "http://127.0.0.1:3000",
+      })?.href,
+    ).toBe("http://127.0.0.1:3000/");
+  });
+
   it.each([
     "https://localhost",
     "https://public.localhost",
@@ -137,6 +163,21 @@ describe("localized public metadata", () => {
     });
 
     expect(metadata.alternates).toBeUndefined();
+  });
+
+  it("does not publish canonical metadata from staging", () => {
+    vi.stubEnv("VAX_ENVIRONMENT", "staging");
+    vi.stubEnv("PUBLIC_SITE_URL", "https://staging.fabric.example");
+
+    const metadata = createPageMetadata({
+      locale: "en",
+      title: "Carpet cleaning",
+      description: "Professional carpet care.",
+      path: "/services/carpet-cleaning",
+    });
+
+    expect(metadata.alternates).toBeUndefined();
+    expect(metadata.openGraph).toHaveProperty("url", undefined);
   });
 
   it("withholds LocalBusiness data until the public identity is verified", () => {

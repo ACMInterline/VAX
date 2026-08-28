@@ -153,8 +153,9 @@ moves focus to the accessible error summary. Valid input creates one unresolved
 then returns only a random `REQ-…` reference. No raw database ID is exposed.
 
 The boundary uses a honeypot, strict field/count limits, generic failures and
-the shared rate-limit abstraction. Production remains fail-closed until a
-shared limiter is configured. It never auto-links contact details, creates an
+the shared rate-limit abstraction. Staging and production-like configuration
+require the PostgreSQL-backed limiter and fail closed if it is unavailable. It
+never auto-links contact details, creates an
 account/customer, publishes an internal estimate or confirms a quote, time or
 booking. Files and email delivery remain disabled.
 

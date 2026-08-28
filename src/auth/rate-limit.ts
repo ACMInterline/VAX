@@ -1,3 +1,5 @@
+import { getVaxEnvironment } from "@/operations/environment";
+
 export type AuthAttemptScope =
   | "LOGIN"
   | "SIGNUP"
@@ -14,11 +16,19 @@ export type AuthRateLimitResult =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };
 
+export type AuthRateLimitDimension = "SOURCE" | "ACCOUNT" | "SOURCE_ACCOUNT";
+
 export interface AuthRateLimiter {
-  consume(scope: AuthAttemptScope, key: string): Promise<AuthRateLimitResult>;
+  consume(
+    scope: AuthAttemptScope,
+    key: string,
+    dimension?: AuthRateLimitDimension,
+  ): Promise<AuthRateLimitResult>;
 }
 
-const scopePolicies: Record<
+const sourceLimitMultiplier = 5;
+
+export const authRateLimitPolicies: Record<
   AuthAttemptScope,
   { limit: number; windowMilliseconds: number }
 > = {
@@ -49,10 +59,15 @@ export class InMemoryAuthRateLimiter implements AuthRateLimiter {
   async consume(
     scope: AuthAttemptScope,
     key: string,
+    dimension: AuthRateLimitDimension = "SOURCE_ACCOUNT",
   ): Promise<AuthRateLimitResult> {
     const currentTime = this.now();
-    const policy = scopePolicies[scope];
-    const mapKey = `${scope}:${key}`;
+    const policy = authRateLimitPolicies[scope];
+    const limit =
+      dimension === "SOURCE"
+        ? policy.limit * sourceLimitMultiplier
+        : policy.limit;
+    const mapKey = `${scope}:${dimension}:${key}`;
     const current = this.attempts.get(mapKey);
 
     if (!current || current.resetsAt <= currentTime) {
@@ -64,7 +79,7 @@ export class InMemoryAuthRateLimiter implements AuthRateLimiter {
       return { allowed: true };
     }
 
-    if (current.count >= policy.limit) {
+    if (current.count >= limit) {
       return {
         allowed: false,
         retryAfterSeconds: Math.max(
@@ -100,10 +115,79 @@ export class ProductionRateLimiterRequired implements AuthRateLimiter {
   }
 }
 
+export type SharedRateLimitStoreResult = Readonly<{
+  attemptCount: number;
+  resetsAt: Date;
+}>;
+
+export interface SharedRateLimitStore {
+  consumeWindow(input: Readonly<{
+    scope: AuthAttemptScope;
+    keyHash: string;
+    limit: number;
+    windowMilliseconds: number;
+  }>): Promise<SharedRateLimitStoreResult>;
+  pruneExpired?(maximumRows: number): Promise<number>;
+}
+
+export class SharedAuthRateLimiter implements AuthRateLimiter {
+  private consumptionCount = 0;
+
+  constructor(private readonly store: SharedRateLimitStore) {}
+
+  async consume(
+    scope: AuthAttemptScope,
+    key: string,
+    dimension: AuthRateLimitDimension = "SOURCE_ACCOUNT",
+  ): Promise<AuthRateLimitResult> {
+    if (!/^[0-9a-f]{64}$/.test(key)) {
+      throw new Error("Shared rate-limit key is invalid.");
+    }
+    const policy = authRateLimitPolicies[scope];
+    const limit =
+      dimension === "SOURCE"
+        ? policy.limit * sourceLimitMultiplier
+        : policy.limit;
+    const result = await this.store.consumeWindow({
+      scope,
+      keyHash: key,
+      limit,
+      windowMilliseconds: policy.windowMilliseconds,
+    });
+
+    this.consumptionCount += 1;
+    if (this.consumptionCount % 256 === 0 && this.store.pruneExpired) {
+      await this.store.pruneExpired(100).catch(() => 0);
+    }
+
+    if (result.attemptCount <= limit) return { allowed: true };
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(
+        1,
+        Math.ceil((result.resetsAt.getTime() - Date.now()) / 1_000),
+      ),
+    };
+  }
+}
+
 export function createRuntimeAuthRateLimiter(
   environment: Readonly<Record<string, string | undefined>> = process.env,
+  sharedLimiter?: AuthRateLimiter,
 ): AuthRateLimiter {
-  return environment.NODE_ENV === "production"
-    ? new ProductionRateLimiterRequired()
-    : new InMemoryAuthRateLimiter();
+  try {
+    const deployment = getVaxEnvironment(environment);
+    const backend = environment.RATE_LIMIT_BACKEND?.trim();
+
+    if (
+      deployment === "development" &&
+      (backend === undefined || backend === "" || backend === "memory")
+    ) {
+      return new InMemoryAuthRateLimiter();
+    }
+    if (backend === "database" && sharedLimiter) return sharedLimiter;
+  } catch {
+    // Invalid production-like configuration deliberately selects fail-closed.
+  }
+  return new ProductionRateLimiterRequired();
 }

@@ -81,19 +81,52 @@ The Neon management integration is not an application runtime connection. Do
 not request a connection string from it when `.env.local` already provides the
 approved development runtime configuration.
 
+### Phase 3L staging rehearsal
+
+The dedicated Neon `staging` branch uses ignored `.env.staging.local`, not the
+development file. The loader requires an owner-only regular single-link file,
+a fixed variable allowlist and `VAX_ENVIRONMENT=staging`. Exact project,
+branch, host, database, administrator-role, canonical Auth base URL and staging
+mutation assertions live in the separately reviewed owner-only
+`.env.staging.target.local` manifest.
+Neither file is loaded by normal development commands or credential-free CI.
+
+The reviewed sequence is:
+
+```text
+npm run db:migrate:staging
+npm run db:verify-security:staging
+npm run db:verify-state:staging
+npm run db:rehearse-staging-rebuild
+npm run dev:staging
+```
+
+The local app launcher additionally requires the explicit localhost rehearsal
+flag, clears omitted managed values, independently binds its runtime database
+and Auth targets, and listens only on 127.0.0.1. A hosted staging environment must instead use
+an exact HTTPS origin, secret-manager injection and the deployed platform's
+reviewed proxy/TLS configuration. The rotation/rebuild commands use fixed
+staging identities and resources. Rotation accepts only the local-rehearsal
+acknowledgement; no per-run target override is supported. Only the secure target
+manifest loader can mint the authorization passed to a staging mutation. The
+manifest must first be checked against the live control plane, and production
+remains unauthorized.
+
 ## Database change path
 
 Schema work follows this sequence:
 
 > feature implementation → Drizzle schema change → generated migration → SQL
 > and metadata inspection → explicitly authorized migration and deterministic
-> canonical seed on Neon `development` only → schema/reference verification →
-> tests → pull request and CI
+> canonical seed on Neon `development` and, when separately in scope, the
+> isolated `staging` branch → schema/reference verification → tests → pull
+> request and CI
 
 Never use schema push or a schema reset as a substitute for reviewed
 migrations. Never alter the Neon-managed `neon_auth` schema unless a future task
 explicitly concerns Neon Auth. Production migration requires separate explicit
-authorization and an impact review.
+authorization and an impact review. See
+[DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md).
 
 Phase 3K requires the controlled role-provisioning step before migrations 0012
 and 0013.
@@ -179,7 +212,10 @@ automatically.
 
 Phase 3J adopts the official patched Next.js 16.3.3 release. Phase 3K adds the
 reviewed database role/grant/default-privilege and role/command-scoped RLS
-boundary on development. Deployment remains blocked until staging and the
-exact production topology repeat that verification and the separate
-trusted-origin, SMTP, shared-rate-limit, monitoring/recovery, production
-configuration, production-migration and explicit authorization gates pass.
+boundary. Phase 3L repeats that boundary on staging and adds shared limiting,
+safe readiness/logging, an independently reviewed staging target manifest and
+recovery rehearsal. Deployment remains blocked on a
+hosted exact HTTPS staging origin, test-only SMTP/mail sink, complete
+authenticated browser/IDOR/session rehearsal, external monitoring/alerting,
+portable export, production configuration/topology review, production migration
+and explicit authorization.
