@@ -1,0 +1,138 @@
+name: Staging Monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      exercise:
+        description: Run the healthy probe or a controlled alert-receiver rehearsal
+        required: true
+        default: healthy
+        type: choice
+        options:
+          - healthy
+          - forced_alert
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: vax-staging-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Hosted staging health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    env:
+      STAGING_ORIGIN: ${{ vars.STAGING_ORIGIN }}
+      EXERCISE: ${{ inputs.exercise || 'healthy' }}
+
+    steps:
+      - name: Validate fixed staging origin
+        id: target
+        continue-on-error: true
+        shell: bash
+        run: |
+          node <<'NODE'
+          const configured = process.env.STAGING_ORIGIN?.trim();
+          if (!configured) process.exit(1);
+          let target;
+          try {
+            target = new URL(configured);
+          } catch {
+            process.exit(1);
+          }
+          if (
+            target.protocol !== "https:" ||
+            !target.hostname.endsWith(".vercel.app") ||
+            target.port ||
+            target.username ||
+            target.password ||
+            target.pathname !== "/" ||
+            target.search ||
+            target.hash
+          ) {
+            process.exit(1);
+          }
+          NODE
+
+      - name: Probe liveness and readiness
+        id: probe
+        if: steps.target.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          if [ "$EXERCISE" = "forced_alert" ]; then
+            exit 23
+          fi
+          liveness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$STAGING_ORIGIN/api/liveness")"
+          readiness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$STAGING_ORIGIN/api/readiness")"
+          test "$liveness_status" = "200"
+          test "$readiness_status" = "200"
+
+      - name: Deliver staging alert
+        if: always() && (steps.target.outcome != 'success' || steps.probe.outcome != 'success')
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const title = "[staging-alert] Hosted staging health check failed";
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find((issue) => issue.title === title);
+            const body = `A sanitized staging health check failed. Review run ${context.runId}; no response body, credential, or customer data was recorded.`;
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Resolve recovered staging alert
+        if: steps.target.outcome == 'success' && steps.probe.outcome == 'success'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const title = "[staging-alert] Hosted staging health check failed";
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              per_page: 100,
+            });
+            for (const issue of issues.filter((candidate) => candidate.title === title)) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Hosted staging recovered in run ${context.runId}.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: "closed",
+              });
+            }
+
+      - name: Fail the monitor run after alert delivery
+        if: always() && (steps.target.outcome != 'success' || steps.probe.outcome != 'success')
+        shell: bash
+        run: exit 1

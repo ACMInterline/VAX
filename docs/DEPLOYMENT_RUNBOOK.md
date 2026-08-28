@@ -2,10 +2,10 @@
 
 ## Authority boundary
 
-This runbook documents a future controlled release. It does not authorize a
-production migration or deployment. Phase 3L authorizes local application use
-against Neon `staging` only. Production requires a new explicit approval after
-all readiness gates pass.
+This runbook documents controlled staging and a future production release. It
+does not authorize a production migration or deployment. Phase 3M authorizes
+only the dedicated Vercel staging project and Neon `staging`. Production
+requires a new explicit approval after all readiness gates pass.
 
 ## Staging preflight
 
@@ -89,6 +89,13 @@ origin. Hosted staging/production configuration fails closed when that positive
 hop count is absent; loopback mode trusts no proxy and intentionally applies
 account-only plus source-account buckets to account-bearing actions.
 
+Hosted Phase 3M uses a dedicated Vercel project, the Preview environment and the
+stable exact origin `https://vax-phase3m-staging-preview.vercel.app`. Deploy from
+a clean reviewed snapshot with `npm ci` and the repository build command. Do
+not use Vercel's production target, connect a production domain or upload a
+migrator/administrator URL. Reconcile the stable alias to the merged `main`
+commit after the protected merge.
+
 Before serving traffic, verify:
 
 - liveness is 200;
@@ -122,6 +129,14 @@ high-frequency process health. The application coalesces readiness dependency
 work only within each instance, returns a safe timeout response after three
 seconds, and retains one underlying probe until it settles rather than launching
 more dependency work. This does not replace ingress controls.
+
+The Phase 3M staging monitor uses the protected GitHub `staging` environment,
+an exact `STAGING_ORIGIN` environment variable and minimal `contents: read` /
+`issues: write` permissions. It checks liveness/readiness without recording
+response bodies. A failed probe opens or updates one sanitized staging issue; a
+healthy recovery run comments and closes it. The repository owner who receives
+GitHub issue/workflow notifications is the staging incident owner. This is not
+a production on-call commitment.
 
 Application rollback means redeploying the last compatible reviewed image. Do
 not automatically down-migrate. Before a schema change, document the previous

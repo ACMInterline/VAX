@@ -1,0 +1,8 @@
+.env*
+!.env.example
+.git
+.vercel
+.next
+coverage
+node_modules
+security-reports

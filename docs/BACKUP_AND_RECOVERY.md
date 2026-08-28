@@ -28,6 +28,27 @@ database was then removed and absence reverified.
 
 No customer, payment, bank, address, Auth user or production data was used.
 
+Phase 3M added a portable recovery rehearsal with PostgreSQL 18 clients. A
+custom-format export included both the VAX `public` schema and the `drizzle`
+migration ledger from Neon staging. The artifact metadata and exact configured
+runtime/migrator/Auth/application secret values were scanned with no match. A
+clean database on a disposable Neon child branch was prepared with the managed
+`btree_gist` extension, then restored without ownership or privilege replay.
+
+The restored target matched 98 public tables, one Drizzle table, all 16 ordered
+migration hashes, five roles, 28 permissions, 76 mappings and representative
+synthetic profile/customer/property/asset/request/quote/Booking fingerprints.
+All constraints remained validated. PostgreSQL normalized equivalent cast text
+when deparsing some checks/exclusion indexes; table/column/trigger fingerprints,
+object inventories, ledger hashes and data fingerprints matched. The recovery
+branch/database and local dump artifacts were deleted after verification.
+
+Measured staging observations, not production SLAs: the complete portable dump
+took about 22 seconds and the final clean restore about 98 seconds. The first
+restore attempt also documented two required runbook preconditions: restore to
+an empty schema so foreign keys replay in native order, and install the managed
+`btree_gist` extension before restoring exclusion constraints.
+
 ## Recovery procedure
 
 For a future incident:
@@ -51,10 +72,9 @@ survives.
 
 ## Portable export
 
-Neon supports standard PostgreSQL logical export tools. A compatible `pg_dump`
-and `pg_restore` client was not installed in this workspace, so Phase 3L did
-not claim or simulate a portable export. Before production, install an approved
-matching client outside the application dependency tree and prove:
+Neon supports standard PostgreSQL logical export tools. Phase 3M used a
+containerized PostgreSQL 18 client matching the Neon server major version; it
+did not add an application dependency. Future controlled exports must retain:
 
 - encrypted direct migrator/read-only connection with verify-full;
 - schema plus required data export to encrypted restricted storage;
@@ -62,7 +82,9 @@ matching client outside the application dependency tree and prove:
 - `pg_restore --list` and a disposable restore verification;
 - retention, deletion, access logging and off-provider storage ownership; and
 - restoration of sequences, constraints, functions, RLS, grants and migration
-  history.
+  history; and
+- explicit installation of provider-managed extension prerequisites before a
+  clean restore.
 
 ## Objectives for owner approval
 

@@ -22,6 +22,7 @@
     "db:verify-security:staging": "tsx src/db/verify-staging-database-security.ts",
     "db:verify-state:staging": "tsx src/db/verify-staging-state.ts",
     "auth:bootstrap-owner": "tsx src/db/bootstrap-owner.ts",
+    "auth:bootstrap-owner:staging": "tsx src/db/bootstrap-owner-staging.ts",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build && npm run db:check && npm audit && git diff --check"
   },
   "dependencies": {

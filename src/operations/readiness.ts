@@ -1,4 +1,5 @@
 import { getAuthRuntimeConfiguration } from "@/auth/config";
+import { getHostedStagingEmailPolicy } from "@/auth/staging-email-policy";
 import { checkAuthenticationProviderAvailability } from "@/auth/neon-provider";
 import {
   checkOperationalDatabaseReadiness,
@@ -88,9 +89,9 @@ function configuredEmailState(
       return mode === "custom_smtp" ? "READY" : "NOT_READY";
     }
     if (deployment === "staging") {
-      return mode === "mail_sink" || mode === "sandbox"
-        ? "READY"
-        : "NOT_READY";
+      if (mode !== "mail_sink" && mode !== "sandbox") return "NOT_READY";
+      getHostedStagingEmailPolicy(environment);
+      return "READY";
     }
     return mode === "mail_sink" || mode === "sandbox"
       ? "READY"

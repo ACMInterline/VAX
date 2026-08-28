@@ -18,6 +18,7 @@ const stagingEnvironmentKeys = new Set([
   "RATE_LIMIT_HASH_SECRET",
   "VAX_TRUSTED_PROXY_HOPS",
   "EMAIL_DELIVERY_MODE",
+  "STAGING_AUTH_EMAIL_ALLOWLIST",
 ]);
 
 const stagingTargetEnvironmentKeys = [
@@ -58,6 +59,7 @@ const stagingRuntimeEnvironmentKeys = [
   "RATE_LIMIT_HASH_SECRET",
   "VAX_TRUSTED_PROXY_HOPS",
   "EMAIL_DELIVERY_MODE",
+  "STAGING_AUTH_EMAIL_ALLOWLIST",
 ] as const;
 
 const stagingOperatorEnvironmentKeys = [

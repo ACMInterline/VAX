@@ -9,6 +9,7 @@ import { getAuthenticationProvider } from "@/auth/neon-provider";
 import { getAuthRuntimeConfiguration } from "@/auth/config";
 import { requestCustomerRegistration } from "@/auth/customer-registration";
 import { isAuthAttemptAllowed } from "@/auth/enforce-rate-limit";
+import { isAuthEmailAllowedForDeployment } from "@/auth/staging-email-policy";
 import {
   authLocale,
   emailVerificationRequestSchema,
@@ -142,6 +143,9 @@ export async function loginAction(
   if (!(await isAuthAttemptAllowed("LOGIN", result.data.email))) {
     return { status: "ERROR", message: copy[locale].unavailable };
   }
+  if (!isAuthEmailAllowedForDeployment(result.data.email)) {
+    return { status: "ERROR", message: copy[locale].invalidCredentials };
+  }
 
   const provider = getAuthenticationProvider();
   let signedInUser;
@@ -220,9 +224,16 @@ export async function signupAction(
     return { status: "ERROR", message: copy[locale].unavailable };
   }
 
-  const provider = getAuthenticationProvider();
   const requireVerifiedEmail =
     getAuthRuntimeConfiguration().requireVerifiedEmail;
+  if (!isAuthEmailAllowedForDeployment(result.data.email)) {
+    return withVerificationNextStep(
+      { status: "SUCCESS", message: copy[locale].signupRequested },
+      requireVerifiedEmail,
+    );
+  }
+
+  const provider = getAuthenticationProvider();
   await requestCustomerRegistration({
     provider,
     registration: {
@@ -250,7 +261,10 @@ export async function forgotPasswordAction(
     return invalidState(locale, result.error.issues);
   }
 
-  if (await isAuthAttemptAllowed("PASSWORD_RESET", result.data.email)) {
+  if (
+    isAuthEmailAllowedForDeployment(result.data.email) &&
+    (await isAuthAttemptAllowed("PASSWORD_RESET", result.data.email))
+  ) {
     try {
       await getAuthenticationProvider().requestPasswordReset(
         result.data.email,
@@ -313,7 +327,10 @@ export async function requestEmailVerificationAction(
     return invalidState(locale, result.error.issues);
   }
 
-  if (await isAuthAttemptAllowed("EMAIL_VERIFICATION", result.data.email)) {
+  if (
+    isAuthEmailAllowedForDeployment(result.data.email) &&
+    (await isAuthAttemptAllowed("EMAIL_VERIFICATION", result.data.email))
+  ) {
     try {
       await getAuthenticationProvider().requestEmailVerification(result.data.email);
       await safeAudit({
@@ -338,6 +355,9 @@ export async function verifyEmailAction(
   });
   if (!result.success) {
     return invalidState(locale, result.error.issues);
+  }
+  if (!isAuthEmailAllowedForDeployment(result.data.email)) {
+    return { status: "ERROR", message: copy[locale].verificationInvalid };
   }
   if (!(await isAuthAttemptAllowed("EMAIL_VERIFICATION", result.data.email))) {
     return { status: "ERROR", message: copy[locale].verificationInvalid };

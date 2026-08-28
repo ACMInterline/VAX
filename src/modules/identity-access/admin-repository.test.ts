@@ -59,6 +59,7 @@ describe("identity administration transaction serialization", () => {
       );
       expect(lockStatement).toMatch(/select pg_advisory_xact_lock/);
       expect(mutationStatement).toMatch(/with actor as materialized/);
+      expect(mutationStatement.match(/\$\d+::text/g)).toHaveLength(10);
       expect(mutationStatement).not.toContain("pg_advisory_xact_lock");
       expect(mutationStatement).not.toContain("lock_acquired");
     },
@@ -85,6 +86,7 @@ describe("identity administration transaction serialization", () => {
     );
     expect(lockStatement).toMatch(/select pg_advisory_xact_lock/);
     expect(mutationStatement).toContain("active_owner_count as materialized");
+    expect(mutationStatement).toMatch(/\$\d+::text <> 'ACTIVE'/);
     expect(mutationStatement).not.toContain("pg_advisory_xact_lock");
     expect(mutationStatement).not.toContain("lock_acquired");
   });
