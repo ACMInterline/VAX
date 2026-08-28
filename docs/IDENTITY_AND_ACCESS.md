@@ -59,34 +59,44 @@ The server-side variables are:
 | `MIGRATION_DATABASE_URL` | Migration/seed connection; must authenticate as `vax_migrator` | Yes |
 | `DATABASE_ADMIN_URL` | Explicit role-provisioning/recovery connection only | Yes |
 | `DATABASE_ADMIN_EXPECTED_ROLE` | Exact expected administrator role name | Treat as server configuration |
-| `DATABASE_MUTATION_ENVIRONMENT` | Explicit `development` acknowledgement for migration/bootstrap commands | No |
+| `DATABASE_MUTATION_ENVIRONMENT` | Explicit `development` or staging-command acknowledgement; never production | No |
 | `DATABASE_MUTATION_EXPECTED_PROJECT_ID` | Exact approved Neon project interlock | Treat as server configuration |
 | `DATABASE_MUTATION_EXPECTED_BRANCH_ID` | Exact approved Neon branch interlock | Treat as server configuration |
 | `DATABASE_MUTATION_EXPECTED_HOST` | Exact approved development database hostname interlock | Treat as server configuration |
 | `DATABASE_MUTATION_EXPECTED_DATABASE` | Exact approved development database-name interlock | Treat as server configuration |
 | `NEON_AUTH_BASE_URL` | Branch-specific managed Auth service endpoint | Treat as server configuration |
+| `NEON_AUTH_EXPECTED_BASE_URL` | Independently reviewed canonical staging Auth endpoint interlock | Treat as server configuration |
 | `NEON_AUTH_COOKIE_SECRET` | At least 32 characters; signs the local session-data cache cookie | Yes |
 | `AUTH_REQUIRE_VERIFIED_EMAIL` | Optional development override; production always requires verification and ignores `false` | No |
 | `AUTH_BOOTSTRAP_PROVIDER_USER_ID` | Temporary explicit provider subject for the owner command | Sensitive operator input; do not persist |
 | `PUBLIC_SITE_URL` | Approved origin used for password-reset callbacks | No |
+| `VAX_ENVIRONMENT` | Explicit development/staging/production application mode | No |
+| `STAGING_ALLOW_LOCALHOST` | Explicit non-production loopback staging rehearsal only | No |
+| `AUTH_TRUSTED_ORIGINS` | Comma-separated exact application origins; required outside development | No |
+| `RATE_LIMIT_BACKEND` | `database` is mandatory for staging/production-like use | No |
+| `RATE_LIMIT_HASH_SECRET` | HMAC secret for opaque shared-limit keys | Yes |
+| `VAX_TRUSTED_PROXY_HOPS` | Exact trusted forwarding proxy count; blank means trust none | No |
+| `EMAIL_DELIVERY_MODE` | Readiness state for blocked, sink/sandbox or approved custom SMTP | No |
 
 All remain empty in `.env.example`. Local values belong only in ignored
 `.env.local`; deployment platforms must inject environment-specific values.
 Importing application pages does not construct the provider, so credential-free
 CI builds remain supported.
 
-Production accepts only a non-loopback HTTPS Auth endpoint and an exact HTTPS
-public callback origin. Literal loopback aliases, unspecified-address endpoints
+Hosted staging and production accept only a non-loopback HTTPS Auth endpoint,
+exact HTTPS public callback origin and matching trusted-origin entry. Literal
+loopback aliases, unspecified-address endpoints, wildcards
 and embedded URL credentials are rejected; the Auth endpoint must not contain a
 query string or fragment, and the public origin must not contain a path, query
 string or fragment.
-Loopback HTTP remains available only outside production for local provider-flow
-testing.
+Loopback HTTP staging requires the explicit local-rehearsal flag and a
+non-production Node runtime. The flag cannot weaken a hosted/production build.
 
 `AUTH_REQUIRE_VERIFIED_EMAIL=true` enables the verification gate during local
 development. A development-only `false` value leaves that gate disabled for
-provider-flow testing. In production the application always resolves this
-policy to required; `AUTH_REQUIRE_VERIFIED_EMAIL=false` cannot weaken it.
+provider-flow testing. In staging and production the application always
+resolves this policy to required; `AUTH_REQUIRE_VERIFIED_EMAIL=false` cannot
+weaken it.
 
 ## Session security
 
@@ -559,13 +569,15 @@ authentication does not convert them into deployable internal pages.
 
 Login, signup, reset, verification, anonymous request intake, privileged
 identity mutation, Booking/scheduling mutation, Job mutation and finance
-mutation Server Actions use bounded in-memory limiting for loopback/local
-development. Auth/Booking/scheduling/Job/finance keys are
-one-way hashes of the submitted account/actor key and available forwarded
-address; public intake uses an address-scoped constant instead of contact
-details. Keys are not logged. Process-local memory is not reliable across
-production instances, so production remains blocked until a shared/provider-
-backed limiter is selected and tested.
+mutation Server Actions use bounded in-memory limiting only in ordinary local
+development. Staging and production-like configuration require the shared
+PostgreSQL backend. Keys are HMAC-SHA-256 values derived from server-selected
+source/account context; raw email, phone, IP, token and actor/contact values are
+not persisted or logged. The database uses one atomic row per scope/key/window,
+database time, bounded counters and expiry pruning. Two logical application
+instances were verified to share the same limit. Backend failure denies the
+sensitive action. Forwarded addresses are ignored unless an exact trusted proxy
+hop count is configured.
 
 ## Audit events
 
@@ -616,8 +628,10 @@ production append-only grants remain gated.
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
-belong only on Neon `development`; production accounts and sessions are outside
-this phase. Migration `0004_add_identity_access.sql` is additive, creates only
+belong only on Neon `development`; staging identities belong only on `staging`;
+production accounts and sessions are outside this phase. Staging has zero users
+and sessions at the Phase 3L checkpoint. Migration
+`0004_add_identity_access.sql` is additive, creates only
 application-owned public tables and never names `neon_auth`. Phase 3D adds only
 application-owned public-schema request/quote tables, and Phase 3E adds only
 application-owned acceptance/Booking/occupancy/audit tables on development.
@@ -629,9 +643,9 @@ Booking audit vocabulary. The Phase 3H additive migration creates only
 application-owned billing/configuration, Invoice, Payment, allocation,
 reversal and finance-audit structures. It neither queries nor mutates Auth-
 managed tables. Production remains unmigrated.
-Migration and owner-bootstrap commands additionally require an explicit
-development label plus the exact approved database hostname and database name
-before opening the database client.
+Migration and owner-bootstrap commands additionally require the exact approved
+nonproduction target/identity. Staging migration/rebuild commands accept only
+the ignored owner-only staging file and cannot target production.
 
 The development branch may retain its Neon Data API configuration, but Phase
 3K removes `authenticated`, `anonymous` and PUBLIC access to VAX tables and
@@ -660,11 +674,11 @@ Deployment remains blocked until at least:
   dependency tree are re-reviewed;
 - owner-approved production trusted origins and custom SMTP are configured,
   with mandatory verification exercised against real delivery;
-- a distributed or provider-backed shared rate limiter for authentication,
-  anonymous request intake, privileged identity mutations, Booking/scheduling
-  mutations, Job mutations and finance mutations is selected and tested;
-- sanitized authentication monitoring, alerting, session-revocation response,
-  backup and recovery procedures are defined and rehearsed;
+- the shared limiter is reverified on the exact hosted topology and any reverse-
+  proxy defense is configured without trusting arbitrary forwarding headers;
+- sanitized monitoring and external alert delivery, session-revocation
+  response, portable export and production recovery procedures are approved
+  and rehearsed;
 - reset links and verification OTPs receive live end-to-end validation without
   retaining tokens or provider details, and every synthetic development
   identity created for that validation is cleaned up afterward;

@@ -66,7 +66,9 @@ Provider-managed `auth`, `neon_auth`, Neon catalog schemas, roles and objects
 are outside the VAX ownership inventory. Their ownership and structure are not
 changed. The live verification queries catalogs for schemas, relations,
 indexes, constraints, functions, triggers, owners, grants, defaults, RLS and
-policies and fails if the 97-table VAX contract diverges.
+policies and fails if the expected inventory diverges. Phase 3L adds only the
+`operational_rate_limits` table, bringing the current contract to 98 public
+tables while preserving the 97-table Phase 3K baseline.
 
 ## Ownership and defaults
 
@@ -214,21 +216,24 @@ substitute for the guarded live development harness.
 
 ## Staging and production gate
 
-No staging branch is created in Phase 3K. Before a later staging database is
-usable, an authorized run must:
-
-1. create or designate an isolated staging branch and database;
-2. inject distinct administrator, migrator and runtime credentials;
-3. provision roles against exact staging project/branch/database expectations;
-4. apply reviewed migrations with `vax_migrator` only;
-5. run the same low-privilege and zero-data-loss verification;
-6. configure staging Neon Auth separately and keep browser Data API access off;
-7. rehearse backup, restore, credential rotation and migration rollback; and
-8. record explicit approval before any production promotion.
+Phase 3L created an isolated Neon `staging` branch from `development`, rotated
+its distinct runtime, migrator and administrator credentials, applied
+the additive migrations `0014` and `0015`, and
+re-ran the low-privilege, zero-data-loss, rebuild, rollback and branch-recovery
+checks. Staging Auth remains separate and browser Data API access remains
+prohibited. The exact evidence and incomplete hosted/email/session/export gates
+are recorded in `docs/STAGING_READINESS.md`.
 
 Production remains untouched and contains no VAX migration ledger. A later
 production migration, credential/configuration change, Data API change or
 deployment requires separate authorization.
+
+Migration `0015_phase_3l_readiness_attestation.sql` adds one
+`vax_migrator`-owned security-definer function with a fixed safe search path.
+Only `vax_runtime` can execute it, and it returns only the ordered ledger
+hashes. Runtime, browser/Auth roles and PUBLIC remain denied direct ledger
+access. The readiness query uses the function to compare the exact 16-entry
+history and exact operational table shape without broadening runtime authority.
 
 ## Recovery
 

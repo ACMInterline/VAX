@@ -550,32 +550,49 @@ enforcement remain a separate deployment gate.
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
   database.
+- Phase 3L staging targets the isolated Neon `staging` branch and `neondb`
+  through separate runtime/migrator credentials and branch-specific Auth.
 - `.env.local` is ignored, local-only, and must never be committed.
+- `.env.staging.local` is also ignored, requires owner-only permissions and is
+  accepted only by dedicated staging commands. A separate ignored owner-only
+  `.env.staging.target.local` contains independently reviewed database and Auth
+  target assertions; credentials cannot authorize their own target. Omitted
+  managed values are cleared rather than inherited from the ambient process.
+  Hosted staging must preserve
+  the same separation in a secret manager.
 - The Neon `production` branch is not an ordinary development target.
-- Future staging and production deployments must inject separate runtime and
-  migration credentials through their hosting environment instead of relying
+- Future hosted staging and production deployments must inject separate runtime
+  and migration credentials through their hosting environment instead of relying
   on a repository environment file. Authentication deployments must likewise
   inject branch-specific Auth endpoint and cookie-secret configuration.
 - Every migration must be reviewed before execution. Production migration
   requires separate explicit authorization.
-- Current mutation scripts additionally require an explicit development label
-  plus the exact approved project, branch, hostname, database and role; they
-  are not production migration tools.
+- Current mutation scripts additionally require an explicit approved
+  nonproduction label plus the exact project, branch, hostname, database and
+  role; development-only scripts reject staging, and none are production tools.
 
 ## Health flow
 
-GET /api/health follows this path:
+GET /api/health retains the compatibility connectivity path. Phase 3L adds:
 
-1. The route delegates to the health response module.
-2. The module calls the database connectivity probe.
-3. The probe verifies connectivity and that the live role is the expected
-   non-owner, non-DDL, non-RLS-bypass runtime identity.
-4. Success maps to HTTP 200, status ok, database connected.
-5. Any configuration or connectivity failure maps to HTTP 503, status
-   degraded, database unavailable.
+1. `/api/liveness`, which proves only that the application process responds;
+2. `/api/readiness`, which validates safe configuration, the exact runtime
+   identity, database connectivity, the exact migration ledger through 0015
+   and operational rate-limit schema, shared-limit privilege,
+   Auth availability and staging email state; and
+3. a 503 readiness result whenever any required category is not ready.
 
-Raw errors, stack traces, hostnames, usernames, and connection values do not
-cross the HTTP boundary. The response is marked no-store.
+Raw errors, stack traces, hostnames, usernames, schema names, provider details
+and connection values do not cross the HTTP boundary. Responses are no-store.
+The reporter boundary accepts only safe structured fields; a hosted monitoring
+provider is deliberately not selected in Phase 3L.
+
+Local staging separates the ignored credential/runtime file from an
+independently reviewed owner-only target manifest. Only the manifest loader can
+mint the opaque staging mutation authorization passed to migration, security,
+state, rebuild and rotation commands; runtime Next.js receives neither file's
+operator authority. The local launcher binds both its pooled runtime database
+and canonical Auth base URL to that manifest before spawn.
 
 ## Replaceable providers
 

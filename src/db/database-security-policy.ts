@@ -3,6 +3,25 @@ export const vaxDatabaseRoles = {
   runtime: "vax_runtime",
 } as const;
 
+export const vaxMigrationHashes = Object.freeze([
+  "4f1bd455521b0546fb2aac66675347c68ecd761e88db35932f9b063eea1612d8",
+  "82c358c2cd23ead4e2e88aff76419045e7fd5d31523e1bddd17b963c5237cc53",
+  "57a638063cf4bcc870af51c21e477a5d4c3ffe73172fe1604dec0e7908c8832b",
+  "9a7bdace95a77714d5a7050272b76ee2c60b1f10a1cf1b11cb34c04e04c45a84",
+  "d5a2aeaa86e719759d5c7c10f65758b348eebcefbd7486f2cdca7bc7a329795c",
+  "36a13247e4a5475db3917dcbcf6d7092a5373c98e935af07dc9fb4e894d6fb8c",
+  "4a1e002b5a1896629041328ca4c00e434232023afdefd11cf73b473e462cbf6e",
+  "c412a89227c7a54f0e7d812797a78d74ac7d65a370951d9f6a42fd77414fc6c2",
+  "1e2de59c546b9f52f430b71a04d0461528a05d8ffea2e33bd1332e668b4bc9f9",
+  "89164bdf1a97e44ae4e8b048e63ffa1a063eb5ad185dcb9a0878f401163c81b7",
+  "ea06e7cb322f7b67f65bc45b7d6da78d6d0e8551d84a25c182d40fbf05955324",
+  "a82f5a727d2f80d8b467b3ab1dbb05d7ddea8985fd80299b536e6e3564c145f8",
+  "4ce1cf05447457ed6ba647505c694ad16461869e15f00230cf884afa75c624fb",
+  "d6bf486d01734cc61a334171dc52be76209a39a1c0cdb4ee2c5dfcfa059cdbb6",
+  "d89eb981700427987f5e812ee7ff33ae7d30223776c0a617313520de5db9ccfc",
+  "502a03b6d2b20954f601feb244c90e75b40cf46f0033e8cfaf9f87786080c4b1",
+] as const);
+
 export type DatabaseSecurityCategory =
   | "reference_configuration"
   | "identity_rbac"
@@ -12,6 +31,7 @@ export type DatabaseSecurityCategory =
   | "job_execution"
   | "finance"
   | "communications_documents"
+  | "operational_security"
   | "audit_history"
   | "migration_system";
 
@@ -321,6 +341,11 @@ export const databaseSecurityTablePolicy = {
     runtime: readOnly,
     immutable: false,
   },
+  operational_rate_limits: {
+    category: "operational_security",
+    runtime: ["SELECT", "INSERT", "UPDATE", "DELETE"],
+    immutable: false,
+  },
   parking_policies: {
     category: "reference_configuration",
     runtime: readOnly,
@@ -602,4 +627,8 @@ export const vaxTriggerFunctionNames = Object.freeze([
   "vax_finance_validate_number_allocation",
   "vax_finance_validate_payment_audit",
   "vax_finance_validate_settlement",
+] as const);
+
+export const vaxOperationalFunctionNames = Object.freeze([
+  "vax_migration_history_hashes",
 ] as const);

@@ -7,6 +7,10 @@ import {
 } from "../lib/environment";
 import type { Database } from "./client";
 import { vaxDatabaseRoles } from "./database-security-policy";
+import {
+  isStagingTargetAuthorized,
+  type StagingTargetAuthorization,
+} from "./staging-environment";
 
 const ambiguousConnectionParameters = new Set([
   "database",
@@ -23,6 +27,22 @@ const ambiguousConnectionParameters = new Set([
   "username",
 ]);
 
+function matchesExpectedHost(
+  actualHost: string,
+  expectedHost: string,
+  credential: "runtime" | "migration" | "admin",
+): boolean {
+  if (actualHost === expectedHost) return true;
+  if (credential !== "runtime") return false;
+  const [expectedEndpoint, ...expectedSuffix] = expectedHost.split(".");
+  const [actualEndpoint, ...actualSuffix] = actualHost.split(".");
+  return (
+    expectedEndpoint?.startsWith("ep-") === true &&
+    actualEndpoint === `${expectedEndpoint}-pooler` &&
+    actualSuffix.join(".") === expectedSuffix.join(".")
+  );
+}
+
 export function loadMigrationEnvironment(
   projectDirectory: string = process.cwd(),
 ): void {
@@ -32,6 +52,17 @@ export function loadMigrationEnvironment(
 export function assertDevelopmentDatabaseMutationTarget(
   environment: Readonly<Record<string, string | undefined>> = process.env,
   credential: "runtime" | "migration" | "admin" = "runtime",
+): void {
+  if (environment.DATABASE_MUTATION_ENVIRONMENT !== "development") {
+    throw new Error("Database mutation target is not authorized.");
+  }
+  assertNonProductionDatabaseMutationTarget(environment, credential);
+}
+
+export function assertNonProductionDatabaseMutationTarget(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+  credential: "runtime" | "migration" | "admin" = "runtime",
+  stagingAuthorization?: StagingTargetAuthorization,
 ): void {
   const expectedHost =
     environment.DATABASE_MUTATION_EXPECTED_HOST?.trim().toLowerCase();
@@ -59,16 +90,90 @@ export function assertDevelopmentDatabaseMutationTarget(
 
   if (
     environment.NODE_ENV === "production" ||
-    environment.DATABASE_MUTATION_ENVIRONMENT !== "development" ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
+      environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
+      !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
     !expectedHost ||
     !expectedDatabase ||
     !actualHost ||
     !actualDatabase ||
     hasAmbiguousConnectionParameter ||
-    actualHost !== expectedHost ||
+    !matchesExpectedHost(actualHost, expectedHost, credential) ||
     actualDatabase !== expectedDatabase
   ) {
     throw new Error("Database mutation target is not authorized.");
+  }
+}
+
+export type DatabaseAdministratorIdentity = Readonly<{
+  project_id: string | null;
+  branch_id: string | null;
+  database_name: string;
+  role_name: string;
+}>;
+
+export type EmptyDatabaseMigratorSecurity = Readonly<{
+  rolcanlogin: boolean;
+  rolsuper: boolean;
+  rolinherit: boolean;
+  rolcreaterole: boolean;
+  rolcreatedb: boolean;
+  rolreplication: boolean;
+  rolbypassrls: boolean;
+  membership_count: number;
+  database_create: boolean;
+  public_schema_create: boolean;
+  owned_runtime_objects: number;
+}>;
+
+export function isEmptyDatabaseMigratorLeastPrivilege(
+  identity: EmptyDatabaseMigratorSecurity | undefined,
+): boolean {
+  return Boolean(
+    identity?.rolcanlogin &&
+      !identity.rolsuper &&
+      !identity.rolinherit &&
+      !identity.rolcreaterole &&
+      !identity.rolcreatedb &&
+      !identity.rolreplication &&
+      !identity.rolbypassrls &&
+      identity.membership_count === 0 &&
+      identity.database_create &&
+      identity.public_schema_create &&
+      identity.owned_runtime_objects === 0,
+  );
+}
+
+export function assertNonProductionDatabaseAdministratorIdentity(
+  identity: DatabaseAdministratorIdentity | undefined,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+  stagingAuthorization?: StagingTargetAuthorization,
+): void {
+  const expectedProjectId =
+    environment.DATABASE_MUTATION_EXPECTED_PROJECT_ID?.trim();
+  const expectedBranchId =
+    environment.DATABASE_MUTATION_EXPECTED_BRANCH_ID?.trim();
+  const expectedDatabase =
+    environment.DATABASE_MUTATION_EXPECTED_DATABASE?.trim();
+  const expectedRole = environment.DATABASE_ADMIN_EXPECTED_ROLE?.trim();
+
+  if (
+    environment.NODE_ENV === "production" ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
+      environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
+      !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
+    !expectedProjectId ||
+    !expectedBranchId ||
+    !expectedDatabase ||
+    !expectedRole ||
+    identity?.project_id !== expectedProjectId ||
+    identity.branch_id !== expectedBranchId ||
+    identity.database_name !== expectedDatabase ||
+    identity.role_name !== expectedRole
+  ) {
+    throw new Error("Database administrator identity is not authorized.");
   }
 }
 
@@ -76,6 +181,18 @@ export async function assertDevelopmentDatabaseIdentity(
   database: Database,
   credential: "runtime" | "migration",
   environment: Readonly<Record<string, string | undefined>> = process.env,
+): Promise<void> {
+  if (environment.DATABASE_MUTATION_ENVIRONMENT !== "development") {
+    throw new Error("Database mutation identity is not authorized.");
+  }
+  await assertNonProductionDatabaseIdentity(database, credential, environment);
+}
+
+export async function assertNonProductionDatabaseIdentity(
+  database: Database,
+  credential: "runtime" | "migration",
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+  stagingAuthorization?: StagingTargetAuthorization,
 ): Promise<void> {
   const expectedProjectId =
     environment.DATABASE_MUTATION_EXPECTED_PROJECT_ID?.trim();
@@ -128,7 +245,10 @@ export async function assertDevelopmentDatabaseIdentity(
   const identity = result.rows[0];
   if (
     environment.NODE_ENV === "production" ||
-    environment.DATABASE_MUTATION_ENVIRONMENT !== "development" ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
+      environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
+      !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
     !expectedProjectId ||
     !expectedBranchId ||
     !expectedDatabase ||

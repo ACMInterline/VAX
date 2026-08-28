@@ -3,12 +3,19 @@ import {
   getConfiguredPublicUrl,
   getSitemapBaseUrl,
 } from "@/lib/public-metadata";
+import { getVaxEnvironment } from "@/operations/environment";
 
 export default function robots(): MetadataRoute.Robots {
   const configuredUrl = getConfiguredPublicUrl();
+  let indexable = false;
+  try {
+    indexable = Boolean(configuredUrl) && getVaxEnvironment() !== "staging";
+  } catch {
+    indexable = false;
+  }
 
   return {
-    rules: configuredUrl
+    rules: indexable
       ? {
           userAgent: "*",
           allow: "/",
@@ -28,7 +35,7 @@ export default function robots(): MetadataRoute.Robots {
           ],
         }
       : { userAgent: "*", disallow: "/" },
-    sitemap: configuredUrl
+    sitemap: indexable && configuredUrl
       ? new URL("/sitemap.xml", getSitemapBaseUrl()).toString()
       : undefined,
   };

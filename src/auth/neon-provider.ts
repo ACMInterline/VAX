@@ -230,6 +230,17 @@ export function getAuthenticationProvider(): AuthenticationProvider {
   return provider;
 }
 
+export async function checkAuthenticationProviderAvailability(): Promise<boolean> {
+  try {
+    const result = await getNeonAuthClient().getSession({
+      query: { disableCookieCache: "true" },
+    });
+    return !result.error;
+  } catch {
+    return false;
+  }
+}
+
 export function getPrivilegedAuthenticationProvider(): PrivilegedAuthenticationProvider {
   privilegedProvider ??= new NeonPrivilegedAuthenticationProvider();
   return privilegedProvider;

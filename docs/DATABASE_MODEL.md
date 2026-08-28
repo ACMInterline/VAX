@@ -684,3 +684,19 @@ request children retain runtime DELETE; audit/history and immutable evidence
 do not. All VAX tables have role/command-scoped RLS, while customer/team row
 isolation remains explicit server authorization until a safe transaction-local
 actor adapter exists. See `docs/DATABASE_SECURITY.md`.
+
+Phase 3L adds the 98th VAX table through
+`0014_phase_3l_shared_rate_limiting.sql`. `operational_rate_limits` contains
+only an allowlisted scope, a 64-character opaque HMAC key, bounded attempt
+count and window/expiry timestamps. Its composite scope/key primary key avoids
+a global counter row; the expiry index supports bounded pruning. The runtime
+has exact SELECT/INSERT/UPDATE/DELETE ACLs, while RLS permits deletion only for
+expired windows. No email, phone, IP, provider subject, token or request body is
+stored. The table is operational security state, not customer/business history,
+and may be discarded when an isolated staging branch is rebuilt.
+
+`0015_phase_3l_readiness_attestation.sql` adds no table or business data. It
+adds one migrator-owned security-definer function that returns only the ordered
+Drizzle migration hashes to `vax_runtime`. The runtime remains denied direct
+ledger access; operational readiness compares the exact 16-entry ledger and
+the exact rate-limit schema/constraint/index/policy contract.

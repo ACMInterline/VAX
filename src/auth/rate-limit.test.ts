@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   InMemoryAuthRateLimiter,
   ProductionRateLimiterRequired,
+  SharedAuthRateLimiter,
   createRuntimeAuthRateLimiter,
+  type SharedRateLimitStore,
 } from "./rate-limit";
 
 describe("authentication rate-limit boundary", () => {
@@ -32,6 +34,54 @@ describe("authentication rate-limit boundary", () => {
     await expect(
       limiter.consume("PUBLIC_REQUEST", "anonymous-source"),
     ).resolves.toMatchObject({ allowed: false });
+  });
+
+  it("does not permit memory-only limiting in staging or production", () => {
+    expect(
+      createRuntimeAuthRateLimiter({
+        VAX_ENVIRONMENT: "staging",
+        RATE_LIMIT_BACKEND: "memory",
+      }),
+    ).toBeInstanceOf(ProductionRateLimiterRequired);
+    expect(
+      createRuntimeAuthRateLimiter({
+        NODE_ENV: "production",
+        RATE_LIMIT_BACKEND: "memory",
+      }),
+    ).toBeInstanceOf(ProductionRateLimiterRequired);
+  });
+
+  it("shares limits across independent application instances", async () => {
+    let attemptCount = 0;
+    const store: SharedRateLimitStore = {
+      consumeWindow: async () => ({
+        attemptCount: ++attemptCount,
+        resetsAt: new Date(Date.now() + 60_000),
+      }),
+    };
+    const firstInstance = new SharedAuthRateLimiter(store);
+    const secondInstance = new SharedAuthRateLimiter(store);
+    const key = "a".repeat(64);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const limiter = attempt % 2 === 0 ? firstInstance : secondInstance;
+      await expect(limiter.consume("LOGIN", key)).resolves.toEqual({
+        allowed: true,
+      });
+    }
+    await expect(secondInstance.consume("LOGIN", key)).resolves.toMatchObject({
+      allowed: false,
+    });
+  });
+
+  it("selects a configured shared adapter for staging", () => {
+    const shared = new ProductionRateLimiterRequired();
+    expect(
+      createRuntimeAuthRateLimiter(
+        { VAX_ENVIRONMENT: "staging", RATE_LIMIT_BACKEND: "database" },
+        shared,
+      ),
+    ).toBe(shared);
   });
 
   it("bounds repeated local public requests per opaque source key", async () => {

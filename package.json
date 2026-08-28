@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:staging": "tsx src/operations/run-staging-development.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -13,8 +14,13 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate:staging": "tsx src/db/migrate-staging.ts",
     "db:provision-roles": "tsx src/db/provision-database-roles.ts",
+    "db:rehearse-staging-rebuild": "tsx src/db/rehearse-staging-rebuild.ts",
+    "db:rotate-staging-credentials": "tsx src/db/rotate-staging-database-credentials.ts",
     "db:verify-security": "tsx src/db/verify-database-security.ts",
+    "db:verify-security:staging": "tsx src/db/verify-staging-database-security.ts",
+    "db:verify-state:staging": "tsx src/db/verify-staging-state.ts",
     "auth:bootstrap-owner": "tsx src/db/bootstrap-owner.ts",
     "validate": "npm run lint && npm run typecheck && npm run test && npm run build && npm run db:check && npm audit && git diff --check"
   },

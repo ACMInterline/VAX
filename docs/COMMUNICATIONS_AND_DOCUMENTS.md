@@ -253,6 +253,14 @@ Neon production migration and deployment are separately unauthorized.
 
 ## Explicit deferrals and production gates
 
+Phase 3L does not reinterpret `EMAIL_FUTURE` as delivery. The staging readiness
+contract is explicitly `EMAIL_DELIVERY_MODE=blocked` until an approved
+test-recipient-only mail sink or sandbox exists. No external message, real
+recipient, provider credential, DNS claim or delivery result was created. A
+future adapter must preserve the existing immutable intent/document provenance,
+record failure/retry outcomes accurately, bound resend attempts and keep the
+business transaction independent from provider availability.
+
 Phase 3I does not include:
 
 - external email, SMS, postal or messaging-provider integration;

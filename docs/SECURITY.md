@@ -1,11 +1,13 @@
 # Security
 
-## Security posture through Phase 3K
+## Security posture through Phase 3L
 
-The repository now has a development authentication, session and RBAC boundary,
-but it does not claim production security readiness. Production-grade shared
-rate limiting, email delivery, trusted origins, monitoring, recovery and
-production data governance remain gated. The finance foundation adds no claim
+The repository now has development and staging database/authentication
+boundaries plus a shared PostgreSQL limiter, safe readiness/logging and a
+rehearsed recovery branch. It does not claim production security readiness.
+Hosted HTTPS staging, external email, authenticated role/IDOR/session flows,
+provider acceptance, monitoring delivery, portable export and production data
+governance remain gated. The finance foundation adds no claim
 of legal, fiscal, tax, accounting or payment-provider security readiness. The
 communications foundation publishes locally only and makes no external-
 delivery, customer-read or messaging-provider claim.
@@ -39,16 +41,24 @@ framework advisories must be assessed before any later release.
 - Use separate credentials and databases per environment.
 - Local development must use the VAX Neon `development` branch, never the
   production branch.
-- Database mutation commands require an explicit `development` acknowledgement
-  plus the exact expected project, branch, hostname and database name for the
-  selected runtime or migrator credential; those non-secret controls must
-  never contain credentials.
+- Database mutation commands require an explicit `development` or dedicated
+  `staging` acknowledgement plus the exact expected project, branch, hostname,
+  database and live role. Development-only commands still reject staging.
+- Ignored `.env.staging.local` is allowed only for the local staging rehearsal,
+  must be mode `0600`, and accepts a fixed allowlist of variable names.
+- Ignored `.env.staging.target.local` is a separate owner-only trust manifest
+  reviewed against the provider control plane. Staging commands cannot derive,
+  generate or override it from their credential file or command arguments.
 - Future staging and production environments must inject DATABASE_URL through
   their deployment platform rather than use a committed environment file.
 - GitHub Actions must validate without a live database credential and must not
   apply migrations.
 - Rotate credentials if exposure is suspected; do not merely delete a committed
   secret.
+- PostgreSQL password replacement does not revoke an already-authenticated Neon
+  pooler frontend. The staging rotation command fails closed when a held session
+  survives; production requires a provider-supported endpoint restart/session-
+  invalidation procedure rather than treating password change as revocation.
 
 Client components and browser bundles must never import server environment or
 database modules.
@@ -138,19 +148,36 @@ transactional row locks with UPDATE on one primary-key column only and
 restrictive RLS checks that deny actual updates on lock-only tables. See
 `docs/DATABASE_SECURITY.md`.
 
-## Health endpoint
+Migration `0014_phase_3l_shared_rate_limiting.sql` adds only the minimal shared
+rate-limit table, expiry index, checks, exact runtime DML and command-scoped RLS.
+Domain-separated source, account and source-account HMAC buckets bound both
+source rotation and distributed attempts against one account; anonymous public
+intake omits the account-only dimension to avoid a global fixed-key bucket. Raw
+identifiers are not stored. The runtime can delete only expired rows.
+Migration `0015_phase_3l_readiness_attestation.sql` grants runtime access only
+to an exact ordered hash attestation, not the Drizzle ledger, so readiness can
+prove the 16-entry migration and operational schema contract. Migrations
+0000–0013 remain checksum-guarded and production remains unmigrated.
 
-GET /api/health exposes only bounded status values:
+## Health endpoints
 
-- status: ok or degraded
-- database: connected or unavailable
+GET /api/health retains its bounded compatibility status. Phase 3L adds:
 
-It returns HTTP 503 when configuration or connectivity fails and sets
-Cache-Control to no-store. It does not return stack traces, hostnames,
-usernames, passwords, connection values, driver errors, or raw exceptions.
+- `/api/liveness`: process-only `ok`; and
+- `/api/readiness`: safe database, Auth, migration, rate-limit and email
+  categories.
 
-Future public deployment work must decide whether this endpoint remains public,
-is split into liveness and readiness endpoints, or receives network controls.
+Readiness returns HTTP 503 unless every required category is ready and sets
+no-store. None of these endpoints returns stack traces, hostnames, usernames,
+passwords, connection values, schema details, driver errors or raw exceptions.
+In-flight and five-second snapshot coalescing bounds dependency amplification
+per process without serving an expired ready snapshot after a failed refresh.
+Each response has a three-second timeout. A still-running underlying probe
+retains the single dependency-work latch, and later polls receive a cached safe
+not-ready snapshot without starting more work. Auth readiness disables the SDK
+session-cookie cache and therefore requires a live provider response.
+Readiness still requires ingress restriction and bounded polling; network
+controls and external alert delivery remain hosting decisions.
 
 ## Trust boundaries
 
@@ -284,8 +311,9 @@ phase authorization. No map credential or live provider is introduced.
   are neither logged nor stored by VAX.
 - Production email verification is mandatory in application policy; a false
   environment override is honored only outside production.
-- Local auth attempt limiting is process-local. Production auth fails closed
-  until a distributed/provider-backed limiter is selected.
+- Development may use bounded process-local auth limiting. Staging and
+  production-like configuration require the shared PostgreSQL limiter and fail
+  closed if that backend or its key secret is unavailable.
 - Auth and `/app` routes are private/no-store and noindex, with deny framing,
   MIME-sniffing, referrer and browser-permission headers.
 - The enabled development Data API is not an application/browser integration.
@@ -325,8 +353,9 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   focus return and per-response error-alert focus. Next.js Server Action origin
   checks and `SameSite=Strict` remain the CSRF boundary for this email/password
   flow.
-- Development uses bounded in-process privileged-mutation limiting. Production
-  remains fail-closed until a shared limiter is configured.
+- Development may use bounded in-process privileged-mutation limiting. Staging
+  and production-like configuration use the shared PostgreSQL limiter and fail
+  closed on backend failure.
 - The focused review found no browser database access, provider-table write,
   role injection, client-only enforcement, raw provider error or sensitive
   audit payload. Phase 3K implements the development runtime/Data API grant and
@@ -704,10 +733,11 @@ Detailed roles, sessions, audit events and remaining production blockers are in
 - Communication audit metadata is allowlisted and excludes bodies, contact
   values, addresses, notes, external payment references, provider responses,
   credentials and tokens.
-- The bounded communication mutation limiter is defense in depth only.
-  Production still requires a shared limiter, monitoring/recovery, promotion
-  of the reviewed database boundary and retention/contact-authority/consent
-  policy.
+- The communication mutation limiter now uses the shared PostgreSQL backend in
+  staging/production-like configuration and fails closed on backend errors.
+  Production still requires hosted-topology verification, monitoring/recovery,
+  promotion of the reviewed database boundary and retention/contact-authority/
+  consent policy.
 - External email/SMS providers, callbacks, retries, suppression/bounce
   handling, manual free-form messages, customer-open tracking, binary PDF/
   object storage, production migration and deployment are absent. See

@@ -88,6 +88,56 @@ describe("getDatabaseUrl", () => {
     expect(getDatabaseUrl({ DATABASE_URL: databaseUrl })).toBe(databaseUrl);
   });
 
+  it("rejects a disabled TLS mode in every environment", () => {
+    expect(() =>
+      getDatabaseUrl({
+        DATABASE_URL:
+          "postgresql://vax_runtime:secret@localhost/database?sslmode=disable",
+      }),
+    ).toThrow("DATABASE_URL does not require certificate verification.");
+  });
+
+  it.each([
+    {
+      label: "staging",
+      environment: { VAX_ENVIRONMENT: "staging", NODE_ENV: "development" },
+    },
+    {
+      label: "production deployment",
+      environment: { VAX_ENVIRONMENT: "production", NODE_ENV: "production" },
+    },
+    {
+      label: "production process",
+      environment: { NODE_ENV: "production" },
+    },
+  ])("requires verify-full in $label", ({ environment }) => {
+    const weakUrl =
+      "postgresql://vax_runtime:secret@database.invalid/database?sslmode=require";
+    const strictUrl = weakUrl.replace("sslmode=require", "sslmode=verify-full");
+
+    expect(() =>
+      getDatabaseUrl({ ...environment, DATABASE_URL: weakUrl }),
+    ).toThrow("DATABASE_URL does not require certificate verification.");
+    expect(() =>
+      getDatabaseUrl({
+        ...environment,
+        DATABASE_URL: weakUrl.replace("?sslmode=require", ""),
+      }),
+    ).toThrow("DATABASE_URL does not require certificate verification.");
+    expect(getDatabaseUrl({ ...environment, DATABASE_URL: strictUrl })).toBe(
+      strictUrl,
+    );
+  });
+
+  it("rejects ambiguous duplicate TLS modes", () => {
+    expect(() =>
+      getDatabaseUrl({
+        DATABASE_URL:
+          "postgresql://vax_runtime:secret@localhost/database?sslmode=verify-full&sslmode=disable",
+      }),
+    ).toThrow("DATABASE_URL does not require certificate verification.");
+  });
+
   it("requires an explicitly named administrative identity", () => {
     const adminUrl =
       "postgresql://development_admin:secret@localhost/database";

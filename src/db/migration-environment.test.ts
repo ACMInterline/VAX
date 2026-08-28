@@ -6,8 +6,16 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Database } from "./client";
 import {
+  loadStagingTargetAuthorization,
+  type StagingTargetAuthorization,
+} from "./staging-environment";
+import {
   assertDevelopmentDatabaseIdentity,
   assertDevelopmentDatabaseMutationTarget,
+  assertNonProductionDatabaseAdministratorIdentity,
+  assertNonProductionDatabaseIdentity,
+  assertNonProductionDatabaseMutationTarget,
+  isEmptyDatabaseMigratorLeastPrivilege,
 } from "./migration-environment";
 
 const execFileAsync = promisify(execFile);
@@ -16,6 +24,38 @@ const localDatabaseUrl =
   "postgresql://vax_runtime:secret@localhost/vax_local_test";
 const hostedDatabaseUrl =
   "postgresql://vax_runtime:secret@localhost/vax_hosted_test";
+const stagingTarget = {
+  DATABASE_ADMIN_EXPECTED_ROLE: "staging_admin",
+  DATABASE_MUTATION_ENVIRONMENT: "staging",
+  DATABASE_MUTATION_EXPECTED_PROJECT_ID: "project-staging",
+  DATABASE_MUTATION_EXPECTED_BRANCH_ID: "branch-staging",
+  DATABASE_MUTATION_EXPECTED_HOST: "ep-staging.region.neon.tech",
+  DATABASE_MUTATION_EXPECTED_DATABASE: "neondb",
+  NEON_AUTH_EXPECTED_BASE_URL: "https://auth.staging.example.invalid",
+} as const;
+
+async function createStagingAuthorization(
+  overrides: Readonly<Record<string, string>> = {},
+): Promise<StagingTargetAuthorization> {
+  const directory = await mkdtemp(path.join(tmpdir(), "vax-staging-target-"));
+  temporaryDirectories.push(directory);
+  const values = { ...stagingTarget, ...overrides };
+  await writeFile(
+    path.join(directory, ".env.staging.target.local"),
+    [
+      `DATABASE_ADMIN_EXPECTED_ROLE=${values.DATABASE_ADMIN_EXPECTED_ROLE}`,
+      `DATABASE_MUTATION_ENVIRONMENT=${values.DATABASE_MUTATION_ENVIRONMENT}`,
+      `DATABASE_MUTATION_EXPECTED_PROJECT_ID=${values.DATABASE_MUTATION_EXPECTED_PROJECT_ID}`,
+      `DATABASE_MUTATION_EXPECTED_BRANCH_ID=${values.DATABASE_MUTATION_EXPECTED_BRANCH_ID}`,
+      `DATABASE_MUTATION_EXPECTED_HOST=${values.DATABASE_MUTATION_EXPECTED_HOST}`,
+      `DATABASE_MUTATION_EXPECTED_DATABASE=${values.DATABASE_MUTATION_EXPECTED_DATABASE}`,
+      `NEON_AUTH_EXPECTED_BASE_URL=${values.NEON_AUTH_EXPECTED_BASE_URL}`,
+      "",
+    ].join("\n"),
+    { mode: 0o600 },
+  );
+  return loadStagingTargetAuthorization(directory);
+}
 
 async function createProjectDirectory(): Promise<string> {
   const directory = await mkdtemp(path.join(tmpdir(), "vax-migration-env-"));
@@ -67,6 +107,44 @@ afterEach(async () => {
       .splice(0)
       .map((directory) => rm(directory, { force: true, recursive: true })),
   );
+  for (const key of Object.keys(stagingTarget)) delete process.env[key];
+});
+
+describe("empty rebuild database migrator privilege boundary", () => {
+  const exact = {
+    rolcanlogin: true,
+    rolsuper: false,
+    rolinherit: false,
+    rolcreaterole: false,
+    rolcreatedb: false,
+    rolreplication: false,
+    rolbypassrls: false,
+    membership_count: 0,
+    database_create: true,
+    public_schema_create: true,
+    owned_runtime_objects: 0,
+  } as const;
+
+  it("accepts only the exact pre-migration least-privilege shape", () => {
+    expect(isEmptyDatabaseMigratorLeastPrivilege(exact)).toBe(true);
+    for (const drift of [
+      { rolcanlogin: false },
+      { rolsuper: true },
+      { rolinherit: true },
+      { rolcreaterole: true },
+      { rolcreatedb: true },
+      { rolreplication: true },
+      { rolbypassrls: true },
+      { membership_count: 1 },
+      { database_create: false },
+      { public_schema_create: false },
+      { owned_runtime_objects: 1 },
+    ]) {
+      expect(
+        isEmptyDatabaseMigratorLeastPrivilege({ ...exact, ...drift }),
+      ).toBe(false);
+    }
+  });
 });
 
 describe("loadMigrationEnvironment", () => {
@@ -120,6 +198,72 @@ describe("assertDevelopmentDatabaseMutationTarget", () => {
       assertDevelopmentDatabaseMutationTarget(
         { ...environment, MIGRATION_DATABASE_URL: undefined },
         "migration",
+      ),
+    ).toThrow("Database mutation target is not authorized.");
+  });
+
+  it("accepts staging only through the secured target authorization", async () => {
+    const staging = {
+      ...stagingTarget,
+      NODE_ENV: "development",
+      DATABASE_URL:
+        "postgresql://vax_runtime:synthetic@ep-staging-pooler.region.neon.tech/neondb?sslmode=verify-full",
+    };
+    const authorization = await createStagingAuthorization();
+
+    expect(() =>
+      assertNonProductionDatabaseMutationTarget(
+        staging,
+        "runtime",
+        authorization,
+      ),
+    ).not.toThrow();
+    expect(() => assertNonProductionDatabaseMutationTarget(staging)).toThrow(
+      "Database mutation target is not authorized.",
+    );
+    expect(() => assertDevelopmentDatabaseMutationTarget(staging)).toThrow(
+      "Database mutation target is not authorized.",
+    );
+  });
+
+  it("accepts only the exact Neon pooler sibling for runtime traffic", async () => {
+    const environment = {
+      ...stagingTarget,
+      NODE_ENV: "development",
+      DATABASE_URL:
+        "postgresql://vax_runtime:synthetic@ep-staging-pooler.region.neon.tech/neondb?sslmode=verify-full",
+    };
+    const authorization = await createStagingAuthorization();
+
+    expect(() =>
+      assertNonProductionDatabaseMutationTarget(
+        environment,
+        "runtime",
+        authorization,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertNonProductionDatabaseMutationTarget(
+        {
+          ...environment,
+          DATABASE_URL:
+            "postgresql://vax_runtime:synthetic@ep-other-pooler.region.neon.tech/neondb?sslmode=verify-full",
+        },
+        "runtime",
+        authorization,
+      ),
+    ).toThrow("Database mutation target is not authorized.");
+    expect(() =>
+      assertNonProductionDatabaseMutationTarget(
+        {
+          ...environment,
+          MIGRATION_DATABASE_URL: environment.DATABASE_URL.replace(
+            "vax_runtime",
+            "vax_migrator",
+          ),
+        },
+        "migration",
+        authorization,
       ),
     ).toThrow("Database mutation target is not authorized.");
   });
@@ -260,6 +404,43 @@ describe("assertDevelopmentDatabaseIdentity", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("accepts staging identity only through secured target authorization", async () => {
+    const staging = {
+      ...environment,
+      DATABASE_ADMIN_EXPECTED_ROLE: "staging_admin",
+      DATABASE_MUTATION_ENVIRONMENT: "staging",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+      NEON_AUTH_EXPECTED_BASE_URL: "https://auth.staging.example.invalid",
+    };
+    const authorization = await createStagingAuthorization({
+      DATABASE_MUTATION_EXPECTED_PROJECT_ID: "project-development",
+      DATABASE_MUTATION_EXPECTED_BRANCH_ID: "branch-development",
+      DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+    });
+    await expect(
+      assertNonProductionDatabaseIdentity(
+        database("vax_runtime"),
+        "runtime",
+        staging,
+        authorization,
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      assertNonProductionDatabaseIdentity(
+        database("vax_runtime"),
+        "runtime",
+        staging,
+      ),
+    ).rejects.toThrow("Database mutation identity is not authorized.");
+    await expect(
+      assertDevelopmentDatabaseIdentity(
+        database("vax_runtime"),
+        "runtime",
+        staging,
+      ),
+    ).rejects.toThrow("Database mutation identity is not authorized.");
+  });
+
   it("rejects a different branch or owner-class identity", async () => {
     await expect(
       assertDevelopmentDatabaseIdentity(
@@ -297,5 +478,62 @@ describe("assertDevelopmentDatabaseIdentity", () => {
         environment,
       ),
     ).rejects.toThrow("Database mutation identity is not authorized.");
+  });
+});
+
+describe("assertNonProductionDatabaseAdministratorIdentity", () => {
+  const environment = {
+    ...stagingTarget,
+    NODE_ENV: "development",
+  };
+  const identity = {
+    project_id: "project-staging",
+    branch_id: "branch-staging",
+    database_name: "neondb",
+    role_name: "staging_admin",
+  };
+
+  it("accepts only the exact secured non-production administrator identity", async () => {
+    const authorization = await createStagingAuthorization();
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(
+        identity,
+        environment,
+        authorization,
+      ),
+    ).not.toThrow();
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(identity, environment),
+    ).toThrow("Database administrator identity is not authorized.");
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(
+        { ...identity, branch_id: "branch-production" },
+        environment,
+        authorization,
+      ),
+    ).toThrow("Database administrator identity is not authorized.");
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(
+        { ...identity, role_name: "another_admin" },
+        environment,
+        authorization,
+      ),
+    ).toThrow("Database administrator identity is not authorized.");
+  });
+
+  it("rejects production-mode and incomplete expectations", async () => {
+    const authorization = await createStagingAuthorization();
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(identity, {
+        ...environment,
+        NODE_ENV: "production",
+      }, authorization),
+    ).toThrow("Database administrator identity is not authorized.");
+    expect(() =>
+      assertNonProductionDatabaseAdministratorIdentity(identity, {
+        ...environment,
+        DATABASE_MUTATION_EXPECTED_BRANCH_ID: undefined,
+      }, authorization),
+    ).toThrow("Database administrator identity is not authorized.");
   });
 });

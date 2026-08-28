@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { getAuthRuntimeConfiguration } from "./config";
 
+const productionEnvironment = {
+  NODE_ENV: "production",
+  PUBLIC_SITE_URL: "https://app.example.invalid",
+  AUTH_TRUSTED_ORIGINS: "https://app.example.invalid",
+} as const;
+
 describe("authentication runtime configuration", () => {
   it("accepts a secure provider URL and sufficiently long cookie secret", () => {
     const result = getAuthRuntimeConfiguration({
@@ -15,9 +21,9 @@ describe("authentication runtime configuration", () => {
   it("requires email verification by default in production", () => {
     expect(
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: "https://auth.example.invalid",
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NODE_ENV: "production",
       }).requireVerifiedEmail,
     ).toBe(true);
   });
@@ -25,10 +31,10 @@ describe("authentication runtime configuration", () => {
   it("keeps email verification mandatory when production explicitly supplies false", () => {
     expect(
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: "https://auth.example.invalid",
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
         AUTH_REQUIRE_VERIFIED_EMAIL: "false",
-        NODE_ENV: "production",
       }).requireVerifiedEmail,
     ).toBe(true);
   });
@@ -55,9 +61,9 @@ describe("authentication runtime configuration", () => {
 
     expect(() =>
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: "http://127.0.0.1:3001/auth",
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NODE_ENV: "production",
       }),
     ).toThrowError("Authentication service is not configured.");
   });
@@ -72,17 +78,17 @@ describe("authentication runtime configuration", () => {
   ])("rejects unsafe provider URL components without echoing them", (supplied, sentinel) => {
     expect(() =>
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: supplied,
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NODE_ENV: "production",
       }),
     ).toThrowError("Authentication service is not configured.");
 
     try {
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: supplied,
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NODE_ENV: "production",
       });
     } catch (error) {
       expect(String(error)).not.toContain(supplied);
@@ -103,9 +109,9 @@ describe("authentication runtime configuration", () => {
   ])("rejects a production loopback provider endpoint", (baseUrl) => {
     expect(() =>
       getAuthRuntimeConfiguration({
+        ...productionEnvironment,
         NEON_AUTH_BASE_URL: baseUrl,
         NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
-        NODE_ENV: "production",
       }),
     ).toThrowError("Authentication service is not configured.");
   });
@@ -126,5 +132,46 @@ describe("authentication runtime configuration", () => {
     } catch (error) {
       expect(String(error)).not.toContain(supplied);
     }
+  });
+
+  it("requires exact trusted origins for staging and production", () => {
+    const base = {
+      VAX_ENVIRONMENT: "staging",
+      PUBLIC_SITE_URL: "https://staging.example.invalid",
+      NEON_AUTH_BASE_URL: "https://auth.example.invalid",
+      NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+    };
+
+    expect(() => getAuthRuntimeConfiguration(base)).toThrow(
+      "Authentication trusted origins are not configured.",
+    );
+    expect(() =>
+      getAuthRuntimeConfiguration({
+        ...base,
+        AUTH_TRUSTED_ORIGINS: "https://*.example.invalid",
+      }),
+    ).toThrow("Authentication trusted origins are not configured.");
+    expect(
+      getAuthRuntimeConfiguration({
+        ...base,
+        AUTH_TRUSTED_ORIGINS: "https://staging.example.invalid",
+      }).trustedOrigins,
+    ).toEqual(["https://staging.example.invalid"]);
+  });
+
+  it("requires verification and exact loopback origin in a local staging rehearsal", () => {
+    const configuration = getAuthRuntimeConfiguration({
+      NODE_ENV: "development",
+      VAX_ENVIRONMENT: "staging",
+      STAGING_ALLOW_LOCALHOST: "true",
+      PUBLIC_SITE_URL: "http://127.0.0.1:3000",
+      AUTH_TRUSTED_ORIGINS: "http://127.0.0.1:3000",
+      NEON_AUTH_BASE_URL: "https://auth.example.invalid",
+      NEON_AUTH_COOKIE_SECRET: "x".repeat(32),
+      AUTH_REQUIRE_VERIFIED_EMAIL: "false",
+    });
+
+    expect(configuration.requireVerifiedEmail).toBe(true);
+    expect(configuration.trustedOrigins).toEqual(["http://127.0.0.1:3000"]);
   });
 });
