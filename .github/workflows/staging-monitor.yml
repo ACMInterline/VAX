@@ -39,6 +39,7 @@ jobs:
         shell: bash
         run: |
           node <<'NODE'
+          const { appendFileSync } = require("node:fs");
           const configured = process.env.STAGING_ORIGIN?.trim();
           if (!configured) process.exit(1);
           let target;
@@ -59,6 +60,12 @@ jobs:
           ) {
             process.exit(1);
           }
+          if (!process.env.GITHUB_OUTPUT) process.exit(1);
+          appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `origin=${target.origin}\n`,
+            "utf8",
+          );
           NODE
 
       - name: Probe liveness and readiness
@@ -66,12 +73,14 @@ jobs:
         if: steps.target.outcome == 'success'
         continue-on-error: true
         shell: bash
+        env:
+          PROBE_ORIGIN: ${{ steps.target.outputs.origin }}
         run: |
           if [ "$EXERCISE" = "forced_alert" ]; then
             exit 23
           fi
-          liveness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$STAGING_ORIGIN/api/liveness")"
-          readiness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$STAGING_ORIGIN/api/readiness")"
+          liveness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$PROBE_ORIGIN/api/liveness")"
+          readiness_status="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out '%{http_code}' "$PROBE_ORIGIN/api/readiness")"
           test "$liveness_status" = "200"
           test "$readiness_status" = "200"
 
