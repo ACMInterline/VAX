@@ -207,6 +207,17 @@ export function createBusinessAuthorityService(
       ) {
         throw new BusinessAuthorityServiceError("OPERATION_CONFLICT");
       }
+      if (
+        parsed.data.action === "APPROVE" &&
+        state.records.some(
+          (candidate) =>
+            candidate.authorityKey === record.authorityKey &&
+            candidate.environmentScope === record.environmentScope &&
+            candidate.version > record.version,
+        )
+      ) {
+        throw new BusinessAuthorityServiceError("OPERATION_CONFLICT");
+      }
 
       let productionDependencySnapshot: ProductionDependencyApprovalSnapshot | null =
         null;

@@ -302,6 +302,32 @@ describe("business-authority service", () => {
     expect(repo.transition).not.toHaveBeenCalled();
   });
 
+  it("does not approve an obsolete version after a newer proposal exists", async () => {
+    const obsolete = record();
+    const newer = record({
+      id: "20000000-0000-4000-8000-000000000002",
+      version: 2,
+      recordVersion: 0,
+      status: "PROPOSED",
+    });
+    const repo = repository([obsolete, newer]);
+    const service = createBusinessAuthorityService(repo);
+
+    await expect(
+      service.decide(actor("OWNER"), {
+        recordId: obsolete.id,
+        expectedAuthorityVersion: obsolete.version,
+        expectedRecordVersion: obsolete.recordVersion,
+        expectedContentHash: obsolete.contentHash,
+        action: "APPROVE",
+        decisionAuthorityType: "OWNER",
+        evidenceReference: null,
+        safeEvidenceSummary: null,
+      }),
+    ).rejects.toThrow("OPERATION_CONFLICT");
+    expect(repo.transition).not.toHaveBeenCalled();
+  });
+
   it("maps a repository compare-and-set race to a fail-closed conflict", async () => {
     const target = record();
     const repo = repository([target]);

@@ -198,6 +198,22 @@ export function businessAuthorityActorContextSql(
     set_config('vax.business_authority.signature', ${signature}, true)`;
 }
 
+export function businessAuthorityProposalLockSql(
+  authorityKey: string,
+  environmentScope: AuthorityEnvironmentScope,
+): SQL {
+  return sql`select pg_advisory_xact_lock(hashtext(${`business-authority:${authorityKey}:${environmentScope}`}))`;
+}
+
+export function businessAuthorityTransitionLockSql(recordId: string): SQL {
+  return sql`select pg_advisory_xact_lock(hashtext(
+      'business-authority:' || locked_authority.authority_key || ':' ||
+      locked_authority.environment_scope
+    ))
+    from ${businessAuthorityRecords} locked_authority
+    where locked_authority.id = ${recordId}::uuid`;
+}
+
 function actorRoleSnapshotSql(actorProfileId: string): SQL {
   return sql`(
     select coalesce(jsonb_agg(distinct actor_role.code order by actor_role.code), '[]'::jsonb)
@@ -437,6 +453,16 @@ export function transitionMutationSql(
         and record.record_version = ${input.expectedRecordVersion}
         and ${businessAuthorityRecordContentHashSql(sql.raw("record"))} = ${input.expectedContentHash}
         and dependency_validation.valid
+        and (
+          ${action} <> 'APPROVE'
+          or not exists (
+            select 1
+            from ${businessAuthorityRecords} newer_authority
+            where newer_authority.authority_key = record.authority_key
+              and newer_authority.environment_scope = record.environment_scope
+              and newer_authority.version > record.version
+          )
+        )
       for update of record
     ), transition as materialized (
       select target.*,
@@ -640,7 +666,10 @@ export async function createBusinessAuthorityProposalRecord(
         ),
       ),
       database.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${`${input.authorityKey}:${input.environmentScope}`}))`,
+        businessAuthorityProposalLockSql(
+          input.authorityKey,
+          input.environmentScope,
+        ),
       ),
       database.execute<MutationRow>(
         proposalMutationSql(actorProfileId, input, correlationId),
@@ -673,7 +702,7 @@ export async function transitionBusinessAuthorityRecord(
         ),
       ),
       database.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${`business-authority:${input.recordId}`}))`,
+        businessAuthorityTransitionLockSql(input.recordId),
       ),
       database.execute<MutationRow>(
         transitionMutationSql(

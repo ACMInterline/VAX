@@ -92,14 +92,19 @@ export function containsSensitiveAuthorityContent(value: unknown): boolean {
   return false;
 }
 
-export const safeAuthorityTextSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(2_000)
-  .refine((value) => !containsSensitiveAuthorityContent(value), {
-    message: "Sensitive evidence is not allowed in authority text.",
-  });
+function authorityTextSchema(maximumLength: number) {
+  return z
+    .string()
+    .trim()
+    .min(1)
+    .max(maximumLength)
+    .refine((value) => !containsSensitiveAuthorityContent(value), {
+      message: "Sensitive evidence is not allowed in authority text.",
+    });
+}
+
+export const safeAuthorityTextSchema = authorityTextSchema(2_000);
+const safeAuthorityLongTextSchema = authorityTextSchema(4_000);
 
 function safeHttpsUrl(value: string): boolean {
   try {
@@ -143,8 +148,8 @@ const decisionValueSchema = z
   .object({
     kind: z.literal("DECISION"),
     decisionCode: codeSchema,
-    detailsBg: safeAuthorityTextSchema.max(4_000).optional(),
-    detailsEn: safeAuthorityTextSchema.max(4_000).optional(),
+    detailsBg: safeAuthorityLongTextSchema.optional(),
+    detailsEn: safeAuthorityLongTextSchema.optional(),
   })
   .strict();
 
@@ -705,7 +710,7 @@ export const authorityProposalSchema = z
     value: authorityValueSchema,
     sourceReference: sourceReferenceSchema.nullable(),
     safeEvidenceSummary: safeAuthorityTextSchema.max(2_000).nullable(),
-    internalNotes: safeAuthorityTextSchema.max(4_000).nullable(),
+    internalNotes: safeAuthorityLongTextSchema.nullable(),
     effectiveFrom: z.date(),
     effectiveUntil: z.date().nullable(),
   })

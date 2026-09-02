@@ -161,6 +161,31 @@ describe("business-authority value validation", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("honors the advertised 4,000-character internal-notes limit", () => {
+    const proposal = {
+      authorityKey: "BRAND_IDENTITY",
+      environmentScope: "STAGING" as const,
+      value: { kind: "DECISION" as const, decisionCode: "BLOCK_PUBLICATION" },
+      sourceReference: null,
+      safeEvidenceSummary: null,
+      effectiveFrom: new Date("2026-09-01T00:00:00Z"),
+      effectiveUntil: null,
+    };
+
+    expect(
+      authorityProposalSchema.safeParse({
+        ...proposal,
+        internalNotes: "a".repeat(4_000),
+      }).success,
+    ).toBe(true);
+    expect(
+      authorityProposalSchema.safeParse({
+        ...proposal,
+        internalNotes: "a".repeat(4_001),
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects token and provider-identity content while retaining ordinary policy text", () => {
     const syntheticJwt =
       "eyJhbGciOiJub25lIn0.eyJzdWIiOiJzeW50aGV0aWMifQ.signature_placeholder";

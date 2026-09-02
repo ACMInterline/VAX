@@ -7,7 +7,9 @@ import { Client } from "pg";
 import { getBusinessAuthorityDefinition } from "@/modules/business-authority/registry";
 import {
   businessAuthorityActorContextSql,
+  businessAuthorityProposalLockSql,
   businessAuthorityRecordContentHashSql,
+  businessAuthorityTransitionLockSql,
   proposalMutationSql,
   transitionMutationSql,
 } from "@/modules/business-authority/repository";
@@ -94,9 +96,10 @@ async function createUnderReviewRecord(
           null,
         ),
       );
-      await client.query("select pg_advisory_xact_lock(hashtext($1))", [
-        `${definition.key}:STAGING`,
-      ]);
+      await executeSql(
+        client,
+        businessAuthorityProposalLockSql(definition.key, "STAGING"),
+      );
       const result = await executeSql<MutationRow>(
         client,
         proposalMutationSql(
@@ -161,9 +164,7 @@ async function createUnderReviewRecord(
           reviewSupersessionCorrelationId,
         ),
       );
-      await client.query("select pg_advisory_xact_lock(hashtext($1))", [
-        `business-authority:${recordId}`,
-      ]);
+      await executeSql(client, businessAuthorityTransitionLockSql(recordId));
       const result = await executeSql<MutationRow>(
         client,
         transitionMutationSql(
@@ -250,9 +251,7 @@ async function completeApproval(
     supersessionCorrelationId,
   } = prepared;
   try {
-    await client.query("select pg_advisory_xact_lock(hashtext($1))", [
-      `business-authority:${recordId}`,
-    ]);
+    await executeSql(client, businessAuthorityTransitionLockSql(recordId));
     const result = await executeSql<MutationRow>(
       client,
       transitionMutationSql(

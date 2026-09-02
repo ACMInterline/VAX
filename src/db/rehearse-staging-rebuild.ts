@@ -486,7 +486,8 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(() => {
+main().catch((error: unknown) => {
+  stagingRebuildFailureCode ??= safePostgresErrorCode(error);
   process.stderr.write(
     `Staging rebuild rehearsal failed safely at phase ${stagingRebuildPhase}` +
       ` with code ${stagingRebuildFailureCode ?? "UNKNOWN"}.\n`,

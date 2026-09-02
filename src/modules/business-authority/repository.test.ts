@@ -9,6 +9,8 @@ import { deriveBusinessAuthorityActorContextKey } from "./actor-context";
 import {
   activeBusinessAuthorityOwnerSql,
   businessAuthorityActorContextSql,
+  businessAuthorityProposalLockSql,
+  businessAuthorityTransitionLockSql,
   proposalMutationSql,
   transitionMutationSql,
 } from "./repository";
@@ -125,6 +127,20 @@ describe("business-authority repository security SQL", () => {
     expect(compiled.sql).not.toContain("production_ready");
   });
 
+  it("serializes proposals and approvals on the same authority-version lock", () => {
+    const proposalLock = compile(
+      businessAuthorityProposalLockSql("WORKING_HOURS", "STAGING"),
+    );
+    const transitionLock = compile(businessAuthorityTransitionLockSql(recordId));
+
+    expect(proposalLock.params).toContain(
+      "business-authority:WORKING_HOURS:STAGING",
+    );
+    expect(transitionLock.sql).toContain("locked_authority.authority_key");
+    expect(transitionLock.sql).toContain("locked_authority.environment_scope");
+    expect(transitionLock.params).toContain(recordId);
+  });
+
   it("locks and rechecks version, environment, approval evidence and supersession atomically", () => {
     const compiled = compile(
       transitionMutationSql(
@@ -175,6 +191,9 @@ describe("business-authority repository security SQL", () => {
     expect(compiled.sql).toContain("target.required_authority_types ?");
     expect(compiled.sql).toContain(
       "current_authority.effective_from > target.effective_from",
+    );
+    expect(compiled.sql).toContain(
+      "newer_authority.version > record.version",
     );
     expect(compiled.sql).toContain(
       "prior.effective_from <= transition.effective_from",
