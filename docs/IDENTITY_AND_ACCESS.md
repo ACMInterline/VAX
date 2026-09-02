@@ -53,30 +53,30 @@ the centralized server authorization service again.
 
 The server-side variables are:
 
-| Variable | Purpose | Secret |
-| --- | --- | --- |
-| `DATABASE_URL` | Server runtime connection; must authenticate as `vax_runtime` | Yes |
-| `MIGRATION_DATABASE_URL` | Migration/seed connection; must authenticate as `vax_migrator` | Yes |
-| `DATABASE_ADMIN_URL` | Explicit role-provisioning/recovery connection only | Yes |
-| `DATABASE_ADMIN_EXPECTED_ROLE` | Exact expected administrator role name | Treat as server configuration |
-| `DATABASE_MUTATION_ENVIRONMENT` | Explicit `development` or staging-command acknowledgement; never production | No |
-| `DATABASE_MUTATION_EXPECTED_PROJECT_ID` | Exact approved Neon project interlock | Treat as server configuration |
-| `DATABASE_MUTATION_EXPECTED_BRANCH_ID` | Exact approved Neon branch interlock | Treat as server configuration |
-| `DATABASE_MUTATION_EXPECTED_HOST` | Exact approved development database hostname interlock | Treat as server configuration |
-| `DATABASE_MUTATION_EXPECTED_DATABASE` | Exact approved development database-name interlock | Treat as server configuration |
-| `NEON_AUTH_BASE_URL` | Branch-specific managed Auth service endpoint | Treat as server configuration |
-| `NEON_AUTH_EXPECTED_BASE_URL` | Independently reviewed canonical staging Auth endpoint interlock | Treat as server configuration |
-| `NEON_AUTH_COOKIE_SECRET` | At least 32 characters; signs the local session-data cache cookie | Yes |
-| `AUTH_REQUIRE_VERIFIED_EMAIL` | Optional development override; production always requires verification and ignores `false` | No |
-| `AUTH_BOOTSTRAP_PROVIDER_USER_ID` | Temporary explicit provider subject for the owner command | Sensitive operator input; do not persist |
-| `PUBLIC_SITE_URL` | Approved origin used for password-reset callbacks | No |
-| `VAX_ENVIRONMENT` | Explicit development/staging/production application mode | No |
-| `STAGING_ALLOW_LOCALHOST` | Explicit non-production loopback staging rehearsal only | No |
-| `AUTH_TRUSTED_ORIGINS` | Comma-separated exact application origins; required outside development | No |
-| `RATE_LIMIT_BACKEND` | `database` is mandatory for staging/production-like use | No |
-| `RATE_LIMIT_HASH_SECRET` | HMAC secret for opaque shared-limit keys | Yes |
-| `VAX_TRUSTED_PROXY_HOPS` | Exact trusted forwarding proxy count; blank means trust none | No |
-| `EMAIL_DELIVERY_MODE` | Readiness state for blocked, sink/sandbox or approved custom SMTP | No |
+| Variable                                | Purpose                                                                                                                             | Secret                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `DATABASE_URL`                          | Server runtime connection; must authenticate as `vax_runtime`                                                                       | Yes                                      |
+| `MIGRATION_DATABASE_URL`                | Migration/seed connection; must authenticate as `vax_migrator`                                                                      | Yes                                      |
+| `DATABASE_ADMIN_URL`                    | Explicit role-provisioning/recovery connection only                                                                                 | Yes                                      |
+| `DATABASE_ADMIN_EXPECTED_ROLE`          | Exact expected administrator role name                                                                                              | Treat as server configuration            |
+| `DATABASE_MUTATION_ENVIRONMENT`         | Explicit `development` or staging-command acknowledgement; never production                                                         | No                                       |
+| `DATABASE_MUTATION_EXPECTED_PROJECT_ID` | Exact approved Neon project interlock                                                                                               | Treat as server configuration            |
+| `DATABASE_MUTATION_EXPECTED_BRANCH_ID`  | Exact approved Neon branch interlock                                                                                                | Treat as server configuration            |
+| `DATABASE_MUTATION_EXPECTED_HOST`       | Exact approved development database hostname interlock                                                                              | Treat as server configuration            |
+| `DATABASE_MUTATION_EXPECTED_DATABASE`   | Exact approved development database-name interlock                                                                                  | Treat as server configuration            |
+| `NEON_AUTH_BASE_URL`                    | Branch-specific managed Auth service endpoint                                                                                       | Treat as server configuration            |
+| `NEON_AUTH_EXPECTED_BASE_URL`           | Independently reviewed canonical staging Auth endpoint interlock                                                                    | Treat as server configuration            |
+| `NEON_AUTH_COOKIE_SECRET`               | At least 32 characters; signs the local session-data cache cookie and roots a domain-separated Business Authority actor-context key | Yes                                      |
+| `AUTH_REQUIRE_VERIFIED_EMAIL`           | Optional development override; production always requires verification and ignores `false`                                          | No                                       |
+| `AUTH_BOOTSTRAP_PROVIDER_USER_ID`       | Temporary explicit provider subject for the owner command                                                                           | Sensitive operator input; do not persist |
+| `PUBLIC_SITE_URL`                       | Approved origin used for password-reset callbacks                                                                                   | No                                       |
+| `VAX_ENVIRONMENT`                       | Explicit development/staging/production application mode                                                                            | No                                       |
+| `STAGING_ALLOW_LOCALHOST`               | Explicit non-production loopback staging rehearsal only                                                                             | No                                       |
+| `AUTH_TRUSTED_ORIGINS`                  | Comma-separated exact application origins; required outside development                                                             | No                                       |
+| `RATE_LIMIT_BACKEND`                    | `database` is mandatory for staging/production-like use                                                                             | No                                       |
+| `RATE_LIMIT_HASH_SECRET`                | HMAC secret for opaque shared-limit keys                                                                                            | Yes                                      |
+| `VAX_TRUSTED_PROXY_HOPS`                | Exact trusted forwarding proxy count; blank means trust none                                                                        | No                                       |
+| `EMAIL_DELIVERY_MODE`                   | Readiness state for blocked, sink/sandbox or approved custom SMTP                                                                   | No                                       |
 
 All remain empty in `.env.example`. Local values belong only in ignored
 `.env.local`; deployment platforms must inject environment-specific values.
@@ -121,14 +121,14 @@ cross-site callbacks may require `Lax`.
 
 Phase 3A adds only these public-schema tables:
 
-| Table | Ownership and purpose |
-| --- | --- |
-| `user_profiles` | Provider-subject mapping, display name, locale, nullable phone and application status; no credentials |
-| `application_roles` | Stable machine role codes plus localized labels |
-| `permissions` | Stable action capability codes |
-| `role_permissions` | Code-owned canonical role-to-permission relationships |
-| `user_roles` | Application profile role assignment, source, actor and revocation state |
-| `auth_audit_events` | Append-oriented, sanitized application security events |
+| Table               | Ownership and purpose                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| `user_profiles`     | Provider-subject mapping, display name, locale, nullable phone and application status; no credentials |
+| `application_roles` | Stable machine role codes plus localized labels                                                       |
+| `permissions`       | Stable action capability codes                                                                        |
+| `role_permissions`  | Code-owned canonical role-to-permission relationships                                                 |
+| `user_roles`        | Application profile role assignment, source, actor and revocation state                               |
+| `auth_audit_events` | Append-oriented, sanitized application security events                                                |
 
 The provider subject is unique but is not the application's primary key.
 Passwords, session tokens, reset tokens and provider secrets are never copied
@@ -141,29 +141,29 @@ Canonical roles are `OWNER`, `ADMIN`, `DISPATCHER`, `TECHNICIAN` and
 Canonical seeds are deterministic and restore the code-owned role-permission
 mapping on migration runs.
 
-| Permission | Owner | Admin | Dispatcher | Technician | Customer |
-| --- | :---: | :---: | :---: | :---: | :---: |
-| Identity self read/update | ✓ | ✓ | ✓ | ✓ | ✓ |
-| User administration read/manage | ✓ | ✓ | — | — | — |
-| Role assignment | ✓, subject to protected-flow gates | Dispatcher, Technician, Customer only | — | — | — |
-| System settings read | ✓ | ✓ | — | — | — |
-| System settings manage | ✓ | — | — | — | — |
-| Catalogue read | ✓ | ✓ | ✓ | — | — |
-| Catalogue manage | ✓ | ✓ | — | — | — |
-| Commercial rules read | ✓ | ✓ | ✓ | — | — |
-| Commercial rules manage | ✓ | ✓ | — | — | — |
-| Operations read | ✓ | ✓ | ✓ | ✓ | — |
-| Operations manage | ✓ | ✓ | ✓ | — | — |
-| Schedule read | ✓ | ✓ | ✓ | ✓ | — |
-| Schedule manage | ✓ | ✓ | ✓ | — | — |
-| Customer records read/manage | ✓ | ✓ | ✓ | — | — |
-| Field jobs read | ✓ | ✓ | ✓ | ✓ | — |
-| Field jobs update | ✓ | ✓ | — | ✓ | — |
-| Finance read/manage | ✓ | ✓ | — | — | — |
-| Invoice issue | ✓ | ✓ | — | — | — |
-| Payment record/allocate | ✓ | ✓ | — | — | — |
-| Own customer data read/update | ✓ | — | — | — | ✓ |
-| Audit read | ✓ | ✓ | — | — | — |
+| Permission                      |               Owner                |                 Admin                 | Dispatcher | Technician | Customer |
+| ------------------------------- | :--------------------------------: | :-----------------------------------: | :--------: | :--------: | :------: |
+| Identity self read/update       |                 ✓                  |                   ✓                   |     ✓      |     ✓      |    ✓     |
+| User administration read/manage |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Role assignment                 | ✓, subject to protected-flow gates | Dispatcher, Technician, Customer only |     —      |     —      |    —     |
+| System settings read            |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| System settings manage          |                 ✓                  |                   —                   |     —      |     —      |    —     |
+| Catalogue read                  |                 ✓                  |                   ✓                   |     ✓      |     —      |    —     |
+| Catalogue manage                |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Commercial rules read           |                 ✓                  |                   ✓                   |     ✓      |     —      |    —     |
+| Commercial rules manage         |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Operations read                 |                 ✓                  |                   ✓                   |     ✓      |     ✓      |    —     |
+| Operations manage               |                 ✓                  |                   ✓                   |     ✓      |     —      |    —     |
+| Schedule read                   |                 ✓                  |                   ✓                   |     ✓      |     ✓      |    —     |
+| Schedule manage                 |                 ✓                  |                   ✓                   |     ✓      |     —      |    —     |
+| Customer records read/manage    |                 ✓                  |                   ✓                   |     ✓      |     —      |    —     |
+| Field jobs read                 |                 ✓                  |                   ✓                   |     ✓      |     ✓      |    —     |
+| Field jobs update               |                 ✓                  |                   ✓                   |     —      |     ✓      |    —     |
+| Finance read/manage             |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Invoice issue                   |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Payment record/allocate         |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
+| Own customer data read/update   |                 ✓                  |                   —                   |     —      |     —      |    ✓     |
+| Audit read                      |                 ✓                  |                   ✓                   |     —      |     —      |    —     |
 
 `OWNER` receives the entire canonical permission set. `ADMIN` deliberately
 lacks protected system-setting management and may assign or revoke only
@@ -346,6 +346,31 @@ only their own issued/partially paid/paid Invoice documents and never draft or
 review state, internal notes, Payment records, staff audit, commercial
 internals, actor identifiers or another customer's data. See
 `docs/FINANCE_AND_INVOICING.md`.
+
+## Phase 3N Business Authority authorization
+
+Phase 3N adds no role or permission. The protected Business Authority report
+reuses `SYSTEM_SETTINGS_READ`, so Owner/Admin may inspect current proposals,
+approval evidence and derived blockers. `SYSTEM_SETTINGS_MANAGE` alone is not
+approval authority: proposal, submit-for-review, approve, reject and supersede
+operations additionally require an active `OWNER` role. The repository repeats
+that exact actor permission/role boundary inside the mutation statement, and
+the deferred database graph validates the active Owner on the matching audit
+event before commit.
+
+`OWNER`, `ACCOUNTANT`, `LEGAL`, `OPERATIONS`, `TECHNICAL` and
+`CONTENT_CLAIMS` are conceptual decision types, not application roles. An Owner
+may attest that the required controlled decision was obtained; selecting its
+type grants no qualification or account privilege. Accountant and Legal
+attestations require an evidence reference. Until a separately governed
+delegation model exists, Admin cannot propose or approve authority values and
+cannot self-upgrade through the screen.
+
+Production and staging states are distinct. Browser input never supplies
+status, actor, required authority list, approval scope or system-verification
+evidence. A production `GO` is refused while another production dependency is
+pending, and it still does not execute or authorize a migration/deployment.
+See `docs/BUSINESS_AUTHORITY.md`.
 
 ## Central authorization
 
@@ -557,7 +582,8 @@ server; own-record routes always derive linked-only scope. Draft quotes,
 draft/review/cancelled Invoices, estimate internals, staff acceptance evidence,
 operational Booking snapshots, internal Job/finance notes, staff finance audit
 and Payment records have no customer route. Authorized identities additionally
-see Administration → Users. The root
+see Administration → Users and, with `SYSTEM_SETTINGS_READ`, the Business
+Authority report. The root
 document language and skip-link copy are derived from the validated
 application-profile locale.
 
@@ -568,8 +594,9 @@ authentication does not convert them into deployable internal pages.
 ## Rate limiting
 
 Login, signup, reset, verification, anonymous request intake, privileged
-identity mutation, Booking/scheduling mutation, Job mutation and finance
-mutation Server Actions use bounded in-memory limiting only in ordinary local
+identity mutation, Booking/scheduling mutation, Job mutation, finance mutation
+and Business Authority mutation Server Actions use bounded in-memory limiting
+only in ordinary local
 development. Staging and production-like configuration require the shared
 PostgreSQL backend. Keys are HMAC-SHA-256 values derived from server-selected
 source/account context; raw email, phone, IP, token and actor/contact values are
@@ -625,12 +652,26 @@ not provider subjects, billing addresses, bank details, credentials or free-
 form notes. It remains separate from all earlier audit vocabularies, and
 production append-only grants remain gated.
 
+Phase 3N uses `business_authority_audit_events` for proposal, review,
+conceptual-approval, rejection and supersession history. It stores controlled
+keys/statuses, application profile/role evidence, safe source references and a
+correlation ID. It excludes credentials, provider responses, contact/bank data
+and unrestricted professional evidence. The audit stream is append-only and
+separate from identity, business, Booking, Job, finance and communication
+events.
+
 ## Environment and branch safety
 
 Auth services and provider sessions are branch-specific. Development identities
 belong only on Neon `development`; staging identities belong only on `staging`;
 production accounts and sessions are outside this phase. Staging has zero users
-and sessions at the Phase 3L checkpoint. Migration
+and sessions at the historical Phase 3L checkpoint. Phase 3M later added six
+controlled synthetic identities/profiles and recorded eight active synthetic
+staging sessions. The installed provider integration cannot independently
+enumerate that session inventory or prove revoke-all, so Phase 3N retains the
+eight-session count as controlled Phase 3M evidence rather than a fresh
+provider attestation; it creates no identities or sessions and never writes
+provider tables. Migration
 `0004_add_identity_access.sql` is additive, creates only
 application-owned public tables and never names `neon_auth`. Phase 3D adds only
 application-owned public-schema request/quote tables, and Phase 3E adds only
@@ -642,7 +683,9 @@ business table and changes only application-owned occupancy revision checks and
 Booking audit vocabulary. The Phase 3H additive migration creates only
 application-owned billing/configuration, Invoice, Payment, allocation,
 reversal and finance-audit structures. It neither queries nor mutates Auth-
-managed tables. Production remains unmigrated.
+managed tables. Phase 3N adds only application-owned authority/audit tables and
+the explicit finance `STAGING` environment vocabulary. It creates no provider
+identity or session, and production remains unmigrated.
 Migration and owner-bootstrap commands additionally require the exact approved
 nonproduction target/identity. Staging migration/rebuild commands accept only
 the ignored owner-only staging file and cannot target production.

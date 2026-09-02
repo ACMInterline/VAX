@@ -11,6 +11,7 @@ import { AuthenticationBoundaryError } from "@/auth/principal-policy";
 import type { AuthLocale } from "@/auth/validation";
 import type { FinanceActionState } from "@/components/finance/action-state";
 import { getDatabase } from "@/db/client";
+import { getFinanceEnvironmentScope } from "@/modules/finance-invoicing/environment";
 import {
   FinanceAuthorizationError,
   requireInvoiceIssue,
@@ -92,8 +93,7 @@ function service(): FinanceService {
   return createFinanceService(
     createDatabaseFinanceRepository(getDatabase()),
     {
-      environmentScope:
-        process.env.NODE_ENV === "production" ? "PRODUCTION" : "DEVELOPMENT",
+      environmentScope: getFinanceEnvironmentScope(),
     },
   );
 }

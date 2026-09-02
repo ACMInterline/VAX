@@ -185,7 +185,7 @@ export const businessLegalProfiles = pgTable(
       .where(sql`${table.status} = 'APPROVED'`),
     check(
       "business_legal_profiles_environment_valid",
-      sql`${table.environmentScope} in ('DEVELOPMENT', 'PRODUCTION')`,
+      sql`${table.environmentScope} in ('DEVELOPMENT', 'STAGING', 'PRODUCTION')`,
     ),
     check(
       "business_legal_profiles_status_valid",
@@ -264,7 +264,7 @@ export const invoiceNumberingPolicies = pgTable(
       .where(sql`${table.status} = 'APPROVED'`),
     check(
       "invoice_numbering_policies_environment_valid",
-      sql`${table.environmentScope} in ('DEVELOPMENT', 'PRODUCTION')`,
+      sql`${table.environmentScope} in ('DEVELOPMENT', 'STAGING', 'PRODUCTION')`,
     ),
     check(
       "invoice_numbering_policies_document_type_valid",
@@ -354,7 +354,7 @@ export const invoicePolicies = pgTable(
       .where(sql`${table.status} = 'APPROVED'`),
     check(
       "invoice_policies_environment_valid",
-      sql`${table.environmentScope} in ('DEVELOPMENT', 'PRODUCTION')`,
+      sql`${table.environmentScope} in ('DEVELOPMENT', 'STAGING', 'PRODUCTION')`,
     ),
     check(
       "invoice_policies_status_valid",
@@ -622,7 +622,7 @@ export const invoices = pgTable(
     ),
     check(
       "invoices_environment_valid",
-      sql`${table.environmentScope} in ('DEVELOPMENT', 'PRODUCTION')`,
+      sql`${table.environmentScope} in ('DEVELOPMENT', 'STAGING', 'PRODUCTION')`,
     ),
     check(
       "invoices_fingerprint_valid",

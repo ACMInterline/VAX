@@ -8,12 +8,14 @@ async function source(relativePath: string): Promise<string> {
 
 describe("identity administration trust boundaries", () => {
   it("authorizes the route and every mutation on the server", async () => {
-    const [layout, actions] = await Promise.all([
+    const [layout, usersLayout, actions] = await Promise.all([
       source("src/app/(application)/app/admin/layout.tsx"),
+      source("src/app/(application)/app/admin/users/layout.tsx"),
       source("src/app/(application)/app/admin/users/actions.ts"),
     ]);
 
-    expect(layout).toContain("requireIdentityAdminPrincipal");
+    expect(layout).toContain("requireAdministrationPrincipal");
+    expect(usersLayout).toContain("requireIdentityAdminPrincipal");
     expect(actions).toContain('requireUserPermission("USER_ADMIN_MANAGE")');
     expect(actions).toContain('isAuthAttemptAllowed("ADMIN_MUTATION"');
     expect(actions).toContain("z.enum(applicationRoleCodes)");

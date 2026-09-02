@@ -16,6 +16,7 @@ import type {
   CreateInvoiceDraftInput,
   CustomerInvoiceDetail,
   FinanceDashboard,
+  FinanceEnvironmentScope,
   FinanceRepositoryResult,
   InvoiceSummary,
   IssueInvoiceInput,
@@ -160,7 +161,7 @@ function todaySofia(clock: () => Date): string {
 export function createFinanceService(
   repository: FinanceRepository,
   options: Readonly<{
-    environmentScope?: "DEVELOPMENT" | "PRODUCTION";
+    environmentScope?: FinanceEnvironmentScope;
     clock?: () => Date;
   }> = {},
 ) {

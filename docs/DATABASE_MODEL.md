@@ -643,6 +643,8 @@ objects held by a separate storage provider.
 | booking_audit_events, job_audit_events | Implemented owning streams for acceptance/Booking and Job execution respectively |
 | finance_audit_events | Implemented owning stream for Invoice, Payment, allocation, reversal and settlement evidence |
 | communication_audit_events | Implemented sanitized communication/render/local-publication/preference evidence |
+| business_authority_records | Implemented immutable versioned commercial, operational, professional, provider and release authority proposals with environment/effective-date lifecycle |
+| business_authority_audit_events | Implemented append-only proposal, review, approval, rejection and supersession evidence |
 | audit_logs | Planned broader cross-domain critical-operation audit records or reviewed extensions of the owned streams |
 | activity_logs | Lower-risk operational activity stream |
 
@@ -700,3 +702,25 @@ adds one migrator-owned security-definer function that returns only the ordered
 Drizzle migration hashes to `vax_runtime`. The runtime remains denied direct
 ledger access; operational readiness compares the exact 16-entry ledger and
 the exact rate-limit schema/constraint/index/policy contract.
+
+Phase 3N adds the 99th and 100th VAX public tables through
+`0016_phase_3n_business_authority.sql`. `business_authority_records` stores one
+immutable typed proposal per authority key/environment/version plus its current
+controlled lifecycle status, effective window, evidence class and supersession
+link. `business_authority_audit_events` stores the append-only actor/role,
+conceptual authority, status and correlation evidence for every transition.
+Unique current-approval, version and correlation constraints plus deferred
+graph triggers ensure that a record transition and its audit fact agree.
+
+The migration also extends the four existing finance environment checks from
+`DEVELOPMENT`/`PRODUCTION` to the exact
+`DEVELOPMENT`/`STAGING`/`PRODUCTION` vocabulary. It changes no persisted
+finance value and seeds no seller, VAT, price, Invoice, numbering or authority
+row. Hosted finance services select the scope from the canonical VAX
+environment, so a staging deployment cannot be interpreted as production
+merely because Next.js runs a production build.
+
+The current nonproduction contract is therefore 100 public tables and 17
+ordered migrations. Canonical identity data remains five roles, 28 permissions
+and 76 role-permission mappings; Phase 3N reuses the protected system-settings
+permissions and creates no role or permission.

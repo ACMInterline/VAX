@@ -92,6 +92,8 @@ export function assertNonProductionDatabaseMutationTarget(
     environment.NODE_ENV === "production" ||
     (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
       environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    environment.VAX_ENVIRONMENT !==
+      environment.DATABASE_MUTATION_ENVIRONMENT ||
     (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
       !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
     !expectedHost ||
@@ -162,6 +164,8 @@ export function assertNonProductionDatabaseAdministratorIdentity(
     environment.NODE_ENV === "production" ||
     (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
       environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    environment.VAX_ENVIRONMENT !==
+      environment.DATABASE_MUTATION_ENVIRONMENT ||
     (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
       !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
     !expectedProjectId ||
@@ -247,6 +251,8 @@ export async function assertNonProductionDatabaseIdentity(
     environment.NODE_ENV === "production" ||
     (environment.DATABASE_MUTATION_ENVIRONMENT !== "development" &&
       environment.DATABASE_MUTATION_ENVIRONMENT !== "staging") ||
+    environment.VAX_ENVIRONMENT !==
+      environment.DATABASE_MUTATION_ENVIRONMENT ||
     (environment.DATABASE_MUTATION_ENVIRONMENT === "staging" &&
       !isStagingTargetAuthorized(stagingAuthorization, environment)) ||
     !expectedProjectId ||

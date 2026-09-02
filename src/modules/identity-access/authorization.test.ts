@@ -239,8 +239,12 @@ describe("server authorization policy", () => {
         }),
       ]),
     );
-    expect(visibleNavigationItems(settingsReader).map((item) => item.code)).not.toContain(
-      "ADMINISTRATION",
-    );
+    expect(visibleNavigationItems(settingsReader)).toEqual([
+      expect.objectContaining({
+        code: "BUSINESS_AUTHORITY",
+        href: "/app/admin/business-authority",
+        requiredPermissions: ["SYSTEM_SETTINGS_READ"],
+      }),
+    ]);
   });
 });

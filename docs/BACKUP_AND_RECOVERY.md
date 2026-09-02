@@ -49,6 +49,15 @@ restore attempt also documented two required runbook preconditions: restore to
 an empty schema so foreign keys replay in native order, and install the managed
 `btree_gist` extension before restoring exclusion constraints.
 
+Those 98-table/16-entry figures are the historical Phase 3M portable-restore
+snapshot. Phase 3N migration 0016 extends the current development/staging
+contract to 100 public tables and 17 ordered migrations without seeding an
+authority value. Current security/state verification must include both new
+authority tables, their graph triggers/RLS/grants and the unchanged canonical
+five-role/28-permission/76-mapping state. The Phase 3M artifact must not be
+misreported as a portable restore rehearsal of the later 100-table contract;
+the next approved export/restore exercise must verify the 0016 delta explicitly.
+
 ## Recovery procedure
 
 For a future incident:

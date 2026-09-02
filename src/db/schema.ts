@@ -30,3 +30,4 @@ export * from "./schema/job-execution";
 export * from "./schema/finance-invoicing";
 export * from "./schema/communications-documents";
 export * from "./schema/operational-readiness";
+export * from "./schema/business-authority";

@@ -32,30 +32,31 @@ introduced.
 
 ## Repository boundaries
 
-| Location | Owns | Must not own |
-| --- | --- | --- |
-| src/app | Routes, layouts, HTTP adaptation, metadata | Core business rules |
-| src/components/public | Reusable public layout and presentation | Business persistence or provider access |
-| src/config | Replaceable public identity and non-secret site facts | Credentials or final copy ownership |
-| src/content/public-site | Typed localized content, route records and claim controls | Database state or framework behavior |
-| src/modules/service-catalogue | Provider-neutral canonical catalogue types, codes, labels and capability definitions | Database clients, framework behavior or monetary pricing |
-| src/modules/commercial-engine | Pure versioned pricing, VAT, duration, snapshot and contribution policies | Next.js, Drizzle, Neon, persistence or public marketing copy |
-| src/modules/availability-engine | Pure service-area, travel, capacity, slot and utilisation policies | Framework, database, live map provider, customer persistence or dispatch UI |
-| src/modules/identity-access | Stable roles, permissions, authorization and navigation policy | Next.js, provider SDKs, sessions or credentials |
-| src/modules/customer-crm | Customer/property validation, record-level access policy, safe projections and use cases | Next.js UI, provider identities, credentials, pricing or bookings |
-| src/modules/request-quote | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports | Provider identities, browser authority, booking acceptance, payments or occupancy |
-| src/modules/booking-engine | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation | Provider identities, request renormalization, repricing, Job execution or payments |
-| src/modules/scheduling-dispatch | Staff-reviewed scheduling eligibility, candidate ranking, Sofia time conversion, dispatch readiness, capacity projections and atomic occupancy revision ports | Repricing, request renormalization, CRM repair, user-team membership, provider credentials or Job execution |
-| src/modules/job-execution | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments |
-| src/modules/finance-invoicing | Accepted-commercial invoice eligibility, immutable financial snapshots, finance authorization, exact settlement, payment-allocation and reversal ports | Repricing, request/CRM repair, provider payment processing, tax advice or accounting export |
-| src/modules/communications-documents | Exact event projection, communication authorization, bilingual template contracts, immutable rendering, idempotency and portal-publication ports | Source-domain mutation, CRM repair, repricing, external provider delivery, executable templates or binary storage |
-| src/modules/public-request | Public-request validation, safe action state and anonymous intake adaptation | Authentication provisioning, automatic CRM matching, quoting or booking |
-| src/auth | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries | Business ownership or provider-managed tables |
-| src/modules | Domain use cases, policies, ports, module contracts | Provider credentials |
-| src/db | PostgreSQL schema, connection adapter, migrations, infrastructure probes | UI behavior |
-| src/lib | Small stable cross-cutting utilities | Unbounded shared business logic |
-| drizzle | Generated and reviewed migration artifacts | Hand-edited application behavior |
-| docs | Product and engineering decisions | Runtime state |
+| Location                             | Owns                                                                                                                                                          | Must not own                                                                                                              |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| src/app                              | Routes, layouts, HTTP adaptation, metadata                                                                                                                    | Core business rules                                                                                                       |
+| src/components/public                | Reusable public layout and presentation                                                                                                                       | Business persistence or provider access                                                                                   |
+| src/config                           | Replaceable public identity and non-secret site facts                                                                                                         | Credentials or final copy ownership                                                                                       |
+| src/content/public-site              | Typed localized content, route records and claim controls                                                                                                     | Database state or framework behavior                                                                                      |
+| src/modules/service-catalogue        | Provider-neutral canonical catalogue types, codes, labels and capability definitions                                                                          | Database clients, framework behavior or monetary pricing                                                                  |
+| src/modules/commercial-engine        | Pure versioned pricing, VAT, duration, snapshot and contribution policies                                                                                     | Next.js, Drizzle, Neon, persistence or public marketing copy                                                              |
+| src/modules/availability-engine      | Pure service-area, travel, capacity, slot and utilisation policies                                                                                            | Framework, database, live map provider, customer persistence or dispatch UI                                               |
+| src/modules/identity-access          | Stable roles, permissions, authorization and navigation policy                                                                                                | Next.js, provider SDKs, sessions or credentials                                                                           |
+| src/modules/customer-crm             | Customer/property validation, record-level access policy, safe projections and use cases                                                                      | Next.js UI, provider identities, credentials, pricing or bookings                                                         |
+| src/modules/request-quote            | Request, estimate and quote lifecycle, policy, validation, projections and persistence ports                                                                  | Provider identities, browser authority, booking acceptance, payments or occupancy                                         |
+| src/modules/booking-engine           | Quote-acceptance eligibility, Booking authorization/lifecycle, safe projections, idempotency and occupancy adaptation                                         | Provider identities, request renormalization, repricing, Job execution or payments                                        |
+| src/modules/scheduling-dispatch      | Staff-reviewed scheduling eligibility, candidate ranking, Sofia time conversion, dispatch readiness, capacity projections and atomic occupancy revision ports | Repricing, request renormalization, CRM repair, user-team membership, provider credentials or Job execution               |
+| src/modules/job-execution            | Booking-to-Job provenance, assigned-team access, inspection, treatment, completion, Cleaning Passport and operational analytics policy                        | Provider identities, request/estimate reinterpretation, repricing, CRM repair, scheduling replacement or payments         |
+| src/modules/finance-invoicing        | Accepted-commercial invoice eligibility, immutable financial snapshots, finance authorization, exact settlement, payment-allocation and reversal ports        | Repricing, request/CRM repair, provider payment processing, tax advice or accounting export                               |
+| src/modules/communications-documents | Exact event projection, communication authorization, bilingual template contracts, immutable rendering, idempotency and portal-publication ports              | Source-domain mutation, CRM repair, repricing, external provider delivery, executable templates or binary storage         |
+| src/modules/business-authority       | Versioned environment/effective-time authority, strict evidence/value validation, Owner-controlled lifecycle and derived production readiness                 | Self-asserted system evidence, legal/accounting conclusions, provider mutation, release execution or historical repricing |
+| src/modules/public-request           | Public-request validation, safe action state and anonymous intake adaptation                                                                                  | Authentication provisioning, automatic CRM matching, quoting or booking                                                   |
+| src/auth                             | Provider-neutral authentication contracts plus server adapters and session/rate-limit boundaries                                                              | Business ownership or provider-managed tables                                                                             |
+| src/modules                          | Domain use cases, policies, ports, module contracts                                                                                                           | Provider credentials                                                                                                      |
+| src/db                               | PostgreSQL schema, connection adapter, migrations, infrastructure probes                                                                                      | UI behavior                                                                                                               |
+| src/lib                              | Small stable cross-cutting utilities                                                                                                                          | Unbounded shared business logic                                                                                           |
+| drizzle                              | Generated and reviewed migration artifacts                                                                                                                    | Hand-edited application behavior                                                                                          |
+| docs                                 | Product and engineering decisions                                                                                                                             | Runtime state                                                                                                             |
 
 Future business modules should be organized by capability rather than by a
 global controllers/services/models split. A typical module may contain domain
@@ -156,6 +157,24 @@ audit provenance, active customer/contact, preference and template before one
 atomic write creates the final document and local portal history. Linked-
 customer reads require the exact active identity/customer link. Source records
 are never repaired, recalculated or reinterpreted during materialization.
+
+Phase 3N adds `src/modules/business-authority`. The registry owns stable
+readiness keys, evidence classes, conceptual authority requirements and strict
+value schemas. The service owns proposal/review/approval policy and derives
+readiness from current environment-scoped effective records; the PostgreSQL
+adapter atomically binds every state transition to append-only evidence. It
+does not mutate the commercial, scheduling, finance or provider modules.
+Runtime mutation batches establish a fresh transaction-local HMAC binding over
+the application profile, provider subject, correlation IDs and issue time. A
+database assertion validates it against a protected purpose-derived key and
+rechecks the live profile/provider/Owner relationship; missing or stale context
+fails closed. The key is derived from, but domain-separated from, the Auth
+cookie secret and is installed only through the migrator path.
+Configuration references remain blocked unless trusted resolution matches the
+exact type, code, version and content digest. A production GO is additionally
+bound to the exact release commit, target, active change window and canonical
+dependency fingerprint. Existing immutable domain snapshots remain the only
+history authority.
 
 ## Public website boundary
 
@@ -473,7 +492,8 @@ src/db/client.ts is the single connection construction point. It:
 - prevents provider setup from spreading into business modules.
 
 The current Neon HTTP adapter supports the bounded transactions used by the
-CRM, request/Quote, Booking, Job, finance and communications repositories.
+CRM, request/Quote, Booking, Job, finance, communications and Business
+Authority repositories.
 Transactional invariants stay in the database adapter rather than the domain policy. If a
 later workflow requires interactive session semantics that the HTTP transport
 cannot provide, the adapter may change without changing domain rules.
@@ -546,12 +566,31 @@ configuration used by history, allocations, reversals and finance audit are not
 ordinary mutable records. Production runtime grants, RLS and append-only
 enforcement remain a separate deployment gate.
 
+Phase 3N Business Authority rows are runtime governance records, not seeds.
+Their typed payload, evidence, environment and effective window are immutable;
+only the correlated status/record-version transition may change. Each
+transition has one append-only audit fact with an active Owner role snapshot.
+The database prevents staging/production approval mismatch and runtime system-
+evidence self-assertion. The derived package reads these facts but performs no
+release operation.
+
+Repository migrations run through the node-postgres migrator transaction so
+the ordered pending migration set and ledger writes commit or roll back
+together. Secret-derived verifier provisioning is an explicit post-migration
+operator step rather than secret-bearing SQL; authority mutations remain
+unavailable until that guarded step succeeds.
+
 ## Environment separation
 
 - Local development targets the VAX Neon `development` branch and its `neondb`
   database.
 - Phase 3L staging targets the isolated Neon `staging` branch and `neondb`
   through separate runtime/migrator credentials and branch-specific Auth.
+- Finance and Business Authority services resolve their environment from the
+  explicit validated `VAX_ENVIRONMENT` boundary. Hosted staging and production
+  fail closed if it is absent, blank or unsafe. A hosted staging production
+  build is still `STAGING`; `NODE_ENV` never promotes its records to
+  `PRODUCTION`.
 - `.env.local` is ignored, local-only, and must never be committed.
 - `.env.staging.local` is also ignored, requires owner-only permissions and is
   accepted only by dedicated staging commands. A separate ignored owner-only
@@ -577,9 +616,9 @@ GET /api/health retains the compatibility connectivity path. Phase 3L adds:
 
 1. `/api/liveness`, which proves only that the application process responds;
 2. `/api/readiness`, which validates safe configuration, the exact runtime
-   identity, database connectivity, the exact migration ledger through 0015
-   and operational rate-limit schema, shared-limit privilege,
-   Auth availability and staging email state; and
+   identity, database connectivity, the exact migration ledger through 0016,
+   the 100-table contract and operational rate-limit schema, shared-limit
+   privilege, Auth availability and staging email state; and
 3. a 503 readiness result whenever any required category is not ready.
 
 Raw errors, stack traces, hostnames, usernames, schema names, provider details

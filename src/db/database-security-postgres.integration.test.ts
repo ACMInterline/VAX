@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { drizzle as nodePostgresDrizzle } from "drizzle-orm/node-postgres";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { Client, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/db/client";
@@ -13,6 +14,11 @@ import { acceptQuoteRecord } from "@/modules/booking-engine/repository";
 import { updateOwnCommunicationPreferences } from "@/modules/communications-documents/repository";
 import { createCustomerRecord } from "@/modules/customer-crm/repository";
 import { createInvoiceDraftRecord } from "@/modules/finance-invoicing/repository";
+import { getBusinessAuthorityDefinition } from "@/modules/business-authority/registry";
+import {
+  businessAuthorityActorContextSql,
+  proposalMutationSql,
+} from "@/modules/business-authority/repository";
 import { createJobFromBookingRecord } from "@/modules/job-execution/repository";
 import {
   createPublicCodeRequestRecord,
@@ -503,6 +509,14 @@ describe.runIf(runLiveIntegration)(
       );
       expect(operationalFunctions.rows).toEqual([
         {
+          function_name: "vax_business_authority_assert_actor_context",
+          owner: vaxDatabaseRoles.migrator,
+          security_definer: true,
+          runtime_execute: true,
+          authenticated_execute: false,
+          anonymous_execute: false,
+        },
+        {
           function_name: "vax_migration_history_hashes",
           owner: vaxDatabaseRoles.migrator,
           security_definer: true,
@@ -520,7 +534,7 @@ describe.runIf(runLiveIntegration)(
         where schema.nspname = 'public' and not trigger.tgisinternal
         group by trigger.tgenabled
       `);
-      expect(triggers.rows).toEqual([{ enabled: "O", count: 37 }]);
+      expect(triggers.rows).toEqual([{ enabled: "O", count: 41 }]);
 
       const drizzleBoundary = await admin.query<{
         object_name: string;
@@ -641,11 +655,12 @@ describe.runIf(runLiveIntegration)(
         (item) => !vaxFunctions.includes(item),
       );
 
-      expect(functions.rows).toHaveLength(242);
+      // Keep provider-managed function drift reviewable as an exact inventory.
+      expect(functions.rows).toHaveLength(283);
       expect(vaxFunctions).toHaveLength(
         vaxTriggerFunctionNames.length + vaxOperationalFunctionNames.length,
       );
-      expect(publicExtensionFunctions).toHaveLength(212);
+      expect(publicExtensionFunctions).toHaveLength(249);
       expect(
         unmanagedPublicFunctions.map((item) => ({
           signature: item.signature,
@@ -661,9 +676,9 @@ describe.runIf(runLiveIntegration)(
           owned_by_vax_role: false,
         },
       ]);
-      expect(
-        providerFunctions.every((item) => !item.security_definer),
-      ).toBe(true);
+      expect(providerFunctions.every((item) => !item.security_definer)).toBe(
+        true,
+      );
     });
 
     it("keeps Data API, anonymous and PUBLIC-derived access at zero", async () => {
@@ -829,9 +844,7 @@ describe.runIf(runLiveIntegration)(
 
         const migrationAttestation = await runtime.query<{
           hashes: string[];
-        }>(
-          "select public.vax_migration_history_hashes() as hashes",
-        );
+        }>("select public.vax_migration_history_hashes() as hashes");
         expect(migrationAttestation.rows[0]?.hashes).toEqual(
           vaxMigrationHashes,
         );
@@ -858,6 +871,409 @@ describe.runIf(runLiveIntegration)(
         await runtime.end();
       }
     });
+
+    it("rejects replay of a captured signed authority context in a new transaction", async () => {
+      const runtime = new Client({ connectionString: runtimeUrl });
+      const migrator = new Client({ connectionString: migrationUrl });
+      const actorProfileId = randomUUID();
+      const providerUserId = `phase3n-context-${token()}`;
+      const correlationId = randomUUID();
+      const issuedAtEpochSeconds = Math.floor(Date.now() / 1_000);
+      const compiled = new PgDialect().sqlToQuery(
+        businessAuthorityActorContextSql(
+          actorProfileId,
+          providerUserId,
+          correlationId,
+          null,
+          process.env,
+          issuedAtEpochSeconds,
+        ),
+      );
+      const signature = compiled.params.at(-1);
+      expect(signature).toMatch(/^[0-9a-f]{64}$/);
+
+      await migrator.connect();
+      await runtime.connect();
+      try {
+        await migrator.query("BEGIN");
+        await migrator.query(
+          `insert into public.user_profiles (
+             id, auth_provider_user_id, display_name, preferred_locale, status
+           ) values ($1, $2, 'Phase 3N context replay', 'en', 'ACTIVE')`,
+          [actorProfileId, providerUserId],
+        );
+        await migrator.query(
+          `insert into public.user_roles (
+             user_profile_id, role_id, active, assignment_source,
+             assigned_by_profile_id
+           ) select $1, id, true, 'OWNER_BOOTSTRAP', $1
+             from public.application_roles where code = 'OWNER'`,
+          [actorProfileId],
+        );
+        await migrator.query("COMMIT");
+
+        await runtime.query("BEGIN");
+        await runtime.query(compiled.sql, compiled.params);
+        await runtime.query(
+          "select public.vax_business_authority_assert_actor_context($1, $2)",
+          [actorProfileId, correlationId],
+        );
+        await runtime.query("COMMIT");
+
+        await runtime.query("BEGIN");
+        await runtime.query(compiled.sql, compiled.params);
+        await expect(
+          runtime.query(
+            "select public.vax_business_authority_assert_actor_context($1, $2)",
+            [actorProfileId, correlationId],
+          ),
+        ).rejects.toMatchObject({ code: "42501" });
+        await runtime.query("ROLLBACK");
+      } finally {
+        await runtime.query("ROLLBACK").catch(() => undefined);
+        await migrator.query("ROLLBACK").catch(() => undefined);
+        await migrator.query(
+          "delete from public.user_roles where user_profile_id = $1",
+          [actorProfileId],
+        );
+        await migrator.query("delete from public.user_profiles where id = $1", [
+          actorProfileId,
+        ]);
+        if (typeof signature === "string") {
+          await migrator.query(
+            "delete from public.system_metadata where key = $1",
+            [`business_authority_actor_context_use:${signature}`],
+          );
+        }
+        await runtime.end();
+        await migrator.end();
+      }
+    }, 30_000);
+
+    it("enforces signed Owner context through authority triggers and keeps audit append-only", async () => {
+      const runtime = new Client({ connectionString: runtimeUrl });
+      const migrator = new Client({ connectionString: migrationUrl });
+      const ownerProfileId = randomUUID();
+      const inactiveOwnerProfileId = randomUUID();
+      const nonOwnerProfileId = randomUUID();
+      const ownerProviderUserId = `phase3n-owner-${token()}`;
+      const inactiveOwnerProviderUserId = `phase3n-inactive-${token()}`;
+      const nonOwnerProviderUserId = `phase3n-non-owner-${token()}`;
+      const dialect = new PgDialect();
+
+      const compileContext = (
+        actorProfileId: string,
+        providerUserId: string,
+        primaryCorrelationId: string,
+        secondaryCorrelationId: string | null,
+        issuedAtEpochSeconds = Math.floor(Date.now() / 1_000),
+      ) =>
+        dialect.sqlToQuery(
+          businessAuthorityActorContextSql(
+            actorProfileId,
+            providerUserId,
+            primaryCorrelationId,
+            secondaryCorrelationId,
+            process.env,
+            issuedAtEpochSeconds,
+          ),
+        );
+
+      const expectRecordTriggerDenied = async (input: {
+        proposedByProfileId: string;
+        correlationId: string;
+        context?: Readonly<{ sql: string; params: unknown[] }>;
+      }) => {
+        await runtime.query("BEGIN");
+        try {
+          if (input.context) {
+            await runtime.query(input.context.sql, input.context.params);
+          }
+          let denied = false;
+          try {
+            await runtime.query(
+              `insert into public.business_authority_records (
+                 authority_key, category, version, record_version,
+                 environment_scope, status, evidence_class,
+                 required_authority_types, authority_value, effective_from,
+                 proposed_by_profile_id, transition_correlation_id
+               ) values (
+                 $1, 'BRAND_CONTENT', 1, 0, 'STAGING', 'PROPOSED',
+                 'OWNER_INPUT', '["OWNER"]'::jsonb,
+                 '{"kind":"DECISION","decisionCode":"SYNTHETIC"}'::jsonb,
+                 clock_timestamp(), $2, $3
+               )`,
+              [
+                `PHASE3N_CONTEXT_${token()}`,
+                input.proposedByProfileId,
+                input.correlationId,
+              ],
+            );
+          } catch (error) {
+            if (
+              !error ||
+              typeof error !== "object" ||
+              !("code" in error) ||
+              error.code !== "42501"
+            ) {
+              throw error;
+            }
+            denied = true;
+          }
+          expect(denied).toBe(true);
+        } finally {
+          await runtime.query("ROLLBACK").catch(() => undefined);
+        }
+      };
+
+      await migrator.connect();
+      await runtime.connect();
+      try {
+        await migrator.query("BEGIN");
+        await migrator.query(
+          `insert into public.user_profiles (
+             id, auth_provider_user_id, display_name, preferred_locale, status
+           ) values
+             ($1, $2, 'Phase 3N live Owner', 'en', 'ACTIVE'),
+             ($3, $4, 'Phase 3N inactive Owner', 'en', 'SUSPENDED'),
+             ($5, $6, 'Phase 3N live non-Owner', 'en', 'ACTIVE')`,
+          [
+            ownerProfileId,
+            ownerProviderUserId,
+            inactiveOwnerProfileId,
+            inactiveOwnerProviderUserId,
+            nonOwnerProfileId,
+            nonOwnerProviderUserId,
+          ],
+        );
+        await migrator.query(
+          `insert into public.user_roles (
+             user_profile_id, role_id, active, assignment_source,
+             assigned_by_profile_id
+           )
+           select fixture.profile_id, role.id, true,
+             case when role.code = 'OWNER'
+               then 'OWNER_BOOTSTRAP' else 'PRIVILEGED_ASSIGNMENT' end,
+             fixture.profile_id
+           from (values
+             ($1::uuid, 'OWNER'::text),
+             ($2::uuid, 'OWNER'::text),
+             ($3::uuid, 'ADMIN'::text)
+           ) fixture(profile_id, role_code)
+           join public.application_roles role on role.code = fixture.role_code`,
+          [ownerProfileId, inactiveOwnerProfileId, nonOwnerProfileId],
+        );
+        await migrator.query("COMMIT");
+
+        await expectRecordTriggerDenied({
+          proposedByProfileId: ownerProfileId,
+          correlationId: randomUUID(),
+        });
+
+        const badMacCorrelationId = randomUUID();
+        const badMac = compileContext(
+          ownerProfileId,
+          ownerProviderUserId,
+          badMacCorrelationId,
+          null,
+        );
+        badMac.params[badMac.params.length - 1] = "0".repeat(64);
+        await expectRecordTriggerDenied({
+          proposedByProfileId: ownerProfileId,
+          correlationId: badMacCorrelationId,
+          context: badMac,
+        });
+
+        const currentEpoch = Math.floor(Date.now() / 1_000);
+        for (const issuedAtEpochSeconds of [
+          currentEpoch - 300,
+          currentEpoch + 300,
+        ]) {
+          const correlationId = randomUUID();
+          await expectRecordTriggerDenied({
+            proposedByProfileId: ownerProfileId,
+            correlationId,
+            context: compileContext(
+              ownerProfileId,
+              ownerProviderUserId,
+              correlationId,
+              null,
+              issuedAtEpochSeconds,
+            ),
+          });
+        }
+
+        const profileMismatchCorrelationId = randomUUID();
+        await expectRecordTriggerDenied({
+          proposedByProfileId: inactiveOwnerProfileId,
+          correlationId: profileMismatchCorrelationId,
+          context: compileContext(
+            ownerProfileId,
+            ownerProviderUserId,
+            profileMismatchCorrelationId,
+            null,
+          ),
+        });
+
+        const providerMismatchCorrelationId = randomUUID();
+        await expectRecordTriggerDenied({
+          proposedByProfileId: ownerProfileId,
+          correlationId: providerMismatchCorrelationId,
+          context: compileContext(
+            ownerProfileId,
+            `phase3n-wrong-provider-${token()}`,
+            providerMismatchCorrelationId,
+            null,
+          ),
+        });
+
+        const correlationMismatchId = randomUUID();
+        await expectRecordTriggerDenied({
+          proposedByProfileId: ownerProfileId,
+          correlationId: correlationMismatchId,
+          context: compileContext(
+            ownerProfileId,
+            ownerProviderUserId,
+            randomUUID(),
+            randomUUID(),
+          ),
+        });
+
+        const inactiveCorrelationId = randomUUID();
+        await expectRecordTriggerDenied({
+          proposedByProfileId: inactiveOwnerProfileId,
+          correlationId: inactiveCorrelationId,
+          context: compileContext(
+            inactiveOwnerProfileId,
+            inactiveOwnerProviderUserId,
+            inactiveCorrelationId,
+            null,
+          ),
+        });
+
+        const nonOwnerCorrelationId = randomUUID();
+        await expectRecordTriggerDenied({
+          proposedByProfileId: nonOwnerProfileId,
+          correlationId: nonOwnerCorrelationId,
+          context: compileContext(
+            nonOwnerProfileId,
+            nonOwnerProviderUserId,
+            nonOwnerCorrelationId,
+            null,
+          ),
+        });
+
+        const definition = getBusinessAuthorityDefinition(
+          "BUSINESS_CONTACT_DETAILS",
+        );
+        if (!definition) {
+          throw new Error("Synthetic authority definition is unavailable.");
+        }
+        const proposalCorrelationId = randomUUID();
+        const proposalContext = compileContext(
+          ownerProfileId,
+          ownerProviderUserId,
+          proposalCorrelationId,
+          null,
+        );
+        const proposal = dialect.sqlToQuery(
+          proposalMutationSql(
+            ownerProfileId,
+            {
+              authorityKey: definition.key,
+              definition,
+              environmentScope: "STAGING",
+              value: {
+                kind: "BUSINESS_CONTACT",
+                businessName: "Phase 3N rolled-back live verification",
+                email: null,
+                phone: null,
+                address: null,
+                serviceAreaBg: "Само синтетична проверка с rollback.",
+                serviceAreaEn: "Synthetic rollback-only verification.",
+              },
+              sourceReference: null,
+              safeEvidenceSummary: "Synthetic rollback-only verification.",
+              internalNotes: null,
+              effectiveFrom: new Date(),
+              effectiveUntil: null,
+            },
+            proposalCorrelationId,
+          ),
+        );
+
+        await runtime.query("BEGIN");
+        try {
+          await runtime.query(proposalContext.sql, proposalContext.params);
+          const created = await runtime.query<{
+            result: string;
+            recordId: string | null;
+          }>(proposal.sql, proposal.params);
+          const recordId = created.rows[0]?.recordId;
+          expect(created.rows[0]?.result).toBe("CHANGED");
+          expect(recordId).toMatch(
+            /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+          );
+          await runtime.query("SET CONSTRAINTS ALL IMMEDIATE");
+          const state = await runtime.query<{
+            status: string;
+            record_version: number;
+            audit_events: number;
+            actor_profile_id: string | null;
+            correlation_id: string;
+          }>(
+            `select record.status, record.record_version,
+               count(event.id)::integer as audit_events,
+               max(event.actor_profile_id::text) as actor_profile_id,
+               max(event.correlation_id::text) as correlation_id
+             from public.business_authority_records record
+             join public.business_authority_audit_events event
+               on event.authority_record_id = record.id
+             where record.id = $1
+             group by record.id`,
+            [recordId],
+          );
+          expect(state.rows[0]).toEqual({
+            status: "PROPOSED",
+            record_version: 0,
+            audit_events: 1,
+            actor_profile_id: ownerProfileId,
+            correlation_id: proposalCorrelationId,
+          });
+
+          await runtime.query("SAVEPOINT audit_update_denial");
+          await expectDenied(
+            runtime,
+            `update public.business_authority_audit_events
+               set safe_metadata = safe_metadata where authority_record_id = '${recordId}'`,
+          );
+          await runtime.query("ROLLBACK TO SAVEPOINT audit_update_denial");
+          await runtime.query("SAVEPOINT audit_delete_denial");
+          await expectDenied(
+            runtime,
+            `delete from public.business_authority_audit_events
+               where authority_record_id = '${recordId}'`,
+          );
+          await runtime.query("ROLLBACK TO SAVEPOINT audit_delete_denial");
+        } finally {
+          await runtime.query("ROLLBACK").catch(() => undefined);
+        }
+      } finally {
+        await runtime.query("ROLLBACK").catch(() => undefined);
+        await migrator.query("ROLLBACK").catch(() => undefined);
+        await migrator.query(
+          `delete from public.user_roles
+             where user_profile_id = any($1::uuid[])`,
+          [[ownerProfileId, inactiveOwnerProfileId, nonOwnerProfileId]],
+        );
+        await migrator.query(
+          `delete from public.user_profiles where id = any($1::uuid[])`,
+          [[ownerProfileId, inactiveOwnerProfileId, nonOwnerProfileId]],
+        );
+        await runtime.end();
+        await migrator.end();
+      }
+    }, 60_000);
 
     it("keeps insert-only delivery evidence usable without granting row reads", async () => {
       const runtime = new Client({ connectionString: runtimeUrl });

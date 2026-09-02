@@ -41,6 +41,27 @@ describe("protected application shell", () => {
   );
 
   it.each([
+    ["bg", "Бизнес правомощия"],
+    ["en", "Business authority"],
+  ] as const)(
+    "renders the localized %s authority package only for settings readers",
+    (locale, label) => {
+      const html = renderToStaticMarkup(
+        <ApplicationShell
+          locale={locale}
+          authorization={authorization(new Set(["SYSTEM_SETTINGS_READ"]))}
+        >
+          <h1>Authority route</h1>
+        </ApplicationShell>,
+      );
+
+      expect(html).toContain('href="/app/admin/business-authority"');
+      expect(html).toContain(label);
+      expect(html).not.toContain('href="/app/admin/users"');
+    },
+  );
+
+  it.each([
     ["bg", "Администрация", "Отваряне на модула"],
     ["en", "Administration", "Open module"],
   ] as const)(

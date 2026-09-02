@@ -52,12 +52,12 @@ reprice or partially issue the record.
 
 Four versioned structures control invoice readiness:
 
-| Structure | Purpose |
-| --- | --- |
-| `customer_billing_profiles` | Customer-specific invoice-time billing identity and address |
-| `business_legal_profiles` | Environment-scoped seller identity and customer-visible payment instructions |
-| `invoice_numbering_policies` | Environment/document-scoped prefix, width and serialized sequence |
-| `invoice_policies` | Environment-scoped draft/issue eligibility, payment terms, due days, currency and approved seller/numbering references |
+| Structure                    | Purpose                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `customer_billing_profiles`  | Customer-specific invoice-time billing identity and address                                                            |
+| `business_legal_profiles`    | Environment-scoped seller identity and customer-visible payment instructions                                           |
+| `invoice_numbering_policies` | Environment/document-scoped prefix, width and serialized sequence                                                      |
+| `invoice_policies`           | Environment-scoped draft/issue eligibility, payment terms, due days, currency and approved seller/numbering references |
 
 Configuration uses `DRAFT`, `APPROVED` and `SUPERSEDED` lifecycle values.
 Approval and supersession create an attributable history. An approved version
@@ -293,12 +293,12 @@ invoice in place. Legal tax-document and refund policy remain unimplemented.
 
 Phase 3H adds four permission codes without adding an `ACCOUNTANT` role:
 
-| Permission | Purpose | Canonical roles |
-| --- | --- | --- |
-| `FINANCE_READ` | Staff finance dashboard, invoice and payment reads | Owner, Admin |
-| `FINANCE_MANAGE` | Draft creation/cancellation and high-risk reversal conjunction | Owner, Admin |
-| `INVOICE_ISSUE` | Explicit invoice issue | Owner, Admin |
-| `PAYMENT_RECORD` | Record, confirm and allocate payments; part of reversal conjunction | Owner, Admin |
+| Permission       | Purpose                                                             | Canonical roles |
+| ---------------- | ------------------------------------------------------------------- | --------------- |
+| `FINANCE_READ`   | Staff finance dashboard, invoice and payment reads                  | Owner, Admin    |
+| `FINANCE_MANAGE` | Draft creation/cancellation and high-risk reversal conjunction      | Owner, Admin    |
+| `INVOICE_ISSUE`  | Explicit invoice issue                                              | Owner, Admin    |
+| `PAYMENT_RECORD` | Record, confirm and allocate payments; part of reversal conjunction | Owner, Admin    |
 
 Payment reversal requires the exact conjunction `FINANCE_READ`,
 `FINANCE_MANAGE` and `PAYMENT_RECORD`. Dispatcher and Technician receive no
@@ -364,13 +364,25 @@ data. They must not enter URLs, logs, generic analytics, audit metadata or
 technician/dispatcher projections. Internal notes must not contain credentials,
 bank secrets, card data, identity documents or unrelated sensitive data.
 
-Migration `0010_phase_3h_finance_invoicing.sql` is additive and application-
-owned. It must be applied only to the VAX Neon `development` branch under the
-existing mutation interlocks. It creates no Neon Auth object and does not
-authorize browser Data API access. Development integration tests may create
-only synthetic finance fixtures, must create no Auth identity, and must remove
-transient records after verification. Production migration and deployment
-remain separately unauthorized.
+Migration `0010_phase_3h_finance_invoicing.sql` was introduced on Neon
+`development` and later carried into the isolated staging migration history
+under the dedicated staging interlocks. It creates no Neon Auth object and does
+not authorize browser Data API access. Development/staging integration tests
+may create only synthetic finance fixtures, must create no Auth identity and
+must remove transient records after verification. Production migration and
+deployment remain separately unauthorized.
+
+Phase 3N migration 0016 extends the existing seller, numbering, Invoice-policy
+and Invoice environment checks with the exact `STAGING` scope. Finance Server
+Actions derive `DEVELOPMENT`, `STAGING` or `PRODUCTION` only through the
+explicit validated `VAX_ENVIRONMENT` boundary; hosted staging and production
+fail closed when it is missing, blank or unsafe. Hosted staging is not treated
+as production merely because its Next.js build uses `NODE_ENV=production`, and
+`NODE_ENV` can never activate production finance policy. Payment-term due days
+are structurally `DAYS` with a nonnegative integer, but Phase 3N supplies no
+actual term. This compatibility change inserts or approves no seller, VAT,
+payment, numbering or Invoice-policy value, and existing financial/commercial
+snapshots remain unchanged.
 
 ## Compliance and production gates
 
