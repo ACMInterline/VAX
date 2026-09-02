@@ -22,7 +22,8 @@ export type ApplicationNavigationItem = {
     | "OPERATIONS"
     | "SCHEDULE"
     | "FIELD_WORK"
-    | "ADMINISTRATION";
+    | "ADMINISTRATION"
+    | "BUSINESS_AUTHORITY";
   labelBg: string;
   labelEn: string;
   futurePath?: string;
@@ -170,6 +171,14 @@ export const applicationNavigationItems: readonly ApplicationNavigationItem[] = 
     labelEn: "Administration",
     href: "/app/admin/users",
     requiredPermissions: ["USER_ADMIN_READ"],
+    audience: "STAFF",
+  },
+  {
+    code: "BUSINESS_AUTHORITY",
+    labelBg: "Бизнес правомощия",
+    labelEn: "Business authority",
+    href: "/app/admin/business-authority",
+    requiredPermissions: ["SYSTEM_SETTINGS_READ"],
     audience: "STAFF",
   },
 ];

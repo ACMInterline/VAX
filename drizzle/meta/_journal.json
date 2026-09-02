@@ -113,6 +113,13 @@
       "when": 1787875198634,
       "tag": "0015_phase_3l_readiness_attestation",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788147573740,
+      "tag": "0016_phase_3n_business_authority",
+      "breakpoints": true
     }
   ]
 }

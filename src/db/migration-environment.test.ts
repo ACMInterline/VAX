@@ -25,6 +25,7 @@ const localDatabaseUrl =
 const hostedDatabaseUrl =
   "postgresql://vax_runtime:secret@localhost/vax_hosted_test";
 const stagingTarget = {
+  VAX_ENVIRONMENT: "staging",
   DATABASE_ADMIN_EXPECTED_ROLE: "staging_admin",
   DATABASE_MUTATION_ENVIRONMENT: "staging",
   DATABASE_MUTATION_EXPECTED_PROJECT_ID: "project-staging",
@@ -173,6 +174,7 @@ describe("assertDevelopmentDatabaseMutationTarget", () => {
     expect(() =>
       assertDevelopmentDatabaseMutationTarget({
         NODE_ENV: "development",
+        VAX_ENVIRONMENT: "development",
         DATABASE_URL: developmentUrl,
         DATABASE_MUTATION_ENVIRONMENT: "development",
         DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
@@ -185,6 +187,7 @@ describe("assertDevelopmentDatabaseMutationTarget", () => {
     const migrationUrl = developmentUrl.replace("vax_runtime", "vax_migrator");
     const environment = {
       NODE_ENV: "development",
+      VAX_ENVIRONMENT: "development",
       MIGRATION_DATABASE_URL: migrationUrl,
       DATABASE_MUTATION_ENVIRONMENT: "development",
       DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
@@ -201,6 +204,22 @@ describe("assertDevelopmentDatabaseMutationTarget", () => {
       ),
     ).toThrow("Database mutation target is not authorized.");
   });
+
+  it.each([undefined, "staging", "production"])(
+    "rejects a development mutation when VAX_ENVIRONMENT is %s",
+    (vaxEnvironment) => {
+      expect(() =>
+        assertDevelopmentDatabaseMutationTarget({
+          NODE_ENV: "development",
+          VAX_ENVIRONMENT: vaxEnvironment,
+          DATABASE_URL: developmentUrl,
+          DATABASE_MUTATION_ENVIRONMENT: "development",
+          DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",
+          DATABASE_MUTATION_EXPECTED_DATABASE: "neondb",
+        }),
+      ).toThrow("Database mutation target is not authorized.");
+    },
+  );
 
   it("accepts staging only through the secured target authorization", async () => {
     const staging = {
@@ -351,6 +370,7 @@ describe("assertDevelopmentDatabaseMutationTarget", () => {
 describe("assertDevelopmentDatabaseIdentity", () => {
   const environment = {
     NODE_ENV: "development",
+    VAX_ENVIRONMENT: "development",
     DATABASE_MUTATION_ENVIRONMENT: "development",
     DATABASE_MUTATION_EXPECTED_PROJECT_ID: "project-development",
     DATABASE_MUTATION_EXPECTED_BRANCH_ID: "branch-development",
@@ -407,6 +427,7 @@ describe("assertDevelopmentDatabaseIdentity", () => {
   it("accepts staging identity only through secured target authorization", async () => {
     const staging = {
       ...environment,
+      VAX_ENVIRONMENT: "staging",
       DATABASE_ADMIN_EXPECTED_ROLE: "staging_admin",
       DATABASE_MUTATION_ENVIRONMENT: "staging",
       DATABASE_MUTATION_EXPECTED_HOST: "development.db.invalid",

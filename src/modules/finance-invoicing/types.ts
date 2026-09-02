@@ -1,5 +1,13 @@
 import type { JsonObject } from "@/modules/request-quote/types";
 
+export const financeEnvironmentScopes = [
+  "DEVELOPMENT",
+  "STAGING",
+  "PRODUCTION",
+] as const;
+export type FinanceEnvironmentScope =
+  (typeof financeEnvironmentScopes)[number];
+
 export const invoiceTypes = ["STANDARD", "PROFORMA"] as const;
 export type InvoiceType = (typeof invoiceTypes)[number];
 
@@ -172,14 +180,14 @@ export type CreateInvoiceDraftInput = Readonly<{
   customerVisibleNote: string | null;
   internalNote: string | null;
   manualAdjustmentRequested: false;
-  environmentScope: "DEVELOPMENT" | "PRODUCTION";
+  environmentScope: FinanceEnvironmentScope;
 }>;
 
 export type IssueInvoiceInput = Readonly<{
   invoiceReference: string;
   expectedVersion: number;
   issueConfirmed: true;
-  environmentScope: "DEVELOPMENT" | "PRODUCTION";
+  environmentScope: FinanceEnvironmentScope;
 }>;
 
 export type CancelInvoiceInput = Readonly<{

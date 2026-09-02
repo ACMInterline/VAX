@@ -21,7 +21,10 @@ export function getVaxEnvironment(
     return configured as VaxEnvironment;
   }
 
-  return environment.NODE_ENV === "production" ? "production" : "development";
+  if (environment.NODE_ENV === "production") {
+    throw new Error("VAX environment is not configured safely.");
+  }
+  return "development";
 }
 export function isStagingLocalRehearsal(
   environment: Readonly<Record<string, string | undefined>> = process.env,

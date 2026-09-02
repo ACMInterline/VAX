@@ -3,6 +3,7 @@ import { getAuthRuntimeConfiguration } from "./config";
 
 const productionEnvironment = {
   NODE_ENV: "production",
+  VAX_ENVIRONMENT: "production",
   PUBLIC_SITE_URL: "https://app.example.invalid",
   AUTH_TRUSTED_ORIGINS: "https://app.example.invalid",
 } as const;

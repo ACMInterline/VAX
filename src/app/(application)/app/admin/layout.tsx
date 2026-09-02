@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { requireIdentityAdminPrincipal } from "./admin-principal";
+import { requireAdministrationPrincipal } from "./admin-principal";
 
-export default async function IdentityAdministrationLayout({
+export default async function AdministrationLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  await requireIdentityAdminPrincipal();
+  await requireAdministrationPrincipal();
   return children;
 }

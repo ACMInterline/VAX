@@ -1,6 +1,6 @@
 import path from "node:path";
-import { migrate } from "drizzle-orm/neon-http/migrator";
 import { getMigrationDatabaseUrl } from "@/lib/environment";
+import { runAtomicMigrations } from "./atomic-migration";
 import { createDatabaseConnection } from "./client";
 import {
   assertNonProductionDatabaseIdentity,
@@ -10,6 +10,7 @@ import { seedAvailabilityEngine } from "./seed-availability-engine";
 import { seedCommercialEngine } from "./seed-commercial-engine";
 import { seedIdentityAccess } from "./seed-identity-access";
 import { seedCommunicationsDocuments } from "./seed-communications-documents";
+import { seedBusinessAuthorityActorContext } from "./seed-business-authority-actor-context";
 import { seedCanonicalServiceCatalogue } from "./seed-service-catalogue";
 import {
   loadStagingEnvironment,
@@ -27,7 +28,8 @@ async function runStagingMigrations(): Promise<void> {
     "migration",
     stagingAuthorization,
   );
-  const database = createDatabaseConnection(getMigrationDatabaseUrl());
+  const migrationDatabaseUrl = getMigrationDatabaseUrl();
+  const database = createDatabaseConnection(migrationDatabaseUrl);
   await assertNonProductionDatabaseIdentity(
     database,
     "migration",
@@ -35,9 +37,11 @@ async function runStagingMigrations(): Promise<void> {
     stagingAuthorization,
   );
 
-  await migrate(database, {
-    migrationsFolder: path.resolve(process.cwd(), "drizzle"),
-  });
+  await runAtomicMigrations(
+    migrationDatabaseUrl,
+    path.resolve(process.cwd(), "drizzle"),
+  );
+  await seedBusinessAuthorityActorContext(database);
   await seedCanonicalServiceCatalogue(database);
   await seedCommercialEngine(database);
   await seedAvailabilityEngine(database);

@@ -60,6 +60,7 @@ describe("production password-reset callback configuration", () => {
     "does not send a reset request through an unsafe public origin",
     async (origin) => {
       vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("VAX_ENVIRONMENT", "production");
       vi.stubEnv("PUBLIC_SITE_URL", origin);
 
       await expect(
@@ -71,6 +72,7 @@ describe("production password-reset callback configuration", () => {
 
   it("passes the selected locale through a valid production callback", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VAX_ENVIRONMENT", "production");
     vi.stubEnv("PUBLIC_SITE_URL", "https://public.example.invalid");
 
     await expect(

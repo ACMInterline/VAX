@@ -1,5 +1,39 @@
 # Staging Readiness
 
+## Phase 3N authority checkpoint
+
+Phase 3N adds the reviewed `0016_phase_3n_business_authority.sql` migration to
+the authorized development and staging targets only. The current
+nonproduction contract is 100 VAX public tables and 17 ordered migration
+entries. The two new tables hold immutable versioned authority proposals and
+append-only transition/approval evidence; no business-authority, seller, VAT,
+price, Invoice-numbering, provider-risk or deployment decision is seeded.
+Canonical RBAC remains five roles, 28 permissions and 76 role-permission
+mappings.
+
+The protected staging application can display the 17-category readiness
+registry and production-authorization report. `SYSTEM_SETTINGS_READ` controls
+the report; every proposal, review, approval, rejection and supersession still
+requires an active Owner with `SYSTEM_SETTINGS_MANAGE`, and the database repeats
+that boundary. Staging approval is distinct from production approval. Missing
+authority remains a blocker rather than an invitation to copy a provisional
+Phase 2A/2B value.
+
+Phase 3N also gives the existing finance configuration an explicit `STAGING`
+scope. Hosted finance actions derive `STAGING` from `VAX_ENVIRONMENT`; they do
+not mistake Next.js production build mode for VAX `PRODUCTION`. No staging
+seller, VAT, Invoice policy or numbering authority is inserted, so Invoice
+creation/issue remains fail-closed until genuine staging configuration is
+approved. Historical issued Quote, acceptance and Booking snapshots are not
+refreshed or rewritten.
+
+The Phase 3M identities, profiles and request/Quote/Booking chain remain
+controlled synthetic evidence. Phase 3N does not add an Auth identity, alter a
+provider session, seed operational facts or automatically activate any value.
+The hosted workflow therefore still stops at the scheduling-authority gate;
+Job, Passport, finance and final communication/document acceptance may proceed
+only after real staging authority exists.
+
 ## Phase 3M hosted checkpoint
 
 Phase 3M deploys the reviewed VAX application to a dedicated Vercel project at
@@ -24,8 +58,11 @@ exactly one OWNER and its audit event. Login, protected refresh, logout,
 verification, one-time password reset, suspension/reactivation and cross-
 customer denial were exercised. Managed Auth does not expose reliable session
 listing/revoke-all or provider-attested recent-authentication in the installed
-integration, so ADMIN assignment and other operations requiring those
-guarantees remained disabled rather than being bypassed.
+integration. The Phase 3M evidence records eight active synthetic staging
+sessions; Phase 3N retains that count as controlled acceptance evidence, not as
+a newly provider-attested inventory, and performs no direct provider-table
+cleanup. ADMIN assignment and other operations requiring those guarantees
+remain disabled rather than being bypassed.
 
 The hosted request path reached a persisted synthetic request, staff linkage,
 immutable normalization, reviewed estimate, issued quote, customer acceptance
@@ -154,7 +191,8 @@ Phase 3L verified:
 - 98 VAX public tables, all owned by the migrator and protected by RLS;
 - 16 ordered Drizzle ledger entries with repository hashes;
 - five roles, 28 permissions and 76 role-permission mappings;
-- no remaining application business rows, Auth users or Auth sessions;
+- at the Phase 3L checkpoint, no remaining application business rows, Auth
+  users or Auth sessions;
 - PUBLIC, `authenticated` and `anonymous` have no VAX table access;
 - runtime DDL/role/default-privilege bypass is denied while representative
   application repository paths work; and
@@ -172,7 +210,10 @@ the recovery marker were removed after verification.
 
 ## Authentication
 
-Staging Auth is branch-isolated and currently contains no users or sessions.
+At the historical Phase 3L checkpoint, staging Auth was branch-isolated and
+contained no users or sessions. Phase 3M subsequently added the controlled
+synthetic identities and recorded sessions described in the current checkpoint
+above.
 Email/password signup and sign-in are enabled and verification-at-signup is
 enabled. Provider localhost support remains enabled only for the explicitly
 gated local rehearsal. No production callback or credential is present.
@@ -358,7 +399,11 @@ are excluded from Git, Vercel build output, runbooks and logs. Before reuse,
 credentials must be retrieved from an approved secret store or reset through
 the staging sink; rotate or remove fixtures when their rehearsal purpose ends.
 They must never be copied to production. Audit evidence is intentionally
-retained with the fixture chain until a separately reviewed staging reset.
+retained with the fixture chain until a separately reviewed staging reset. The
+recorded eight active synthetic sessions are retained under the same policy;
+because the provider boundary cannot reliably list or revoke all sessions,
+their count is not conflated with the six identity records or claimed as a
+freshly verified provider inventory.
 
 ## Decision
 
@@ -366,9 +411,10 @@ retained with the fixture chain until a separately reviewed staging reset.
 
 Exact blockers:
 
-1. scheduling has no eligible publication-approved duration/price/availability
-   provenance, so Job, Passport, finance and final communication/document
-   acceptance cannot proceed without a separately approved operational rule;
+1. the Phase 3N evaluator has no genuine staging-approved duration, price,
+   availability, team/equipment, travel or related operational authority, so
+   Job, Passport, finance and final communication/document acceptance cannot
+   proceed;
 2. Neon Auth remains Beta and lacks the required session revoke-all,
    provider-attested recent-authentication and complete privileged-ADMIN proof;
 3. exact small-viewport hosted-browser and cookie-store inspection remain
@@ -376,10 +422,17 @@ Exact blockers:
 4. the credential-rotation rehearsal still cannot invalidate a previously
    authenticated Neon pooled frontend, even though fresh old credentials fail;
 5. alert ownership is the repository's GitHub staging environment/issue
-   receiver, not a staffed production on-call service; and
+   receiver, not a staffed production on-call service;
 6. production seller/VAT/fiscal/accounting/payment/privacy configuration,
    production topology, provider acceptance, migration, deployment and explicit
-   authorization all remain absent.
+   authorization all remain absent; and
+7. the Phase 3M portable restore proves the historical 98-table/16-entry
+   snapshot, not the Phase 3N 100-table/17-entry delta, which needs a later
+   approved portable-restore rerun before production recovery authority.
 
 No operational knowledge, provider, rule, staging email path, production
 configuration or production migration was automatically approved.
+
+See [BUSINESS_AUTHORITY.md](BUSINESS_AUTHORITY.md) for the approval model and
+[PRODUCTION_AUTHORIZATION_PACKAGE.md](PRODUCTION_AUTHORIZATION_PACKAGE.md) for
+the exact remaining business, professional, provider and release gates.

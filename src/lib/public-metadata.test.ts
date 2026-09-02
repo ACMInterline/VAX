@@ -36,12 +36,14 @@ describe("localized public metadata", () => {
       getConfiguredPublicUrl({
         PUBLIC_SITE_URL: "http://127.0.0.1:3000",
         NODE_ENV: "production",
+        VAX_ENVIRONMENT: "production",
       }),
     ).toBeUndefined();
     expect(
       getConfiguredPublicUrl({
         PUBLIC_SITE_URL: "https://fabric.example",
         NODE_ENV: "production",
+        VAX_ENVIRONMENT: "production",
       })?.href,
     ).toBe("https://fabric.example/");
   });

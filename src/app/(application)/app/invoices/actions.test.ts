@@ -538,6 +538,7 @@ describe("Phase 3H finance Server Action trust boundary", () => {
 
   it("derives production invoice-number scope outside submitted data", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VAX_ENVIRONMENT", "production");
 
     await issueInvoiceAction(
       initialState,
@@ -555,6 +556,45 @@ describe("Phase 3H finance Server Action trust boundary", () => {
       expect.anything(),
       expect.not.objectContaining({ environmentScope: expect.anything() }),
     );
+  });
+
+  it("derives hosted staging finance scope outside submitted data", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VAX_ENVIRONMENT", "staging");
+
+    await issueInvoiceAction(
+      initialState,
+      form([
+        ["invoiceReference", invoiceReference],
+        ["expectedVersion", "1"],
+        ["issueConfirmed", "true"],
+      ]),
+    );
+
+    expect(doubles.serviceFactory).toHaveBeenCalledWith(expect.anything(), {
+      environmentScope: "STAGING",
+    });
+  });
+
+  it("fails closed before finance mutation for an invalid environment identity", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VAX_ENVIRONMENT", "preview");
+
+    await expect(
+      issueInvoiceAction(
+        initialState,
+        form([
+          ["invoiceReference", invoiceReference],
+          ["expectedVersion", "1"],
+          ["issueConfirmed", "true"],
+        ]),
+      ),
+    ).resolves.toEqual({
+      status: "ERROR",
+      message: "The operation cannot be completed right now.",
+    });
+    expect(doubles.serviceFactory).not.toHaveBeenCalled();
+    expect(doubles.service.issueInvoice).not.toHaveBeenCalled();
   });
 
   it("treats an already-issued invoice retry as an idempotent success", async () => {

@@ -7,6 +7,13 @@ does not authorize a production migration or deployment. Phase 3M authorizes
 only the dedicated Vercel staging project and Neon `staging`. Production
 requires a new explicit approval after all readiness gates pass.
 
+Phase 3N adds the governed production-authorization package but performs no
+production step. A generated report, an `APPROVED_FOR_PRODUCTION` record or an
+Owner signature on a printout is not by itself migration/deployment authority.
+The exact release commit, target, active change window and production-
+dependency fingerprint still require separate explicit authorization. See
+[PRODUCTION_AUTHORIZATION_PACKAGE.md](PRODUCTION_AUTHORIZATION_PACKAGE.md).
+
 ## Staging preflight
 
 1. Start from a reviewed commit on protected `main` with green required CI.
@@ -148,6 +155,11 @@ required, create/inspect a recovery branch first and follow
 
 Before a production runbook can be executed, require all of the following:
 
+- a current Phase 3N report with every production-required authority dependency
+  effective and passing, including a trusted exact resolver result for every
+  configuration reference and the explicit final Owner GO;
+- explicit valid `VAX_ENVIRONMENT=production`; never infer the VAX environment
+  from `NODE_ENV` or continue when the explicit value is missing/blank;
 - hosted staging and complete synthetic role/IDOR/Auth/email rehearsals;
 - owner acceptance of Neon Auth Beta/support/session limitations;
 - a provider-supported database pooler-session invalidation procedure for
@@ -156,11 +168,22 @@ Before a production runbook can be executed, require all of the following:
 - proven portable export plus approved backup retention/RPO/RTO;
 - exact production runtime/migrator/admin credentials and least-privilege/RLS
   review on the production topology;
+- a reviewed maintenance-window procedure that provisions and rotates the
+  domain-separated Business Authority actor-context verifier with the Auth
+  cookie secret, drains all application instances and proves new-signature
+  success plus old-signature rejection without exposing either value;
 - approved seller identity, VAT/fiscal/accounting, Invoice numbering, payment,
   privacy/retention and legal configuration;
 - a reviewed production migration plan, rollback compatibility and change
-  window; and
+  window;
+- an Owner GO bound to the exact release commit, target, active change window
+  and current production-dependency fingerprint; and
 - separate explicit production migration and deployment authorization.
+
+Pending migrations and their ledger writes must run through the atomic
+node-postgres migrator path. Provisioning the secret-derived actor-context
+verifier is a separate guarded migrator step after schema commit; until it and
+the exact application secret agree, keep Business Authority mutations closed.
 
 Never force-push, bypass protected `main`, reuse staging credentials, accept a
 free-form production target or run a production mutation from this Phase 3L

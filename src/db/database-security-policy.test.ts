@@ -33,6 +33,10 @@ const readinessMigrationPath = path.join(
   root,
   "drizzle/0015_phase_3l_readiness_attestation.sql",
 );
+const businessAuthorityMigrationPath = path.join(
+  root,
+  "drizzle/0016_phase_3n_business_authority.sql",
+);
 
 const priorMigrationChecksums = {
   "0000_initialize_system_metadata.sql":
@@ -63,6 +67,10 @@ const priorMigrationChecksums = {
     "4ce1cf05447457ed6ba647505c694ad16461869e15f00230cf884afa75c624fb",
   "0013_phase_3k_runtime_locking.sql":
     "d6bf486d01734cc61a334171dc52be76209a39a1c0cdb4ee2c5dfcfa059cdbb6",
+  "0014_phase_3l_shared_rate_limiting.sql":
+    "d89eb981700427987f5e812ee7ff33ae7d30223776c0a617313520de5db9ccfc",
+  "0015_phase_3l_readiness_attestation.sql":
+    "502a03b6d2b20954f601feb244c90e75b40cf46f0033e8cfaf9f87786080c4b1",
 } as const;
 
 function schemaTableNames(): readonly string[] {
@@ -90,7 +98,7 @@ function migrationPolicy(contents: string) {
 
 describe("Phase 3K database security policy", () => {
   it("classifies every VAX table exactly once", () => {
-    expect(vaxDatabaseTableNames).toHaveLength(98);
+    expect(vaxDatabaseTableNames).toHaveLength(100);
     expect(vaxDatabaseTableNames).toEqual(schemaTableNames());
     expect(
       Object.values(databaseSecurityTablePolicy).every(
@@ -130,7 +138,12 @@ describe("Phase 3K database security policy", () => {
     const contents = await readFile(migrationPath, "utf8");
     const expected = Object.fromEntries(
       Object.entries(databaseSecurityTablePolicy)
-        .filter(([table]) => table !== "operational_rate_limits")
+        .filter(
+          ([table]) =>
+            table !== "operational_rate_limits" &&
+            table !== "business_authority_records" &&
+            table !== "business_authority_audit_events",
+        )
         .map(([table, policy]) => [table, [...policy.runtime]]),
     );
 
@@ -139,6 +152,34 @@ describe("Phase 3K database security policy", () => {
     expect(contents).not.toContain("FORCE ROW LEVEL SECURITY");
     expect(contents).not.toMatch(/neon_auth\s*\./);
     expect(contents).not.toMatch(/CREATE\s+ROLE/i);
+  });
+
+  it("applies explicit least privilege to business-authority records and audit", async () => {
+    const contents = await readFile(businessAuthorityMigrationPath, "utf8");
+    expect(databaseSecurityTablePolicy.business_authority_records.runtime).toEqual([
+      "SELECT",
+      "INSERT",
+      "UPDATE",
+    ]);
+    expect(
+      databaseSecurityTablePolicy.business_authority_audit_events.runtime,
+    ).toEqual(["SELECT", "INSERT"]);
+    expect(contents).toContain(
+      "ALTER TABLE public.business_authority_records ENABLE ROW LEVEL SECURITY",
+    );
+    expect(contents).toContain(
+      "ALTER TABLE public.business_authority_audit_events ENABLE ROW LEVEL SECURITY",
+    );
+    expect(contents).toContain(
+      "GRANT SELECT, INSERT, UPDATE\n  ON TABLE public.business_authority_records TO vax_runtime",
+    );
+    expect(contents).toContain(
+      "GRANT SELECT, INSERT\n  ON TABLE public.business_authority_audit_events TO vax_runtime",
+    );
+    expect(contents).not.toContain("GRANT DELETE");
+    expect(contents).not.toContain("FOR DELETE TO vax_runtime");
+    expect(contents).not.toContain("FORCE ROW LEVEL SECURITY");
+    expect(contents).not.toMatch(/neon_auth\s*\./);
   });
 
   it("applies explicit least-privilege security to the shared rate-limit table", async () => {
@@ -162,27 +203,39 @@ describe("Phase 3K database security policy", () => {
   });
 
   it("revokes direct invocation of every VAX trigger function", async () => {
-    const contents = await readFile(migrationPath, "utf8");
+    const contents = `${await readFile(migrationPath, "utf8")}\n${await readFile(
+      businessAuthorityMigrationPath,
+      "utf8",
+    )}`;
     for (const functionName of vaxTriggerFunctionNames) {
-      expect(contents).toContain(`'${functionName}'`);
+      if (functionName.startsWith("vax_business_authority_")) {
+        expect(contents).toContain(`public.${functionName}()`);
+      } else {
+        expect(contents).toContain(`'${functionName}'`);
+      }
     }
     expect(contents).toContain(
       "FROM PUBLIC, vax_runtime",
     );
   });
 
-  it("exposes only a narrow migration-ledger attestation to runtime", async () => {
-    const contents = await readFile(readinessMigrationPath, "utf8");
+  it("exposes only narrow operational validators to runtime", async () => {
+    const contents = `${await readFile(readinessMigrationPath, "utf8")}\n${await readFile(
+      businessAuthorityMigrationPath,
+      "utf8",
+    )}`;
 
     expect(vaxOperationalFunctionNames).toEqual([
+      "vax_business_authority_assert_actor_context",
       "vax_migration_history_hashes",
     ]);
     expect(contents).toContain("SECURITY DEFINER");
     expect(contents).toContain("SET search_path = pg_catalog, pg_temp");
     expect(contents).toContain("FROM drizzle.__drizzle_migrations");
+    expect(contents).toContain("public.vax_business_authority_assert_actor_context(uuid, uuid)");
+    expect(contents).toContain("business_authority_actor_context_v1");
     expect(contents).toContain("FROM PUBLIC, authenticated, anonymous");
     expect(contents).toContain("TO vax_runtime");
-    expect(contents).not.toContain("GRANT SELECT");
     expect(contents).not.toMatch(/neon_auth\s*\./);
   });
 
@@ -241,6 +294,7 @@ describe("Phase 3K database security policy", () => {
       "0013_phase_3k_runtime_locking.sql",
       "0014_phase_3l_shared_rate_limiting.sql",
       "0015_phase_3l_readiness_attestation.sql",
+      "0016_phase_3n_business_authority.sql",
     ];
     const hashes = await Promise.all(
       migrationFiles.map(async (fileName) =>
@@ -253,11 +307,11 @@ describe("Phase 3K database security policy", () => {
     expect(hashes).toEqual(vaxMigrationHashes);
   });
 
-  it("registers Phase 3L directly after both Phase 3K migrations", async () => {
+  it("registers Phase 3N directly after Phase 3L", async () => {
     const journal = JSON.parse(
       await readFile(path.join(root, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: Array<{ idx: number; tag: string }> };
-    expect(journal.entries.slice(-5)).toEqual([
+    expect(journal.entries.slice(-6)).toEqual([
       {
         idx: 11,
         version: "7",
@@ -291,6 +345,13 @@ describe("Phase 3K database security policy", () => {
         version: "7",
         when: 1787875198634,
         tag: "0015_phase_3l_readiness_attestation",
+        breakpoints: true,
+      },
+      {
+        idx: 16,
+        version: "7",
+        when: 1788147573740,
+        tag: "0016_phase_3n_business_authority",
         breakpoints: true,
       },
     ]);

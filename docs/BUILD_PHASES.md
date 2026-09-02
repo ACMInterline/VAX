@@ -465,6 +465,97 @@ protected-main CI, and proof that production is untouched. A complete staging
 rehearsal still requires an approved hosted HTTPS origin and test-only mail
 transport.
 
+### Phase 3M — Hosted staging acceptance
+
+Adds a dedicated nonproduction Vercel Preview deployment over the isolated
+Neon staging branch, with one exact HTTPS staging/Auth origin, a generated
+test-only SMTP sink and recipient allowlist, shared hosted rate limiting,
+sanitized GitHub issue monitoring and a portable PostgreSQL logical export/
+restore rehearsal. Synthetic OWNER, DISPATCHER, TECHNICIAN and CUSTOMER flows
+exercise verification/reset/session, protected navigation, cross-customer
+denial, Request, Estimate, Quote, acceptance and Booking behavior.
+
+The historical Phase 3M database contract remains 98 public tables and 16
+ordered migrations. Six synthetic Auth/application profiles and the bounded
+CRM/request/Quote/Booking fixture chain are retained as controlled staging
+acceptance evidence. Scheduling stops safely because price, duration and
+availability knowledge is still provisional and inactive; downstream Job,
+Passport, finance and communication/document work is not fabricated. Provider
+session inventory/revoke-all/recent-auth, established pooler-session
+invalidation and production on-call ownership remain fail-closed limitations.
+
+Gate: exact hosted commit/origin/configuration, live readiness, synthetic Auth
+and IDOR coverage, generic recovery/email behavior, multi-instance limiter,
+sanitized alert/recovery evidence, portable restore and secret scan, protected-
+main CI, retained-fixture accounting and proof that production is untouched.
+This gate establishes nonproduction evidence only and does not authorize
+production.
+
+### Phase 3N — Operational calibration and business authority
+
+Adds an application-owned governance boundary for critical commercial,
+operational, legal, provider and deployment facts. A strict registry defines
+17 readiness categories, typed value contracts, evidence classes and required
+conceptual authorities. Records move explicitly through `PROPOSED`,
+`UNDER_REVIEW`, environment-specific approval, rejection and supersession;
+effective dates and immutable versions prevent a saved or future value from
+self-activating.
+
+The protected bilingual `/app/admin/business-authority` surface uses the
+existing `SYSTEM_SETTINGS_READ`/`SYSTEM_SETTINGS_MANAGE` permissions. Reads are
+permission-gated; proposal and all status/approval decisions require an active
+Owner in both application policy and the database transition graph. Selecting
+`ACCOUNTANT`, `LEGAL`, `OPERATIONS`, `TECHNICAL` or `CONTENT_CLAIMS` records
+which conceptual decision was obtained; it grants no role or professional
+qualification. External decisions require a controlled evidence reference,
+and the runtime cannot self-assert `SYSTEM_VERIFIED` evidence.
+
+Migration `0016_phase_3n_business_authority.sql` adds
+`business_authority_records` and append-only
+`business_authority_audit_events`, database-enforced transition/approval graph
+checks, exact runtime grants/RLS and no operational seed. It extends the
+nonproduction contract to 100 public tables and 17 ordered migrations while
+retaining five roles, 28 permissions and 76 canonical mappings. The same
+migration adds exact `STAGING` scope to the pre-existing finance environment
+checks; hosted finance actions derive that scope from `VAX_ENVIRONMENT`, not
+from Next.js `NODE_ENV`. No seller, VAT, number, price or finance authority is
+created.
+
+Business Authority runtime mutations also carry a fresh transaction-local HMAC
+binding of application profile, provider subject, correlation and issue time.
+Database triggers validate it using a protected purpose-derived verifier and
+repeat the live profile/provider/Owner check. The verifier is derived from the
+Auth cookie secret but provisioned only by the migrator after the atomic
+migration set; missing/mismatched state blocks mutation. Production key
+provisioning and coordinated rotation remain separately unauthorized.
+
+The deterministic evaluator derives approved/pending items and blocker codes
+from exact current approvals; no editable ready boolean exists. The printable
+production-authorization package distinguishes Owner input, system evidence
+and external evidence, documents provider/pooled-credential limitations,
+lists names-only configuration dependencies and remains
+`PRODUCTION NOT AUTHORIZED`. Configuration references require an exact trusted
+type/code/version/content-digest resolution; the final production GO is bound
+to the exact release commit, target, active change window and canonical
+dependency fingerprint.
+
+Policy readiness is closed and semantic: exact required codes only, fixed units
+and lower/integer bounds where numeric, no numeric fields on nonnumeric entries,
+and no unresolved legal-retention exception. The current global availability
+record deliberately blocks `INSTANT_*` until a later authorized per-service
+model exists. Hosted/production scope requires explicit `VAX_ENVIRONMENT`;
+`NODE_ENV` never activates production authority. Zero real authority remains a
+valid fail-closed governance state but keeps deployment unauthorized.
+
+Gate: strict proposal/transition/effective-date/supersession/environment tests,
+Owner-only approval and database graph enforcement, production-GO dependency
+tests, historical Quote/Booking/Invoice/document regression safety, exact
+100-table/17-migration security policy, development/staging-only migration and
+rehearsal, full validation, exact-snapshot security review, protected-main CI
+and proof that Neon production remains untouched. Missing real operational,
+Owner, Accountant, Legal or provider decisions stay visible blockers; they are
+not fabricated to pass staging.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,

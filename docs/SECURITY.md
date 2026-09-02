@@ -1,13 +1,17 @@
 # Security
 
-## Security posture through Phase 3L
+## Security posture through Phase 3N
 
 The repository now has development and staging database/authentication
 boundaries plus a shared PostgreSQL limiter, safe readiness/logging and a
-rehearsed recovery branch. It does not claim production security readiness.
-Hosted HTTPS staging, external email, authenticated role/IDOR/session flows,
-provider acceptance, monitoring delivery, portable export and production data
-governance remain gated. The finance foundation adds no claim
+rehearsed recovery branch. Phase 3M added hosted HTTPS staging, a test-only mail
+sink, synthetic Auth/IDOR/business flows, sanitized alert delivery and a
+portable restore rehearsal; those are nonproduction evidence. Phase 3N adds a
+versioned, Owner-controlled Business Authority and derived readiness boundary,
+not real approvals. It does not claim production security readiness. Provider
+acceptance, complete session controls, established pooler invalidation,
+production monitoring/recovery ownership and production data governance remain
+gated. The finance foundation adds no claim
 of legal, fiscal, tax, accounting or payment-provider security readiness. The
 communications foundation publishes locally only and makes no external-
 delivery, customer-read or messaging-provider claim.
@@ -89,7 +93,9 @@ database modules.
 - Back up and rehearse recovery before destructive production changes.
 - Do not store binary files or photos in PostgreSQL.
 
-Application migrations are applied only to the VAX Neon `development` branch.
+Application migrations are applied only to the VAX Neon `development` and
+isolated `staging` branches when explicitly authorized for the phase. They are
+never applied to Neon production under the nonproduction commands.
 The Phase 3A migration creates additive public-schema identity/RBAC tables and
 must never target production or directly change provider-managed `neon_auth`.
 Phase 3E migration 0007 is likewise additive and development-only; it creates
@@ -158,6 +164,23 @@ Migration `0015_phase_3l_readiness_attestation.sql` grants runtime access only
 to an exact ordered hash attestation, not the Drizzle ledger, so readiness can
 prove the 16-entry migration and operational schema contract. Migrations
 0000–0013 remain checksum-guarded and production remains unmigrated.
+
+Migration `0016_phase_3n_business_authority.sql` adds only two
+application-owned tables for immutable authority versions and append-only
+transition evidence. It seeds no operational fact or approval. Checks,
+uniqueness, four triggers, three trigger guards and one narrow security-definer
+actor-context assertion bind the exact environment/status/approval/audit graph,
+prevent runtime `SYSTEM_VERIFIED` self-assertion and require an active Owner
+with `SYSTEM_SETTINGS_MANAGE` for every transition. Runtime may execute only the
+actor assertion required by its triggers; it cannot execute guard functions,
+delete authority history or read/write the protected derived signing key. The
+application signs fresh transaction-local profile/provider/correlation/time
+context with a domain-separated key derived from the Auth cookie secret, and
+the database rejects stale, future-skewed, mismatched or forged context. The
+migration also adds only the explicit `STAGING` value to four finance
+environment checks. The current nonproduction contract is 100 public tables,
+17 ordered migrations and unchanged canonical five-role/28-permission/76-
+mapping RBAC. Production remains unmigrated.
 
 ## Health endpoints
 
@@ -743,6 +766,79 @@ Detailed roles, sessions, audit events and remaining production blockers are in
   object storage, production migration and deployment are absent. See
   `docs/COMMUNICATIONS_AND_DOCUMENTS.md`.
 
+## Phase 3N Business Authority safeguards
+
+- Business Authority reads require `SYSTEM_SETTINGS_READ`. Proposals and every
+  submit/approve/reject transition require `SYSTEM_SETTINGS_MANAGE` plus an
+  active Owner; application and database checks both repeat the boundary.
+- Conceptual `OWNER`, `ACCOUNTANT`, `LEGAL`, `OPERATIONS`, `TECHNICAL` and
+  `CONTENT_CLAIMS` values are evidence labels, not roles that a browser can
+  grant. Only an Owner may attest that the corresponding external decision was
+  obtained, and Accountant/Legal decisions require a controlled evidence
+  reference.
+- Strict discriminated value schemas reject unknown fields, unsafe bounds,
+  malformed endpoints, credentials in evidence text, unsupported value kinds,
+  invented observation statistics and claims without evidence.
+- The browser never supplies record status, version, approver, actor, category,
+  required authorities or system evidence. The registry and server derive
+  those values, and the database binds the active Owner/role snapshot to each
+  exact correlated transition event.
+- Runtime writes also require a fresh HMAC-signed transaction-local binding of
+  application profile, authenticated provider subject, primary/secondary
+  correlation and issue time. The database validates it against a protected
+  purpose-derived verifier and repeats the live profile/provider/Owner check.
+  Missing or invalid context fails closed; pool reuse cannot carry it beyond
+  the transaction.
+- Staging and production approvals are distinct. Development cannot acquire an
+  approval status. Future-effective, expired, superseded, malformed or
+  incompletely approved records do not satisfy readiness.
+- A `CONFIG_REFERENCE` satisfies readiness only when trusted server-side
+  resolution matches its exact subject type, code, positive version and
+  SHA-256 content digest in the same environment. Missing resolution and every
+  identity, status, effective-window, provisional or manual-review mismatch
+  fail closed.
+- Policy sets accept the exact governed code set only. Nonnumeric entries must
+  carry no number/unit; Quote validity, Auth lifetime, recovery objectives and
+  payment due days use their fixed `DAYS`/`MINUTES` units and enforced lower
+  bounds. The current global availability policy accepts only assessment/staff-
+  confirmation modes; global `INSTANT_*` cannot authorize every service.
+- Retention readiness rejects every unresolved `LEGAL_REVIEW_REQUIRED` erasure
+  exception even when the rule is otherwise marked approved.
+- Proposal payload/evidence/effective dates are immutable. A changed rule is a
+  new version; approval of that version supersedes rather than rewrites prior
+  history. Audit events are append-only and ordinary deletion is unavailable.
+- `APPROVED_FOR_PRODUCTION` is necessary but not sufficient for release. A
+  production `GO` is accepted only after every other registry dependency
+  passes, when it matches the exact release commit and target, while its exact
+  change window is active, and when it carries the current canonical dependency
+  fingerprint. Separate migration/deployment authorization is still required.
+- Safe summaries and audit metadata exclude credentials, contacts, bank data,
+  unrestricted legal/accounting evidence and provider responses. The printable
+  report exposes controlled decision evidence only.
+- Current authority affects future eligibility only. Issued Quotes, accepted
+  Bookings, Jobs, issued Invoices and customer documents retain their immutable
+  snapshots and are never repriced, renormalized, repaired or refreshed.
+- Finance and Business Authority actions derive environment scope through an
+  explicit validated `VAX_ENVIRONMENT`. Hosted/production processes fail closed
+  when it is missing, blank or unsafe; `NODE_ENV=production` is never authority
+  to query or activate production-scoped policy.
+- No real operational value, professional approval, provider acceptance or
+  production configuration is seeded. Missing authority stays a blocker. See
+  `docs/BUSINESS_AUTHORITY.md` and
+  `docs/PRODUCTION_AUTHORIZATION_PACKAGE.md`.
+- Business Authority derives its actor-context key from both
+  `NEON_AUTH_COOKIE_SECRET` and the explicit `VAX_ENVIRONMENT`. Missing or
+  invalid environment selection blocks signing, and equal root material in two
+  environments still produces different keys. Neither the root nor derived key
+  may enter source, logs or audit metadata.
+- Rotating `NEON_AUTH_COOKIE_SECRET` changes both session-cookie and Business
+  Authority actor-context signing. Rotation therefore needs a guarded
+  maintenance window, migrator-only derived-key update, full instance drain/
+  restart and proof that new contexts pass and old signatures fail. No key
+  value is logged or placed in migration SQL. A future rotation record must
+  version the derivation domain and bind the target environment; Phase 3N does
+  not activate a multi-key production rotation mechanism.
+
 ## Auditability
 
 Phase 3D records material request, estimate and quote lifecycle changes in its
@@ -756,6 +852,8 @@ recording/confirmation/allocation/reversal and settlement changes.
 Phase 3I separately records communication materialization, rendering, local
 portal publication and preference changes while keeping each owning domain
 event as the source authority.
+Phase 3N separately records every authority proposal, review decision,
+approval, rejection and supersession in `business_authority_audit_events`.
 Authentication and role/status events remain in `auth_audit_events`. Broader
 sensitive-read and future-domain operations still require durable audit
 coverage, including:

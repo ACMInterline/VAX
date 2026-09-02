@@ -20,6 +20,7 @@ export const vaxMigrationHashes = Object.freeze([
   "d6bf486d01734cc61a334171dc52be76209a39a1c0cdb4ee2c5dfcfa059cdbb6",
   "d89eb981700427987f5e812ee7ff33ae7d30223776c0a617313520de5db9ccfc",
   "502a03b6d2b20954f601feb244c90e75b40cf46f0033e8cfaf9f87786080c4b1",
+  "b68fd05476b5d32567f2f8838df4943e2a2beaa5db28ae9098b6aeb719ccb244",
 ] as const);
 
 export type DatabaseSecurityCategory =
@@ -31,6 +32,7 @@ export type DatabaseSecurityCategory =
   | "job_execution"
   | "finance"
   | "communications_documents"
+  | "business_authority"
   | "operational_security"
   | "audit_history"
   | "migration_system";
@@ -100,6 +102,16 @@ export const databaseSecurityTablePolicy = {
     category: "audit_history",
     runtime: readAppend,
     immutable: true,
+  },
+  business_authority_audit_events: {
+    category: "business_authority",
+    runtime: readAppend,
+    immutable: true,
+  },
+  business_authority_records: {
+    category: "business_authority",
+    runtime: readWrite,
+    immutable: false,
   },
   business_legal_profiles: {
     category: "finance",
@@ -608,6 +620,9 @@ export const vaxRuntimeLockTableNames = Object.freeze(
 );
 
 export const vaxTriggerFunctionNames = Object.freeze([
+  "vax_business_authority_guard_audit",
+  "vax_business_authority_guard_record",
+  "vax_business_authority_validate_graph",
   "vax_communications_guard_append_only",
   "vax_communications_guard_document",
   "vax_communications_guard_intent",
@@ -630,5 +645,6 @@ export const vaxTriggerFunctionNames = Object.freeze([
 ] as const);
 
 export const vaxOperationalFunctionNames = Object.freeze([
+  "vax_business_authority_assert_actor_context",
   "vax_migration_history_hashes",
 ] as const);

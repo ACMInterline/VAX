@@ -1,5 +1,9 @@
 import { getTableName } from "drizzle-orm";
-import { getTableConfig, type AnyPgTable } from "drizzle-orm/pg-core";
+import {
+  getTableConfig,
+  PgDialect,
+  type AnyPgTable,
+} from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import { invoices as exportedInvoices } from "../schema";
 import {
@@ -30,6 +34,16 @@ const financeTables = [
 
 function indexNames(table: AnyPgTable) {
   return getTableConfig(table).indexes.map((index) => index.config.name);
+}
+
+const dialect = new PgDialect();
+
+function checkSql(table: AnyPgTable, name: string): string {
+  const constraint = getTableConfig(table).checks.find(
+    (candidate) => candidate.name === name,
+  );
+  expect(constraint, name).toBeDefined();
+  return dialect.sqlToQuery(constraint!.value).sql;
 }
 
 describe("finance and invoicing schema contract", () => {
@@ -88,6 +102,19 @@ describe("finance and invoicing schema contract", () => {
         "payment_reversals_currency_eur",
       ]),
     );
+  });
+
+  it("keeps development, staging, and production finance scopes distinct", () => {
+    for (const [table, name] of [
+      [businessLegalProfiles, "business_legal_profiles_environment_valid"],
+      [invoiceNumberingPolicies, "invoice_numbering_policies_environment_valid"],
+      [invoicePolicies, "invoice_policies_environment_valid"],
+      [invoices, "invoices_environment_valid"],
+    ] as const) {
+      expect(checkSql(table, name)).toContain(
+        "in ('DEVELOPMENT', 'STAGING', 'PRODUCTION')",
+      );
+    }
   });
 
   it("binds invoice, item, payment, allocation and reversal provenance restrictively", () => {

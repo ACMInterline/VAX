@@ -47,13 +47,18 @@ The current repository contains:
 - staff-materialized bilingual customer documents from exact immutable Quote,
   Booking, Job, Invoice and Payment events, with checksummed HTML/print
   snapshots and authenticated local portal history; and
+- a protected, bilingual business-authority register with versioned evidence,
+  explicit staging/production approval states, effective dates, append-only
+  decision history and a deterministic production-blocker report; and
 - product, public-site, architecture, data, design, security, and delivery
   documentation.
 
-Production invitations/session administration, operational configuration
-approval, paid/live routing, live payment processing, external email/SMS or
-other messaging-provider delivery, binary PDF/object storage, offline
-technician synchronization, final branding and deployment are not implemented.
+Production invitations/session administration, paid/live routing, live payment
+processing, external email/SMS or other messaging-provider delivery, binary
+PDF/object storage, offline technician synchronization, final branding and
+deployment are not implemented. Final operational values and professional
+approvals have not been supplied. Phase 3N provides the approval workflow; it
+approves none of those missing facts automatically.
 
 ## Requirements
 
@@ -197,6 +202,7 @@ delivery policy is documented in [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT
 | src/modules | Provider-neutral domain vocabulary and application-facing modules |
 | src/modules/scheduling-dispatch | Scheduling authorization, validation, ranking, Sofia time, dispatch projections and persistence contract |
 | src/modules/communications-documents | Immutable event projection, bilingual templates, checksummed document rendering, local portal publication and communication policy |
+| src/modules/business-authority | Versioned operational authority, approval lifecycle, strict evidence/value validation and derived production readiness |
 | src/db | PostgreSQL schema, connection adapter, health probe, and migrator |
 | src/lib | Small cross-cutting utilities such as environment validation |
 | drizzle | Generated SQL migrations and Drizzle migration metadata |
@@ -285,16 +291,28 @@ role/command RLS on development, and documents the staging/production gate. It
 adds no product workflow and does not migrate production. Phase 3L creates and
 hardens the isolated staging branch, adds shared PostgreSQL rate limiting,
 liveness/readiness, safe structured logging, noindex/security headers, recovery
-and cold-rebuild rehearsal plus operational runbooks. Staging remains local-only
-and not ready until hosted HTTPS, test-only email and authenticated role/IDOR/
-session rehearsals exist. It does not deploy or migrate production. All current
-operational configuration remains visibly
-DRAFT/provisional and no phase migrates production or deploys. See
+and cold-rebuild rehearsal plus operational runbooks. At that historical
+checkpoint staging remained local-only. Phase 3M adds the dedicated hosted
+HTTPS Preview deployment, exact staging Auth origin, test-only email sink,
+synthetic role/IDOR/Auth/business-flow rehearsal, alert receiver and portable
+restore evidence. The complete workflow still stops at the provisional
+scheduling-knowledge gate. Phase 3N adds the protected Business Authority
+registry, Owner-controlled review transitions, environment/effective-date/
+supersession rules and a derived printable production-authorization package.
+Migration 0016 adds two application-owned authority tables, taking the current
+nonproduction security contract to 100 public tables and 17 ordered migrations
+while retaining five roles, 28 permissions and 76 canonical mappings. It also
+makes finance configuration explicitly `STAGING`-aware from the canonical VAX
+environment rather than the hosting build mode. No real operational value is
+seeded or automatically approved. Neon production remains unmigrated and no
+production deployment is authorized. See
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
 [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),
 [docs/BOOKING_ENGINE.md](docs/BOOKING_ENGINE.md),
 [docs/JOB_EXECUTION.md](docs/JOB_EXECUTION.md),
 [docs/SCHEDULING_AND_DISPATCH.md](docs/SCHEDULING_AND_DISPATCH.md),
-[docs/FINANCE_AND_INVOICING.md](docs/FINANCE_AND_INVOICING.md) and
-[docs/COMMUNICATIONS_AND_DOCUMENTS.md](docs/COMMUNICATIONS_AND_DOCUMENTS.md) and
-[docs/STAGING_READINESS.md](docs/STAGING_READINESS.md).
+[docs/FINANCE_AND_INVOICING.md](docs/FINANCE_AND_INVOICING.md),
+[docs/COMMUNICATIONS_AND_DOCUMENTS.md](docs/COMMUNICATIONS_AND_DOCUMENTS.md),
+[docs/BUSINESS_AUTHORITY.md](docs/BUSINESS_AUTHORITY.md),
+[docs/PRODUCTION_AUTHORIZATION_PACKAGE.md](docs/PRODUCTION_AUTHORIZATION_PACKAGE.md)
+and [docs/STAGING_READINESS.md](docs/STAGING_READINESS.md).
