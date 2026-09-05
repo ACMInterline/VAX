@@ -40,9 +40,9 @@
 .prototype-boundary > span {
   color: var(--accent);
   font-size: 0.66rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .prototype-boundary ul {
@@ -397,7 +397,7 @@
   flex: 0 0 auto;
   padding: 0.65rem 1rem;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0.95rem;
   color: var(--ink-faint);
   background: transparent;
   font-size: 0.7rem;
@@ -416,10 +416,10 @@
 .request-form__submit strong {
   display: block;
   color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.76rem;
+  font-weight: 620;
+  letter-spacing: 0.03em;
+  text-transform: none;
 }
 
 .request-form__submit p {
@@ -435,12 +435,12 @@
   align-items: center;
   gap: 1.5rem;
   padding: 0.75rem 1.1rem 0.75rem 1.3rem;
-  border-radius: 999px;
+  border-radius: 0.95rem;
   color: var(--ink-inverse);
   background: var(--surface-deep);
   cursor: pointer;
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 560;
   transition:
     background 160ms ease,
     transform 160ms ease;

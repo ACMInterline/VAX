@@ -69,7 +69,7 @@ export const englishPublicSiteCopy = {
     treatmentNote:
       "You describe the condition. The appropriate treatment is confirmed after professional inspection.",
     visuals: {
-      abstractFabric: "ATTELIER geometric scene of a refreshed textile interior",
+      abstractFabric: "ATTELIER soft textile atelier scene",
       surface: "Surface",
       assessedFirst: "Assessed first",
       onSite: "On site",
@@ -81,7 +81,7 @@ export const englishPublicSiteCopy = {
       hero: {
         kicker: "ATTELIER · Textile Care",
         eyebrow: "This is not ordinary carpet cleaning",
-        title: "More life for the spaces you love.",
+        title: "Longer life for textiles you care for.",
         description:
           "On-site carpet, rug, upholstery and mattress cleaning for homes, offices and hospitality spaces — planned for less disruption, careful material decisions and a practical return to use.",
         primaryAction: "Request a quote",

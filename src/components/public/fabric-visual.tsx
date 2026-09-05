@@ -27,34 +27,52 @@ export function FabricVisual({
         aria-hidden="true"
         focusable="false"
       >
-        <rect className="attelier-shape attelier-shape--cream" width="640" height="720" />
-        <path className="attelier-shape attelier-shape--cobalt" d="M0 0h330l-76 262L0 322Z" />
-        <path className="attelier-shape attelier-shape--yellow" d="m330 0 310 0v248L504 192 420 312 254 262Z" />
-        <path className="attelier-shape attelier-shape--coral" d="M0 322 254 262l58 174-158 92L0 472Z" />
-        <path className="attelier-shape attelier-shape--green" d="m420 312 84-120 136 56v284L488 466 312 436Z" />
-        <path className="attelier-shape attelier-shape--pink" d="m0 472 154 56 116 192H0Z" />
-        <path className="attelier-shape attelier-shape--blue" d="m154 528 158-92 176 30 152 66v188H270Z" />
+        <rect className="attelier-surface" width="640" height="720" />
+        <path
+          className="attelier-soft-weave"
+          d="M-20 560 C100 500, 220 580, 340 520 S580 560, 680 510 L680 760 L-20 760 Z"
+        />
+        <path
+          className="attelier-soft-weave"
+          d="M-20 520 C140 460, 240 620, 380 560 S620 560, 680 520 L680 560 C560 580, 420 520, 340 620 S180 660, -20 620 Z"
+        />
+        <path
+          className="attelier-soft-rug"
+          d="M48 398 C220 332, 280 420, 450 370 S620 430, 592 398 L592 590 C470 648, 170 650, 48 590 Z"
+        />
 
-        <g className="attelier-sofa">
-          <path d="M168 438h296a28 28 0 0 1 28 28v108H140V466a28 28 0 0 1 28-28Z" />
-          <path d="M122 494h38v116h-38a20 20 0 0 1-20-20v-76a20 20 0 0 1 20-20ZM492 494h38a20 20 0 0 1 20 20v76a20 20 0 0 1-20 20h-38Z" />
-          <path d="M158 574h316v36H158Z" />
-          <path d="M176 610h22v38h-22ZM434 610h22v38h-22Z" />
-          <path className="attelier-sofa__line" d="M316 438v136" />
+        <path
+          className="attelier-soft-sofa"
+          d="M132 500c16 0 28 12 28 28v94h320v-94c0-16 12-28 28-28h40c15 0 26 11 26 26v118c0 16-12 28-28 28H96c-16 0-28-12-28-28V526c0-15 11-26 26-26h38z"
+        />
+        <ellipse className="attelier-soft-sofa-pillows" cx="256" cy="538" rx="68" ry="34" />
+        <ellipse className="attelier-soft-sofa-pillows" cx="374" cy="538" rx="68" ry="34" />
+        <rect className="attelier-soft-stitch" x="236" y="514" width="168" height="10" rx="5" />
+
+        <circle className="attelier-soft-face" cx="472" cy="234" r="30" />
+        <path
+          className="attelier-soft-figure"
+          d="M438 274c20-18 52-8 67 14l34 64-40 22-29-48-28 76-72-30 31-82c8-16 21-24 38-26Z"
+        />
+        <path
+          className="attelier-soft-figure"
+          d="M415 292 334 244l-18 28 78 74Z M498 290l54-60 26 24-48 87"
+        />
+
+        <g className="attelier-soft-weave-mark">
+          <circle cx="94" cy="438" r="8" />
+          <circle cx="130" cy="466" r="6" />
+          <path d="M76 474c14-20 38-22 58 2" />
         </g>
 
-        <g className="attelier-person">
-          <circle cx="438" cy="224" r="48" />
-          <path d="M400 270c34-18 76-6 94 26l46 84-58 30-42-62-34 86-90-30 44-106c8-18 22-26 40-28Z" />
-          <path d="m370 296-98-62-28 40 112 94ZM474 292l72-84 34 30-70 112Z" />
-          <path d="m350 402-30 134 48 8 48-126ZM424 420l42 128 48-15-28-146Z" />
-        </g>
-
-        <g className="attelier-plant">
-          <path d="M74 410h74l-12 92H86Z" />
-          <path d="M110 410c-1-70 14-126 45-166M110 410c-8-64-32-107-70-138M110 410c18-70 54-105 102-118" />
-          <path className="attelier-plant__leaf" d="M143 266c22-44 54-56 82-47-2 37-28 65-73 68ZM52 284c-10-42-34-58-62-55 0 38 20 62 60 75ZM126 323c20-40 49-53 75-46-1 35-24 59-66 66Z" />
-        </g>
+        <path
+          className="attelier-soft-plant-stem"
+          d="M96 430C76 390 74 330 103 276 C120 238 156 216 183 234"
+        />
+        <path
+          className="attelier-soft-plant-leaf"
+          d="M188 248c18-6 36-10 54 0C226 272 203 283 188 287Z"
+        />
       </svg>
       <div className="fabric-visual__card" aria-hidden="true">
         <span>{copy.surface}</span>
@@ -89,18 +107,29 @@ export function PhotoPlaceholder({
         aria-hidden="true"
         focusable="false"
       >
-        <rect className="attelier-shape attelier-shape--navy" width="900" height="720" />
-        <path className="attelier-shape attelier-shape--yellow" d="M0 0h460L312 296 0 224Z" />
-        <path className="attelier-shape attelier-shape--cobalt" d="m460 0 440 0v312L688 214 510 382 312 296Z" />
-        <path className="attelier-shape attelier-shape--coral" d="M0 224 312 296l198 86-118 338H0Z" />
-        <path className="attelier-shape attelier-shape--green" d="m510 382 178-168 212 98v408H392Z" />
-        <path className="attelier-rug" d="m130 510 430-98 188 178-448 130Z" />
-        <g className="attelier-person attelier-person--relaxed">
-          <circle cx="650" cy="190" r="58" />
-          <path d="M600 244c70-32 132 10 138 82l9 112-112 20-26-108-72 100-80-56 108-127c10-12 21-19 35-23Z" />
-          <path d="m589 272-124-95-30 44 120 126ZM714 273l85-103 38 34-80 127Z" />
-        </g>
-        <path className="attelier-weave-line" d="m94 558 430-99M124 606l430-99M168 651l430-99" />
+        <rect className="attelier-photo-surface" width="900" height="720" />
+        <path
+          className="attelier-soft-weave"
+          d="M-20 420 C120 360, 250 500, 390 450 C520 404, 620 470, 920 430 L920 760 L-20 760 Z"
+        />
+        <path
+          className="attelier-soft-rug"
+          d="M22 486 C200 420, 320 530, 500 500 S780 530, 878 496 L878 648 C676 744, 246 742, 22 648 Z"
+        />
+        <ellipse className="attelier-soft-figure" cx="560" cy="210" rx="53" ry="40" />
+        <path
+          className="attelier-soft-figure"
+          d="M522 253c44-32 98 6 102 68l8 90-92 16-21-88-57 84-66-44 88-126c8-11 18-16 33-20Z"
+        />
+        <path
+          className="attelier-soft-figure"
+          d="M510 275 405 190l-26 38 98 100Z M579 278 646 194 680 219 612 321"
+        />
+        <path
+          className="attelier-soft-weave-mark"
+          d="M140 592c20-16 58-16 74 2M160 620c16-12 44-10 58 4M190 646c10-13 34-15 46 1"
+        />
+        <circle className="attelier-soft-accent-dot" cx="730" cy="150" r="58" />
       </svg>
       <div className="photo-placeholder__label">
         <span>{label}</span>
