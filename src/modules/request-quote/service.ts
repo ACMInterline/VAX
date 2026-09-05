@@ -26,6 +26,7 @@ import {
 } from "@/modules/service-catalogue/catalogue";
 import {
   calculateStaffEstimate,
+  resolveEstimateConfiguration,
   estimateGovernanceReviewReasonCodes,
   type EstimateEngineInput,
 } from "./estimate";
@@ -540,6 +541,7 @@ async function appendPersistedEstimate(
     calculation = calculateStaffEstimate(
       engineInput as EstimateEngineInput,
       new Date().toISOString(),
+      resolveEstimateConfiguration(),
     );
   } catch {
     throw new RequestQuoteServiceError("INVALID_REQUEST");

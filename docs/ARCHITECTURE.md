@@ -574,6 +574,14 @@ The database prevents staging/production approval mismatch and runtime system-
 evidence self-assertion. The derived package reads these facts but performs no
 release operation.
 
+ATTELIER finalization preserves that boundary. The business-authority
+repository composes one narrow code-owned resolver that returns only approved
+allowlisted staging configuration snapshots. The request/estimate service
+selects the separate ATTELIER price/duration definitions only for explicit
+staging; development keeps the original fixtures and production fails closed.
+Unresolved VAT can preserve gross commercial provenance but cannot satisfy
+issued-Quote or finance invariants.
+
 Repository migrations run through the node-postgres migrator transaction so
 the ordered pending migration set and ledger writes commit or roll back
 together. Secret-derived verifier provisioning is an explicit post-migration
@@ -616,7 +624,7 @@ GET /api/health retains the compatibility connectivity path. Phase 3L adds:
 
 1. `/api/liveness`, which proves only that the application process responds;
 2. `/api/readiness`, which validates safe configuration, the exact runtime
-   identity, database connectivity, the exact migration ledger through 0016,
+   identity, database connectivity, the exact migration ledger through 0018,
    the 100-table contract and operational rate-limit schema, shared-limit
    privilege, Auth availability and staging email state; and
 3. a 503 readiness result whenever any required category is not ready.

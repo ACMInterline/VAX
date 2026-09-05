@@ -632,6 +632,22 @@ function jsonInteger(
     : numericCheck;
 }
 
+/** New quote writes require resolved source VAT; historical evidence stays immutable. */
+function resolvedQuoteSourceVatSql(priceSnapshot: SQL, relationalVatRate: SQL): SQL {
+  const vat = sql`(${priceSnapshot} #> '{configuration,vatConfiguration}')`;
+  const configuredRate = sql`(${vat} -> 'rateBasisPoints')`;
+  const resultRate = sql`(${priceSnapshot} #> '{result,vatRateBasisPoints}')`;
+  return sql`(
+    ${jsonStringIn(sql`(${vat} -> 'mode')`, ["VAT_REGISTERED", "VAT_NOT_REGISTERED"])}
+    and ${jsonInteger(configuredRate, 0, 10_000)}
+    and ${jsonInteger(resultRate, 0, 10_000)}
+    and ${relationalVatRate} is not null
+    and ${configuredRate} = ${resultRate}
+    and ${resultRate} = to_jsonb(${relationalVatRate})
+    and (${vat} ->> 'mode' = 'VAT_REGISTERED' or ${configuredRate} = '0'::jsonb)
+  )`;
+}
+
 function jsonStringArray(
   value: SQL,
   maximumItems: number,
@@ -806,13 +822,21 @@ function priceLineEvidenceIsConsistent(
   const manual = sql`${result} -> 'manualAssessmentRequired'`;
   const rules = sql`${configuration} -> 'rules'`;
   const configuredVat = sql`${configuration} -> 'vatConfiguration'`;
+  const unresolvedVat = sql`${configuredVat} ->> 'mode' = 'VAT_UNRESOLVED'`;
+  const unresolvedGrossShape = sql`${unresolvedVat}
+    and ${manual} = 'true'::jsonb
+    and jsonb_typeof(${result} -> 'minimumVisitAdjustmentMinorUnits') = 'number'
+    and jsonb_typeof(${result} -> 'netAmountMinorUnits') = 'null'
+    and jsonb_typeof(${result} -> 'vatRateBasisPoints') = 'null'
+    and jsonb_typeof(${result} -> 'vatAmountMinorUnits') = 'null'
+    and jsonb_typeof(${result} -> 'grossTotalMinorUnits') = 'number'`;
 
   return sql`case
     when jsonb_typeof(${lines}) = 'array'
       and jsonb_typeof(${rules}) = 'array'
       and jsonb_typeof(${result} -> 'appliedRuleIds') = 'array'
       and (${subtotal}) ~ '^[0-9]+$'
-      and (${vatRate}) ~ '^[0-9]+$'
+      and ((${vatRate}) ~ '^[0-9]+$' or ${unresolvedVat})
       and ${manual} in ('true'::jsonb, 'false'::jsonb)
       and not exists (
         select 1 from jsonb_array_elements(${lines}) price_evidence_line(value)
@@ -820,7 +844,9 @@ function priceLineEvidenceIsConsistent(
           or (price_evidence_line.value ->> 'amountMinorUnits')
             !~ '^-?[0-9]+$'
       )
-      and case when ${manual} = 'true'::jsonb then
+      and case when ${unresolvedGrossShape} then
+        (${minimum}) ~ '^[0-9]+$' and (${gross}) ~ '^[0-9]+$'
+      when ${manual} = 'true'::jsonb then
         jsonb_typeof(${result} -> 'minimumVisitAdjustmentMinorUnits') = 'null'
           and jsonb_typeof(${result} -> 'netAmountMinorUnits') = 'null'
           and jsonb_typeof(${result} -> 'vatAmountMinorUnits') = 'null'
@@ -845,7 +871,7 @@ function priceLineEvidenceIsConsistent(
         select sum((price_minimum_line.value ->> 'amountMinorUnits')::numeric)
         from jsonb_array_elements(${lines}) price_minimum_line(value)
         where price_minimum_line.value ->> 'kind' = 'MINIMUM_VISIT_ADJUSTMENT'
-      ), 0) = case when ${manual} = 'true'::jsonb
+      ), 0) = case when ${manual} = 'true'::jsonb and not (${unresolvedGrossShape})
         then 0 else (${minimum})::numeric end
       and jsonb_array_length(${result} -> 'appliedRuleIds') = (
         select count(distinct applied_rule.value #>> '{}')
@@ -881,6 +907,8 @@ function priceLineEvidenceIsConsistent(
       and ${configuredVat} -> 'rateBasisPoints'
         = ${result} -> 'vatRateBasisPoints'
       and case
+        when ${unresolvedGrossShape} then
+          (${gross})::numeric = (${subtotal})::numeric + (${minimum})::numeric
         when ${manual} = 'true'::jsonb then true
         when ${configuredVat} ->> 'mode' = 'VAT_NOT_REGISTERED' then
           (${net})::numeric = (${subtotal})::numeric + (${minimum})::numeric
@@ -1035,6 +1063,7 @@ function priceRulesAreWellFormed(value: SQL): SQL {
               "addonCode", "suggestedAddonCode", "riskFlagCode",
               "travelZoneCode", "timingCategoryCode", "billingUnit",
               "amountMinorUnits", "percentageBasisPoints",
+              "additionalSidePercentageBasisPoints",
               "measurementMinHundredths", "measurementMaxHundredths",
               "manualAssessmentRequired", "declineOrReferRequired", "notes",
             ],
@@ -1057,6 +1086,7 @@ function priceRulesAreWellFormed(value: SQL): SQL {
           and ${optionalJsonStringIn(rule, "billingUnit", billingUnits)}
           and ${optionalJsonInteger(rule, "amountMinorUnits", Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)}
           and ${optionalJsonInteger(rule, "percentageBasisPoints", Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonInteger(rule, "additionalSidePercentageBasisPoints", 0, 100_000)}
           and ${optionalJsonInteger(rule, "measurementMinHundredths", 0, Number.MAX_SAFE_INTEGER)}
           and ${optionalNullableJsonInteger(rule, "measurementMaxHundredths", 0, Number.MAX_SAFE_INTEGER)}
           and ${optionalJsonBoolean(rule, "manualAssessmentRequired")}
@@ -1088,7 +1118,8 @@ function durationRulesAreWellFormed(value: SQL): SQL {
               "serviceCode", "itemTypeCode", "conditionBandCode", "issueCode",
               "addonCode", "riskFlagCode", "fibreMaterialCode",
               "treatmentLevelCode", "billingUnit", "minutes",
-              "multiplierBasisPoints", "productivityHundredthsM2PerHour",
+              "multiplierBasisPoints", "additionalSidePercentageBasisPoints",
+              "productivityHundredthsM2PerHour",
               "manualAssessmentRequired", "declineOrReferRequired", "notes",
             ],
           )}
@@ -1108,6 +1139,7 @@ function durationRulesAreWellFormed(value: SQL): SQL {
           and ${optionalJsonStringIn(rule, "billingUnit", billingUnits)}
           and ${optionalJsonInteger(rule, "minutes", 0, 1_000_000)}
           and ${optionalJsonInteger(rule, "multiplierBasisPoints", 0, Number.MAX_SAFE_INTEGER)}
+          and ${optionalJsonInteger(rule, "additionalSidePercentageBasisPoints", 0, 100_000)}
           and ${optionalJsonInteger(rule, "productivityHundredthsM2PerHour", 1, Number.MAX_SAFE_INTEGER)}
           and ${optionalJsonBoolean(rule, "manualAssessmentRequired")}
           and ${optionalJsonBoolean(rule, "declineOrReferRequired")}
@@ -1150,7 +1182,13 @@ function priceConfigurationIsWellFormed(
     and ${jsonBoolean(sql`${configuration} -> 'active'`)}
     and ${exactJsonObject(vat, ["mode", "rateBasisPoints"])}
     and ${jsonStringIn(sql`${vat} -> 'mode'`, vatModes)}
-    and ${jsonInteger(sql`${vat} -> 'rateBasisPoints'`, 0, 10_000)}
+    and ${jsonInteger(sql`${vat} -> 'rateBasisPoints'`, 0, 10_000, true)}
+    and (
+      ((${vat} ->> 'mode') = 'VAT_UNRESOLVED'
+        and jsonb_typeof(${vat} -> 'rateBasisPoints') = 'null')
+      or ((${vat} ->> 'mode') <> 'VAT_UNRESOLVED'
+        and jsonb_typeof(${vat} -> 'rateBasisPoints') = 'number')
+    )
     and ${priceRulesAreWellFormed(sql`${configuration} -> 'rules'`)}
   )`;
 }
@@ -1398,14 +1436,24 @@ function jsonInstantMatchesTimestamp(value: SQL, timestamp: SQL): SQL {
 function priceTotalsAreConsistent(result: SQL): SQL {
   const minimum = sql`${result} -> 'minimumVisitAdjustmentMinorUnits'`;
   const net = sql`${result} -> 'netAmountMinorUnits'`;
+  const vatRate = sql`${result} -> 'vatRateBasisPoints'`;
   const vat = sql`${result} -> 'vatAmountMinorUnits'`;
   const gross = sql`${result} -> 'grossTotalMinorUnits'`;
   return sql`case
     when ${result} -> 'manualAssessmentRequired' = 'true'::jsonb
-    then jsonb_typeof(${minimum}) = 'null'
-      and jsonb_typeof(${net}) = 'null'
-      and jsonb_typeof(${vat}) = 'null'
-      and jsonb_typeof(${gross}) = 'null'
+    then (
+      (jsonb_typeof(${minimum}) = 'null'
+        and jsonb_typeof(${net}) = 'null'
+        and jsonb_typeof(${vat}) = 'null'
+        and jsonb_typeof(${gross}) = 'null')
+      or (jsonb_typeof(${minimum}) = 'number'
+        and jsonb_typeof(${net}) = 'null'
+        and jsonb_typeof(${vatRate}) = 'null'
+        and jsonb_typeof(${vat}) = 'null'
+        and jsonb_typeof(${gross}) = 'number'
+        and (${minimum} #>> '{}') ~ '^[0-9]+$'
+        and (${gross} #>> '{}') ~ '^[0-9]+$')
+    )
     when ${result} -> 'manualAssessmentRequired' = 'false'::jsonb
       and jsonb_typeof(${minimum}) = 'number'
       and jsonb_typeof(${net}) = 'number'
@@ -1548,7 +1596,7 @@ export function completeEstimateEvidenceSql(evidence: {
     and ${jsonInteger(sql`${priceResult} -> 'subtotalMinorUnits'`, 0, Number.MAX_SAFE_INTEGER)}
     and ${jsonInteger(sql`${priceResult} -> 'minimumVisitAdjustmentMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
     and ${jsonInteger(sql`${priceResult} -> 'netAmountMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
-    and ${jsonInteger(sql`${priceResult} -> 'vatRateBasisPoints'`, 0, 10_000)}
+    and ${jsonInteger(sql`${priceResult} -> 'vatRateBasisPoints'`, 0, 10_000, true)}
     and ${jsonInteger(sql`${priceResult} -> 'vatAmountMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
     and ${jsonInteger(sql`${priceResult} -> 'grossTotalMinorUnits'`, 0, Number.MAX_SAFE_INTEGER, true)}
     and (${priceResult} ->> 'currency') = 'EUR'
@@ -4142,6 +4190,9 @@ export async function createQuoteDraftRecord(
             select version from target_request
           )
           and estimate.decline_or_refer_required = false
+          and ${resolvedQuoteSourceVatSql(
+            sql`estimate.price_snapshot`, sql`estimate.vat_rate_basis_points`,
+          )}
       ),
       line_input as materialized (
         select * from ${quoteLineRecordset(lineJson)}
@@ -4370,6 +4421,9 @@ export async function updateQuoteDraftRecord(
       where estimate.id = ${input.estimateId}::uuid
         and estimate.source_request_version = target.request_version
         and estimate.decline_or_refer_required = false
+        and ${resolvedQuoteSourceVatSql(
+          sql`estimate.price_snapshot`, sql`estimate.vat_rate_basis_points`,
+        )}
     ),
     line_input as materialized (
       select * from ${quoteLineRecordset(lineJson)}
@@ -4666,6 +4720,9 @@ export async function issueQuoteRecord(
          and estimate.request_id = target.request_id
          and estimate.source_request_version = target.request_version
          and estimate.decline_or_refer_required = false
+         and ${resolvedQuoteSourceVatSql(
+           sql`estimate.price_snapshot`, sql`estimate.vat_rate_basis_points`,
+         )}
         for share of estimate
       ),
       estimate_evidence_integrity as materialized (

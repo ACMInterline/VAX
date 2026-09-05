@@ -166,9 +166,27 @@ payload does not copy its approval.
   to return the same four fields for the same environment, with an active or
   approved, effective, non-provisional result and no unresolved manual review.
   An absent resolver, absent result or any field mismatch fails closed. The
-  Phase 3N PostgreSQL repository intentionally supplies no universal resolver,
-  so every such dependency remains blocked until a separately reviewed exact
-  resolver exists.
+  Phase 3N PostgreSQL repository intentionally supplies no universal resolver.
+  ATTELIER finalization adds only one reviewed, code-owned, staging-only
+  allowlist resolver for exact immutable ATTELIER subjects. It returns nothing
+  in development or production and cannot resolve arbitrary database rows.
+  Every non-allowlisted, pending or mismatched dependency remains blocked.
+
+## ATTELIER staging authority
+
+The finalization plan records 29 prospective `STAGING` versions through the
+ordinary service and database transition controls. Sixteen exact/direct facts
+can complete staging approval; thirteen stay under review because Phase 3N
+requires Accountant, Legal, actual operational/product, provider/session or
+recovery evidence that has not been supplied. No record is approved for
+production.
+
+The exact resolver binds a fixed resolver ID/version, subject type, subject
+code, positive version, canonical SHA-256 content digest, `STAGING` scope and
+effective instant. The activation command refuses divergent current content,
+an ambiguous Owner, a non-staging database/Auth target or any production-scoped
+state. See `docs/ATTELIER_FINALIZATION.md` for the complete approved/pending
+split and lifecycle boundary.
 
 Policy sets are semantically closed contracts, not free-form collections. They
 must contain every required code exactly once and no additional code. Entries

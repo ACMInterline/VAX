@@ -3,6 +3,10 @@ import {
   b2bDraftPriceBook,
   residentialDraftPriceBook,
 } from "./development-config";
+import {
+  attelierB2bPriceBook,
+  attelierResidentialPriceBook,
+} from "./attelier-config";
 import { calculatePrice, createPriceSnapshot } from "./pricing";
 import type { PriceCalculationInput } from "./types";
 
@@ -292,5 +296,132 @@ describe("pure price calculation", () => {
       calculatedAt: "2026-08-22T00:00:00.000Z",
       manualAssessmentRequired: false,
     });
+  });
+});
+
+describe("ATTELIER staging commercial calibration", () => {
+  it.each([
+    ["DINING_CHAIR_UPHOLSTERED", "UPHOLSTERY_CARE", 700],
+    ["ARMCHAIR", "UPHOLSTERY_CARE", 1_800],
+    ["OTTOMAN", "UPHOLSTERY_CARE", 1_200],
+    ["SOFA_2_SEAT", "UPHOLSTERY_CARE", 3_500],
+    ["SOFA_3_SEAT", "UPHOLSTERY_CARE", 4_500],
+    ["SOFA_4_PLUS", "UPHOLSTERY_CARE", 5_500],
+    ["MATTRESS_SINGLE", "MATTRESS_CARE", 2_200],
+    ["MATTRESS_DOUBLE", "MATTRESS_CARE", 3_000],
+    ["MATTRESS_KING_OR_LARGE", "MATTRESS_CARE", 3_500],
+  ] as const)(
+    "preserves the approved one-unit %s customer price",
+    (itemTypeCode, serviceCode, expectedAmount) => {
+      const result = calculatePrice(attelierResidentialPriceBook, {
+        ...normalSofaInput,
+        items: [
+          {
+            ...normalSofaInput.items[0],
+            itemTypeCode,
+            serviceCode,
+          },
+        ],
+      });
+
+      expect(baseLineAmount(result)).toBe(expectedAmount);
+    },
+  );
+
+  it("uses exact carpet/rug rates, condition factors and zone minimums", () => {
+    const carpet = calculatePrice(attelierResidentialPriceBook, {
+      ...areaInput(1_000),
+      conditionBandCode: "ENHANCED",
+      travelZoneCode: "SOFIA_OUTSKIRTS",
+    });
+    const rug = calculatePrice(attelierResidentialPriceBook, {
+      ...areaInput(1_000),
+      items: [
+        {
+          ...areaInput(1_000).items[0]!,
+          serviceCode: "RUG_RUNNER_CARE",
+          itemTypeCode: "RUG",
+        },
+      ],
+      conditionBandCode: "INTENSIVE",
+      travelZoneCode: "SOFIA_EXTENDED",
+    });
+
+    expect(baseLineAmount(carpet)).toBe(4_000);
+    expect(carpet.subtotalMinorUnits).toBe(4_600);
+    expect(carpet.minimumVisitAdjustmentMinorUnits).toBe(3_400);
+    expect(carpet.grossTotalMinorUnits).toBe(8_000);
+    expect(baseLineAmount(rug)).toBe(5_000);
+    expect(rug.subtotalMinorUnits).toBe(6_500);
+    expect(rug.minimumVisitAdjustmentMinorUnits).toBe(0);
+    expect(rug.grossTotalMinorUnits).toBe(6_500);
+  });
+
+  it("prices a second mattress side at fifty percent and preserves unresolved VAT", () => {
+    const result = calculatePrice(attelierResidentialPriceBook, {
+      ...normalSofaInput,
+      items: [
+        {
+          ...normalSofaInput.items[0],
+          serviceCode: "MATTRESS_CARE",
+          itemTypeCode: "MATTRESS_DOUBLE",
+          sides: 2,
+        },
+      ],
+    });
+
+    expect(baseLineAmount(result)).toBe(4_500);
+    expect(result).toMatchObject({
+      netAmountMinorUnits: null,
+      vatRateBasisPoints: null,
+      vatAmountMinorUnits: null,
+      grossTotalMinorUnits: 4_500,
+      manualAssessmentRequired: true,
+    });
+    expect(result.warnings.join(" ")).toMatch(/VAT status is unresolved/);
+  });
+
+  it("keeps from-prices and biological contamination under staff control", () => {
+    const fromPrice = calculatePrice(attelierResidentialPriceBook, {
+      ...normalSofaInput,
+      items: [
+        {
+          ...normalSofaInput.items[0],
+          itemTypeCode: "SOFA_CORNER",
+        },
+      ],
+    });
+    const biological = calculatePrice(attelierResidentialPriceBook, {
+      ...normalSofaInput,
+      items: [
+        {
+          ...normalSofaInput.items[0],
+          issueCodes: ["BLOOD_OR_BIOLOGICAL"],
+        },
+      ],
+    });
+
+    expect(baseLineAmount(fromPrice)).toBe(6_000);
+    expect(fromPrice.grossTotalMinorUnits).toBeNull();
+    expect(fromPrice.manualAssessmentRequired).toBe(true);
+    expect(biological.declineOrReferRequired).toBe(true);
+    expect(biological.grossTotalMinorUnits).toBeNull();
+  });
+
+  it("keeps timing surcharges and B2B automatic pricing inactive", () => {
+    const early = calculatePrice(attelierResidentialPriceBook, {
+      ...normalSofaInput,
+      timingCategoryCode: "EARLY_MORNING",
+    });
+    const b2b = calculatePrice(attelierB2bPriceBook, {
+      ...normalSofaInput,
+    });
+
+    expect(early.subtotalMinorUnits).toBe(4_500);
+    expect(early.lines.some((line) => line.kind === "TIMING_MODIFIER")).toBe(
+      false,
+    );
+    expect(b2b.manualAssessmentRequired).toBe(true);
+    expect(b2b.grossTotalMinorUnits).toBeNull();
   });
 });

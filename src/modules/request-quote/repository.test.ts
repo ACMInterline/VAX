@@ -97,6 +97,30 @@ function expectSelectedEstimateSemanticFreshness(sqlText: string): void {
   expect(freshnessDecision).not.toContain("is not distinct from");
 }
 
+function expectSelectedEstimateResolvedVat(query: ReturnType<typeof compile>): void {
+  const end = query.sql.includes("estimate_evidence_integrity as materialized")
+    ? "estimate_evidence_integrity as materialized"
+    : "line_input as materialized";
+  const selected = sqlBetween(query.sql, "selected_estimate as materialized", end);
+  expect(selected).toContain("'{configuration,vatConfiguration}'");
+  expect(selected).toContain("-> 'mode'");
+  expect(selected).toContain("-> 'rateBasisPoints'");
+  expect(selected).toContain("'{result,vatRateBasisPoints}'");
+  expect(selected).toContain("estimate.vat_rate_basis_points is not null");
+  expect(selected).toContain("= to_jsonb(estimate.vat_rate_basis_points)");
+  expect(selected).toMatch(/-> 'rateBasisPoints'\) = \(estimate.price_snapshot #> '\{result,vatRateBasisPoints\}'\)/);
+  expect(selected.match(/jsonb_typeof\([^\n]+\) = 'number'/g)).toHaveLength(2);
+  expect(selected.match(/::numeric between \$\d+ and \$\d+/g)).toHaveLength(2);
+  expect(selected).toContain("->> 'mode' = 'VAT_REGISTERED'");
+  expect(selected).toContain("-> 'rateBasisPoints') = '0'::jsonb");
+  expect(query.params).toEqual(expect.arrayContaining([
+    "VAT_REGISTERED", "VAT_NOT_REGISTERED", 0, 10_000,
+  ]));
+  // Resolution is a source gate, not a reinterpretation of manual totals or history.
+  expect(selected).not.toContain("gross_total_minor_units is not null");
+  expect(query.sql).not.toContain('update "request_estimates"');
+}
+
 const requestItem = {
   serviceId: 10,
   cleaningItemTypeId: 20,
@@ -815,6 +839,7 @@ describe("quote lifecycle, concurrency and customer projection", () => {
     expect(query.sql).toContain("priceSnapshotSha256");
     expect(query.sql).toContain("encode(sha256(convert_to");
     expectSelectedEstimateSemanticFreshness(query.sql);
+    expectSelectedEstimateResolvedVat(query);
     expect(query.sql).toContain("source_request_version");
     expect(query.sql).toContain('insert into "quote_items"');
     expect(query.sql).toContain(
@@ -920,6 +945,7 @@ describe("quote lifecycle, concurrency and customer projection", () => {
     expect(query.sql).toContain("priceSnapshotSha256");
     expect(query.sql).toContain("encode(sha256(convert_to");
     expectSelectedEstimateSemanticFreshness(query.sql);
+    expectSelectedEstimateResolvedVat(query);
     expect(query.sql).toContain(
       "source_request_version = target.request_version",
     );
@@ -961,6 +987,7 @@ describe("quote lifecycle, concurrency and customer projection", () => {
     );
     expect(query.sql).toContain("estimate.decline_or_refer_required = false");
     expectSelectedEstimateSemanticFreshness(query.sql);
+    expectSelectedEstimateResolvedVat(query);
     expect(query.sql).toContain("commercial_context as materialized");
     expect(query.sql).toContain("for share of customer, property");
     expect(query.sql).toContain("for share of estimate");

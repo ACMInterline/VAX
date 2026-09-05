@@ -1,34 +1,40 @@
 :root {
-  --canvas: #f3f1ea;
-  --canvas-warm: #ebe5da;
-  --surface: #fbfaf6;
-  --surface-soft: #e8eee6;
-  --surface-sage: #d2dfd2;
-  --surface-deep: #183b33;
-  --surface-deeper: #102c27;
-  --ink: #172d28;
-  --ink-soft: #4f625c;
-  --ink-faint: #74847e;
-  --ink-inverse: #f7f5ef;
-  --accent: #286958;
-  --accent-strong: #174f42;
-  --accent-soft: #c6ddd1;
-  --warm: #c87d42;
-  --warm-soft: #f0d2b5;
-  --line: rgba(23, 45, 40, 0.14);
-  --line-strong: rgba(23, 45, 40, 0.28);
-  --line-inverse: rgba(247, 245, 239, 0.18);
-  --shadow-small: 0 12px 32px rgba(16, 44, 39, 0.08);
-  --shadow-large: 0 36px 90px rgba(16, 44, 39, 0.15);
-  --radius-small: 0.85rem;
-  --radius-medium: 1.35rem;
-  --radius-large: 2rem;
-  --radius-xlarge: 2.8rem;
+  --canvas: #fff8e8;
+  --canvas-warm: #ffd52a;
+  --surface: #fffdf7;
+  --surface-soft: #d8eaff;
+  /* Legacy light-surface consumers keep dark text; use a light brand field. */
+  --surface-sage: #ffd52a;
+  --surface-deep: #091d3e;
+  --surface-deeper: #04122a;
+  --ink: #091d3e;
+  --ink-soft: #344361;
+  --ink-faint: #4c5870;
+  --ink-inverse: #fffdf7;
+  --accent: #1645e8;
+  --accent-strong: #0b2ca8;
+  --accent-soft: #b9caff;
+  --warm: #b93622;
+  --warm-soft: #ffb9a6;
+  --attelier-yellow: #ffd52a;
+  --attelier-coral: #f15439;
+  --attelier-green: #08744f;
+  --attelier-pink: #f5a7c7;
+  --attelier-blue: #b9d9ff;
+  --line: rgba(9, 29, 62, 0.18);
+  --line-strong: rgba(9, 29, 62, 0.42);
+  --line-inverse: rgba(255, 253, 247, 0.28);
+  --shadow-small: 8px 8px 0 rgba(9, 29, 62, 0.12);
+  --shadow-large: 18px 18px 0 rgba(9, 29, 62, 0.15);
+  --radius-small: 0.25rem;
+  --radius-medium: 0.5rem;
+  --radius-large: 0.8rem;
+  --radius-xlarge: 1.1rem;
   --container: 78rem;
   --reading: 46rem;
   --section-space: clamp(5rem, 9vw, 8.5rem);
   --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-display: Didot, "Bodoni 72", "Iowan Old Style", Georgia, serif;
 }
 
 * {
@@ -112,12 +118,12 @@ p {
 }
 
 ::selection {
-  color: var(--ink-inverse);
-  background: var(--accent-strong);
+  color: var(--surface-deeper);
+  background: var(--attelier-yellow);
 }
 
 :focus-visible {
-  outline: 3px solid var(--warm);
+  outline: 3px solid var(--accent);
   outline-offset: 4px;
 }
 

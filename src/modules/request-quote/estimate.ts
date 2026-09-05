@@ -8,6 +8,22 @@ import {
   developmentWorkingHourPolicy,
 } from "@/modules/availability-engine/development-config";
 import {
+  attelierAppointmentWindows,
+  attelierServiceAreas,
+  attelierWorkingHourPolicy,
+} from "@/modules/availability-engine/attelier-config";
+import type {
+  AppointmentWindowDefinition,
+  SchedulingPolicyDefinition,
+  ServiceAreaDefinition,
+  TravelTimeProfileDefinition,
+  WorkingHourPolicyDefinition,
+} from "@/modules/availability-engine/types";
+import {
+  attelierDurationModel,
+  attelierPriceBooks,
+} from "@/modules/commercial-engine/attelier-config";
+import {
   developmentDurationModel,
   developmentPriceBooks,
 } from "@/modules/commercial-engine/development-config";
@@ -18,10 +34,13 @@ import type {
   CommercialLineInput,
   CustomerSegment,
   DurationCalculationInput,
+  DurationModelDefinition,
   PriceCalculationInput,
+  PriceBookDefinition,
   TimingCategoryCode,
   TravelZoneCode,
 } from "@/modules/commercial-engine/types";
+import { getVaxEnvironment } from "@/operations/environment";
 import type {
   JsonObject,
   StoredAvailabilitySnapshot,
@@ -44,6 +63,7 @@ export const estimateReviewReasonCodes = [
   "PRICE_BOOK_NOT_ACTIVE",
   "PRICE_BOOK_PROVISIONAL",
   "PRICE_BOOK_NOT_PUBLICATION_APPROVED",
+  "VAT_STATUS_UNRESOLVED",
   "PRICE_MANUAL_ASSESSMENT",
   "PRICE_DECLINE_OR_REFER",
   "DURATION_MODEL_NOT_ACTIVE",
@@ -73,6 +93,51 @@ export type EstimateEngineInput = Readonly<{
   governanceReviewReasonCodes: readonly EstimateGovernanceReviewReasonCode[];
 }>;
 
+export type EstimateConfiguration = Readonly<{
+  priceBooks: readonly PriceBookDefinition[];
+  durationModel: DurationModelDefinition;
+  serviceAreas: readonly ServiceAreaDefinition[];
+  schedulingPolicy: SchedulingPolicyDefinition;
+  travelTimeProfile: TravelTimeProfileDefinition;
+  workingHourPolicy: WorkingHourPolicyDefinition;
+  appointmentWindows: readonly AppointmentWindowDefinition[];
+}>;
+
+export const developmentEstimateConfiguration: EstimateConfiguration = {
+  priceBooks: developmentPriceBooks,
+  durationModel: developmentDurationModel,
+  serviceAreas: developmentServiceAreas,
+  schedulingPolicy: developmentSchedulingPolicy,
+  travelTimeProfile: developmentTravelTimeProfile,
+  workingHourPolicy: developmentWorkingHourPolicy,
+  appointmentWindows: developmentAppointmentWindows,
+};
+
+export const attelierStagingEstimateConfiguration: EstimateConfiguration = {
+  priceBooks: attelierPriceBooks,
+  durationModel: attelierDurationModel,
+  serviceAreas: attelierServiceAreas,
+  // Scheduling remains fail-closed until real staff, equipment and route
+  // capacity are verified. Approved hours/windows do not invent capacity.
+  schedulingPolicy: developmentSchedulingPolicy,
+  travelTimeProfile: developmentTravelTimeProfile,
+  workingHourPolicy: attelierWorkingHourPolicy,
+  appointmentWindows: attelierAppointmentWindows,
+};
+
+export function resolveEstimateConfiguration(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): EstimateConfiguration {
+  switch (getVaxEnvironment(environment)) {
+    case "development":
+      return developmentEstimateConfiguration;
+    case "staging":
+      return attelierStagingEstimateConfiguration;
+    case "production":
+      throw new Error("Production commercial authority is unavailable.");
+  }
+}
+
 /**
  * Complete, internal estimate result. Price and duration are staff-only and
  * must never be returned from the anonymous submission boundary.
@@ -88,7 +153,7 @@ export type StaffEstimateCalculation = Readonly<{
   availabilitySnapshot: StoredAvailabilitySnapshot;
   subtotalMinorUnits: number;
   netAmountMinorUnits: number | null;
-  vatRateBasisPoints: number;
+  vatRateBasisPoints: number | null;
   vatAmountMinorUnits: number | null;
   grossTotalMinorUnits: number | null;
   currency: "EUR";
@@ -113,10 +178,11 @@ function toJsonObject(value: unknown): JsonObject {
 export function calculateStaffEstimate(
   input: EstimateEngineInput,
   calculatedAt: string,
+  configuration: EstimateConfiguration = developmentEstimateConfiguration,
 ): StaffEstimateCalculation {
   assertCalculationInstant(calculatedAt);
 
-  const priceBook = developmentPriceBooks.find(
+  const priceBook = configuration.priceBooks.find(
     (candidate) => candidate.customerSegment === input.customerSegment,
   );
   if (!priceBook) {
@@ -135,11 +201,11 @@ export function calculateStaffEstimate(
   };
   const priceResult = calculatePrice(priceBook, priceInput);
   const durationResult = calculateDuration(
-    developmentDurationModel,
+    configuration.durationModel,
     durationInput,
   );
   const serviceArea =
-    developmentServiceAreas.find(
+    configuration.serviceAreas.find(
       (candidate) => candidate.code === input.travelZoneCode,
     ) ?? null;
 
@@ -151,16 +217,19 @@ export function calculateStaffEstimate(
   if (!priceBook.approvedForPublication) {
     reasonCodes.push("PRICE_BOOK_NOT_PUBLICATION_APPROVED");
   }
+  if (priceBook.vatConfiguration.mode === "VAT_UNRESOLVED") {
+    reasonCodes.push("VAT_STATUS_UNRESOLVED");
+  }
   if (priceResult.manualAssessmentRequired) {
     reasonCodes.push("PRICE_MANUAL_ASSESSMENT");
   }
   if (priceResult.declineOrReferRequired) {
     reasonCodes.push("PRICE_DECLINE_OR_REFER");
   }
-  if (!developmentDurationModel.active) {
+  if (!configuration.durationModel.active) {
     reasonCodes.push("DURATION_MODEL_NOT_ACTIVE");
   }
-  if (developmentDurationModel.provisional) {
+  if (configuration.durationModel.provisional) {
     reasonCodes.push("DURATION_MODEL_PROVISIONAL");
   }
   if (durationResult.manualAssessmentRequired) {
@@ -169,7 +238,7 @@ export function calculateStaffEstimate(
   if (durationResult.declineOrReferRequired) {
     reasonCodes.push("DURATION_DECLINE_OR_REFER");
   }
-  if (!developmentSchedulingPolicy.active) {
+  if (!configuration.schedulingPolicy.active) {
     reasonCodes.push("SCHEDULING_POLICY_NOT_ACTIVE");
   }
   if (!serviceArea) {
@@ -233,13 +302,13 @@ export function calculateStaffEstimate(
       schemaVersion: 1,
       calculatedAt,
       durationModel: {
-        id: developmentDurationModel.id,
-        code: developmentDurationModel.code,
-        version: developmentDurationModel.version,
-        status: developmentDurationModel.status,
-        provisional: developmentDurationModel.provisional,
+        id: configuration.durationModel.id,
+        code: configuration.durationModel.code,
+        version: configuration.durationModel.version,
+        status: configuration.durationModel.status,
+        provisional: configuration.durationModel.provisional,
       },
-      configuration: toJsonObject(developmentDurationModel),
+      configuration: toJsonObject(configuration.durationModel),
       input: toJsonObject(durationInput),
       result: {
         lines: durationResult.lines,
@@ -262,16 +331,16 @@ export function calculateStaffEstimate(
       calculatedAt,
       configuration: toJsonObject({
         serviceArea,
-        schedulingPolicy: developmentSchedulingPolicy,
-        travelTimeProfile: developmentTravelTimeProfile,
-        workingHourPolicy: developmentWorkingHourPolicy,
-        appointmentWindows: developmentAppointmentWindows,
+        schedulingPolicy: configuration.schedulingPolicy,
+        travelTimeProfile: configuration.travelTimeProfile,
+        workingHourPolicy: configuration.workingHourPolicy,
+        appointmentWindows: configuration.appointmentWindows,
       }),
       result: {
         serviceEligible: serviceArea?.serviceEligible ?? null,
         manualConfirmationRequired:
           !serviceArea || serviceArea.manualConfirmationRequired,
-        schedulingConfigurationReady: developmentSchedulingPolicy.active,
+        schedulingConfigurationReady: configuration.schedulingPolicy.active,
       },
     },
     subtotalMinorUnits: priceResult.subtotalMinorUnits,

@@ -1,7 +1,7 @@
 export const publicBrand = {
-  status: "temporary",
-  name: "FabricCare Sofia",
-  shortName: "FabricCare",
+  status: "final",
+  name: "ATTELIER",
+  shortName: "ATTELIER",
   location: {
     city: "Sofia",
     countryCode: "BG",

@@ -2,20 +2,22 @@
 
 ## Desired character
 
-The product should feel premium, trustworthy, clean, modern, and calm. Its
-visual language should evoke expert hygiene and fabric care without relying on
-generic discount-cleaning imagery, loud sales colors, or a disposable template
-look.
+The ATTELIER public product should feel warm, premium, safe, artistic and
+confident. Its visual language combines contemporary-gallery composition,
+textile-atelier tactility and modern home-service clarity without resembling a
+generic cleaning template, sterile SaaS dashboard, pastel wellness site,
+cartoon service or industrial janitorial brand.
 
-No final company name, logo or trademark art direction is selected. The Phase 1
-public site uses a temporary typographic identity and abstract fabric studies
-that can be replaced without changing layout components.
+The wordmark is the calm **ATTELIER** name with a localized Textile Care
+descriptor; no trademark-registration symbol is used. Expressiveness comes
+from original geometric scenes rather than from an ornamental logo.
 
 ## Experience principles
 
 - Communicate care, precision, and reliability before decoration.
 - Make the next useful action obvious on small screens.
-- Use restrained color, generous space, clear hierarchy, and legible density.
+- Use disciplined saturated color, strong negative space, clear hierarchy and
+  legible density.
 - Explain price, condition, treatment, and service status in plain language.
 - Distinguish warnings, damage, claims, and failed operations without alarmist
   styling.
@@ -38,28 +40,28 @@ may use different page layouts while sharing:
 Shared primitives must not force the public site and operations console into
 the same information density.
 
-## Phase 1 public tokens
+## ATTELIER public tokens
 
-The Phase 1 public surface establishes application-owned provisional tokens:
+The final public surface uses application-owned tokens:
 
-- warm off-white, sage and mineral-green surfaces;
-- deep green ink and inverse surfaces rather than pure black;
-- restrained green status accents and a warm clay detail accent;
-- subtle borders and low-chroma shadows;
-- small through extra-large radius tokens by component purpose;
+- warm cream/off-white fields with saturated cobalt, vivid yellow, coral,
+  deep green and selective pink/pale-blue composition;
+- deep navy ink and inverse surfaces rather than pure black;
+- hard editorial borders and offset shadows, used selectively;
+- restrained radii that preserve the geometric language;
 - a native editorial serif stack for public headings and a native sans stack
   for controls and body copy; and
 - fluid content width, spacing and typography based on `clamp()`.
 
 The tokens live in `src/styles/public-foundation.css`; layout, components, pages
-and forms are separated into focused global layers. They demonstrate a coherent
-visual direction but remain replaceable and are not final brand assets.
+and forms are separated into focused global layers. Color is composed in
+controlled fields rather than using every accent in every component.
 
-Abstract visual containers stand in for future original photography. Approved
-future photography should show real technicians, actual equipment, on-site
-work, fabric detail, permission-based examples, Sofia residential interiors and
-appropriate business environments. Stock or fabricated before-and-after proof
-must not silently replace those placeholders.
+Reusable SVG scenes use Cubist/Bauhaus-influenced sofas, rugs, plants, textile
+weave and expressive non-identifiable silhouettes. They are deliberate brand
+art, not evidence of a completed service. Future photography must show real
+technicians/equipment and permission-based work; stock or fabricated
+before-and-after proof must not silently replace the illustrations.
 
 ## Layout direction by surface
 

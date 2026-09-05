@@ -3,11 +3,15 @@ import type { Database } from "./client";
 import {
   developmentAppointmentWindows,
   developmentEquipmentResources,
-  developmentServiceAreas,
   developmentTeams,
   developmentTravelTimeProfile,
   developmentWorkingHourPolicy,
 } from "@/modules/availability-engine/development-config";
+import {
+  attelierAppointmentWindows,
+  attelierServiceAreas,
+  attelierWorkingHourPolicy,
+} from "@/modules/availability-engine/attelier-config";
 import * as availabilityTables from "./schema/availability-engine";
 import * as commercialTables from "./schema/commercial-engine";
 
@@ -24,7 +28,7 @@ function requiredId(ids: ReadonlyMap<string, number>, code: string): number {
 }
 
 export async function seedAvailabilityEngine(database: Database): Promise<void> {
-  for (const area of developmentServiceAreas) {
+  for (const area of attelierServiceAreas) {
     await database
       .update(commercialTables.travelZones)
       .set({
@@ -37,20 +41,26 @@ export async function seedAvailabilityEngine(database: Database): Promise<void> 
       .where(eq(commercialTables.travelZones.code, area.code));
   }
 
+  const workingHourPolicies = [
+    developmentWorkingHourPolicy,
+    attelierWorkingHourPolicy,
+  ];
   await database
     .insert(availabilityTables.workingHourPolicies)
-    .values({
-      code: developmentWorkingHourPolicy.code,
-      name: developmentWorkingHourPolicy.name,
-      market: "SOFIA",
-      timeZone: developmentWorkingHourPolicy.timeZone,
-      version: developmentWorkingHourPolicy.version,
-      status: developmentWorkingHourPolicy.status,
-      effectiveFrom: null,
-      effectiveUntil: null,
-      provisional: developmentWorkingHourPolicy.provisional,
-      active: developmentWorkingHourPolicy.active,
-    })
+    .values(
+      workingHourPolicies.map((policy) => ({
+        code: policy.code,
+        name: policy.name,
+        market: "SOFIA" as const,
+        timeZone: policy.timeZone,
+        version: policy.version,
+        status: policy.status,
+        effectiveFrom: null,
+        effectiveUntil: null,
+        provisional: policy.provisional,
+        active: policy.active,
+      })),
+    )
     .onConflictDoNothing({ target: availabilityTables.workingHourPolicies.code });
 
   const workingPolicyIds = idMap(
@@ -101,19 +111,18 @@ export async function seedAvailabilityEngine(database: Database): Promise<void> 
   await database
     .insert(availabilityTables.workingHourRules)
     .values(
-      developmentWorkingHourPolicy.rules.map((rule) => ({
-        policyId: requiredId(
-          workingPolicyIds,
-          developmentWorkingHourPolicy.code,
-        ),
-        code: rule.id,
-        weekday: rule.weekday,
-        startMinute: rule.startMinute,
-        endMinute: rule.endMinute,
-        enabled: rule.enabled,
-        teamId:
-          rule.teamCode === null ? null : requiredId(teamIds, rule.teamCode),
-      })),
+      workingHourPolicies.flatMap((policy) =>
+        policy.rules.map((rule) => ({
+          policyId: requiredId(workingPolicyIds, policy.code),
+          code: rule.id,
+          weekday: rule.weekday,
+          startMinute: rule.startMinute,
+          endMinute: rule.endMinute,
+          enabled: rule.enabled,
+          teamId:
+            rule.teamCode === null ? null : requiredId(teamIds, rule.teamCode),
+        })),
+      ),
     )
     .onConflictDoNothing({ target: availabilityTables.workingHourRules.code });
 
@@ -212,7 +221,7 @@ export async function seedAvailabilityEngine(database: Database): Promise<void> 
   await database
     .insert(availabilityTables.appointmentWindowDefinitions)
     .values(
-      developmentAppointmentWindows.map((window) => ({
+      [...developmentAppointmentWindows, ...attelierAppointmentWindows].map((window) => ({
         profileCode: window.profileCode,
         version: window.version,
         status: window.status,

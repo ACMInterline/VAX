@@ -24,7 +24,7 @@ export const authContent = {
     },
     login: {
       eyebrow: "Защитен достъп",
-      title: "Вход във VAX",
+      title: "Вход в ATTELIER",
       description: "Влезте в защитената зона за клиенти и екипа.",
       submit: "Вход",
       forgot: "Забравена парола?",
@@ -81,7 +81,7 @@ export const authContent = {
     },
     login: {
       eyebrow: "Secure access",
-      title: "Sign in to VAX",
+      title: "Sign in to ATTELIER",
       description: "Enter the protected customer and staff application.",
       submit: "Sign in",
       forgot: "Forgot your password?",

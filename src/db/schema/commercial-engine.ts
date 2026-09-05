@@ -134,7 +134,7 @@ export const priceBooks = pgTable(
     priceBasis: varchar("price_basis", { length: 8 }).notNull(),
     defaultVatRateBasisPoints: integer(
       "default_vat_rate_basis_points",
-    ).notNull(),
+    ),
     provisional: boolean("provisional").default(true).notNull(),
     approvedForPublication: boolean("approved_for_publication")
       .default(false)
@@ -155,7 +155,7 @@ export const priceBooks = pgTable(
     ),
     check(
       "price_books_vat_mode_valid",
-      sql`${table.vatMode} in ('VAT_REGISTERED', 'VAT_NOT_REGISTERED')`,
+      sql`${table.vatMode} in ('VAT_REGISTERED', 'VAT_NOT_REGISTERED', 'VAT_UNRESOLVED')`,
     ),
     check(
       "price_books_price_basis_valid",
@@ -163,11 +163,15 @@ export const priceBooks = pgTable(
     ),
     check(
       "price_books_vat_rate_valid",
-      sql`${table.defaultVatRateBasisPoints} between 0 and 10000`,
+      sql`${table.defaultVatRateBasisPoints} is null or ${table.defaultVatRateBasisPoints} between 0 and 10000`,
     ),
     check(
       "price_books_nonregistered_vat_zero",
       sql`${table.vatMode} <> 'VAT_NOT_REGISTERED' or ${table.defaultVatRateBasisPoints} = 0`,
+    ),
+    check(
+      "price_books_vat_resolution_consistent",
+      sql`(${table.vatMode} = 'VAT_UNRESOLVED' and ${table.defaultVatRateBasisPoints} is null) or (${table.vatMode} <> 'VAT_UNRESOLVED' and ${table.defaultVatRateBasisPoints} is not null)`,
     ),
     check(
       "price_books_effective_window_valid",
@@ -224,6 +228,9 @@ export const priceRules = pgTable(
     billingUnit: varchar("billing_unit", { length: 24 }),
     amountMinorUnits: integer("amount_minor_units"),
     percentageBasisPoints: integer("percentage_basis_points"),
+    additionalSidePercentageBasisPoints: integer(
+      "additional_side_percentage_basis_points",
+    ),
     measurementMinHundredths: integer("measurement_min_hundredths"),
     measurementMaxHundredths: integer("measurement_max_hundredths"),
     manualAssessmentRequired: boolean("manual_assessment_required")
@@ -257,6 +264,10 @@ export const priceRules = pgTable(
     check(
       "price_rules_percentage_valid",
       sql`${table.percentageBasisPoints} is null or ${table.percentageBasisPoints} between -10000 and 100000`,
+    ),
+    check(
+      "price_rules_additional_side_percentage_valid",
+      sql`${table.additionalSidePercentageBasisPoints} is null or (${table.billingUnit} = 'PER_SIDE' and ${table.additionalSidePercentageBasisPoints} between 0 and 100000)`,
     ),
     check(
       "price_rules_measurement_min_nonnegative",
@@ -342,6 +353,9 @@ export const durationRules = pgTable(
     billingUnit: varchar("billing_unit", { length: 24 }),
     minutes: integer("minutes"),
     multiplierBasisPoints: integer("multiplier_basis_points"),
+    additionalSidePercentageBasisPoints: integer(
+      "additional_side_percentage_basis_points",
+    ),
     productivityHundredthsM2PerHour: integer(
       "productivity_hundredths_m2_per_hour",
     ),
@@ -376,6 +390,10 @@ export const durationRules = pgTable(
     check(
       "duration_rules_multiplier_positive",
       sql`${table.multiplierBasisPoints} is null or ${table.multiplierBasisPoints} > 0`,
+    ),
+    check(
+      "duration_rules_additional_side_percentage_valid",
+      sql`${table.additionalSidePercentageBasisPoints} is null or (${table.billingUnit} = 'PER_SIDE' and ${table.additionalSidePercentageBasisPoints} between 0 and 100000)`,
     ),
     check(
       "duration_rules_productivity_positive",

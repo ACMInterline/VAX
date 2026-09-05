@@ -186,6 +186,11 @@ export type PublicPagesCopy = {
     hero: HeroCopy;
     breadcrumbs: { home: string; current: string };
     catalogue: SectionIntro;
+    pricing: SectionIntro & {
+      items: readonly { label: string; price: string }[];
+      conditionNote: string;
+      boundaryNote: string;
+    };
     capacity: { eyebrow: string; title: string; text: string };
     treatments: SectionIntro;
   };

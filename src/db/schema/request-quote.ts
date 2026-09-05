@@ -369,7 +369,7 @@ export const requestEstimates = pgTable(
       .$type<JsonObject>()
       .notNull(),
     netAmountMinorUnits: integer("net_amount_minor_units"),
-    vatRateBasisPoints: integer("vat_rate_basis_points").notNull(),
+    vatRateBasisPoints: integer("vat_rate_basis_points"),
     vatAmountMinorUnits: integer("vat_amount_minor_units"),
     grossTotalMinorUnits: integer("gross_total_minor_units"),
     currency: varchar("currency", { length: 3 }).notNull(),
@@ -429,11 +429,11 @@ export const requestEstimates = pgTable(
     check("request_estimates_currency_eur", sql`${table.currency} = 'EUR'`),
     check(
       "request_estimates_vat_rate_valid",
-      sql`${table.vatRateBasisPoints} between 0 and 10000`,
+      sql`${table.vatRateBasisPoints} is null or ${table.vatRateBasisPoints} between 0 and 10000`,
     ),
     check(
       "request_estimates_amount_group_consistent",
-      sql`(${table.netAmountMinorUnits} is null and ${table.vatAmountMinorUnits} is null and ${table.grossTotalMinorUnits} is null) or (${table.netAmountMinorUnits} is not null and ${table.netAmountMinorUnits} >= 0 and ${table.vatAmountMinorUnits} is not null and ${table.vatAmountMinorUnits} >= 0 and ${table.grossTotalMinorUnits} = ${table.netAmountMinorUnits} + ${table.vatAmountMinorUnits})`,
+      sql`(${table.netAmountMinorUnits} is null and ${table.vatAmountMinorUnits} is null and ${table.grossTotalMinorUnits} is null) or (${table.netAmountMinorUnits} is null and ${table.vatRateBasisPoints} is null and ${table.vatAmountMinorUnits} is null and ${table.grossTotalMinorUnits} is not null and ${table.grossTotalMinorUnits} >= 0 and ${table.manualAssessmentRequired} = true and ${table.status} = 'REVIEW_REQUIRED') or (${table.netAmountMinorUnits} is not null and ${table.netAmountMinorUnits} >= 0 and ${table.vatRateBasisPoints} is not null and ${table.vatAmountMinorUnits} is not null and ${table.vatAmountMinorUnits} >= 0 and ${table.grossTotalMinorUnits} is not null and ${table.grossTotalMinorUnits} = ${table.netAmountMinorUnits} + ${table.vatAmountMinorUnits})`,
     ),
     check(
       "request_estimates_minutes_nonnegative",

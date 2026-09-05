@@ -35,8 +35,9 @@ function importWithServerScriptRuntime(modulePath: string): void {
   expect({
     status: result.status,
     signal: result.signal,
+    stdout: result.stdout,
     stderr: result.stderr,
-  }).toEqual({ status: 0, signal: null, stderr: "" });
+  }).toEqual({ status: 0, signal: null, stdout: "", stderr: "" });
 }
 
 describe("standalone server-script runtime", () => {
@@ -55,6 +56,9 @@ describe("standalone server-script runtime", () => {
     importWithServerScriptRuntime(
       "src/db/rehearse-business-authority-concurrency.ts",
     );
+    importWithServerScriptRuntime(
+      "src/db/activate-attelier-staging-authority.ts",
+    );
   });
 
   it("uses the scoped runtime for every Phase 3N database entry point", async () => {
@@ -69,6 +73,12 @@ describe("standalone server-script runtime", () => {
     );
     expect(scripts["db:rehearse-staging-rebuild"]).toContain(
       `tsx --tsconfig ${serverScriptTsconfig}`,
+    );
+    expect(scripts["authority:activate:attelier:staging"]).toContain(
+      `tsx --tsconfig ${serverScriptTsconfig}`,
+    );
+    expect(scripts["authority:activate:attelier:staging"]).toContain(
+      "src/db/run-attelier-staging-authority.ts",
     );
   });
 });

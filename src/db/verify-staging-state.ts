@@ -23,7 +23,13 @@ type StagingInventory = Readonly<{
   downstream_rows: number;
   authority_records: number;
   authority_audits: number;
+  staging_authority_approvals: number;
+  staging_authority_pending: number;
   production_approvals: number;
+  attelier_price_books: number;
+  attelier_duration_models: number;
+  attelier_working_hours: number;
+  attelier_appointment_windows: number;
   rate_limit_rows: number;
 }>;
 
@@ -66,7 +72,28 @@ async function main(): Promise<void> {
         (select count(*)::integer
           from public.business_authority_audit_events) as authority_audits,
         (select count(*)::integer from public.business_authority_records
+          where environment_scope = 'STAGING'
+            and status = 'APPROVED_FOR_STAGING') as staging_authority_approvals,
+        (select count(*)::integer from public.business_authority_records
+          where environment_scope = 'STAGING'
+            and status = 'UNDER_REVIEW') as staging_authority_pending,
+        (select count(*)::integer from public.business_authority_records
           where status = 'APPROVED_FOR_PRODUCTION') as production_approvals,
+        (select count(*)::integer from public.price_books
+          where code in ('ATTELIER_RESIDENTIAL_EUR_V1', 'ATTELIER_B2B_EUR_V1')
+            and status = 'DRAFT' and active = false and provisional = false
+            and vat_mode = 'VAT_UNRESOLVED'
+            and default_vat_rate_basis_points is null) as attelier_price_books,
+        (select count(*)::integer from public.duration_models
+          where code = 'ATTELIER_OPERATIONS_V1' and status = 'ACTIVE'
+            and active = true and provisional = false) as attelier_duration_models,
+        (select count(*)::integer from public.working_hour_policies
+          where code = 'ATTELIER_WORKING_HOURS_V1' and status = 'ACTIVE'
+            and active = true and provisional = false) as attelier_working_hours,
+        (select count(*)::integer from public.appointment_window_definitions
+          where profile_code = 'ATTELIER_APPOINTMENT_WINDOWS_V1'
+            and status = 'ACTIVE' and active = true
+            and provisional = false) as attelier_appointment_windows,
         (select count(*)::integer from public.operational_rate_limits)
           as rate_limit_rows
     `);
@@ -94,7 +121,7 @@ async function main(): Promise<void> {
     if (
       !row ||
       row.tables !== 100 ||
-      row.migrations !== 17 ||
+      row.migrations !== 19 ||
       row.roles !== 5 ||
       row.permissions !== 28 ||
       row.mappings !== 76 ||
@@ -107,9 +134,15 @@ async function main(): Promise<void> {
       row.acceptances !== 1 ||
       row.bookings !== 1 ||
       row.downstream_rows !== 0 ||
-      row.authority_records !== 0 ||
-      row.authority_audits !== 0 ||
+      row.authority_records !== 29 ||
+      row.authority_audits !== 107 ||
+      row.staging_authority_approvals !== 16 ||
+      row.staging_authority_pending !== 13 ||
       row.production_approvals !== 0 ||
+      row.attelier_price_books !== 2 ||
+      row.attelier_duration_models !== 1 ||
+      row.attelier_working_hours !== 1 ||
+      row.attelier_appointment_windows !== 5 ||
       row.rate_limit_rows !== 0 ||
       authUsers !== 6 ||
       authSessions !== 8
@@ -117,7 +150,7 @@ async function main(): Promise<void> {
       throw new Error("Staging state has diverged.");
     }
     process.stdout.write(
-      "Staging schema, retained synthetic fixtures, canonical RBAC, Auth/session inventory, and zero authority approvals verified.\n",
+      "ATTELIER staging schema, retained acceptance fixtures, canonical RBAC, Auth/session inventory, governed authority state and zero production approvals verified.\n",
     );
   } finally {
     await client.end();

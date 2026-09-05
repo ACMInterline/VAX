@@ -1,6 +1,6 @@
 # Security
 
-## Security posture through Phase 3N
+## Security posture through ATTELIER finalization
 
 The repository now has development and staging database/authentication
 boundaries plus a shared PostgreSQL limiter, safe readiness/logging and a
@@ -11,7 +11,10 @@ versioned, Owner-controlled Business Authority and derived readiness boundary,
 not real approvals. It does not claim production security readiness. Provider
 acceptance, complete session controls, established pooler invalidation,
 production monitoring/recovery ownership and production data governance remain
-gated. The finance foundation adds no claim
+gated. ATTELIER finalization adds a narrow staging-only configuration resolver,
+Owner-directed authority plan and explicit unresolved-VAT storage; it does not
+create a production resolver or turn missing professional/operational evidence
+into approval. The finance foundation adds no claim
 of legal, fiscal, tax, accounting or payment-provider security readiness. The
 communications foundation publishes locally only and makes no external-
 delivery, customer-read or messaging-provider claim.
@@ -181,6 +184,16 @@ migration also adds only the explicit `STAGING` value to four finance
 environment checks. The current nonproduction contract is 100 public tables,
 17 ordered migrations and unchanged canonical five-role/28-permission/76-
 mapping RBAC. Production remains unmigrated.
+
+Migration `0017_attelier_staging_calibration.sql` adds no table, data write,
+grant or Auth-schema change. It permits only the closed unresolved-VAT gross
+estimate shape and adds bounded additional-side percentages. The
+follow-up 0018 preserves legacy known-rate manual estimates and rejects
+partial-null amount groups without changing 0017. Repository attestation
+becomes 100 public tables and 19 ordered migrations. The exact
+staging resolver verifies type/code/version/digest and returns an allowlisted
+code snapshot only under `VAX_ENVIRONMENT=staging`; an absent, mismatched,
+pending or production request returns no usable configuration evidence.
 
 ## Health endpoints
 

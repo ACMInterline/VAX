@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { developmentDurationModel } from "./development-config";
+import { attelierDurationModel } from "./attelier-config";
 import { calculateDuration } from "./duration";
 import type { DurationCalculationInput } from "./types";
 
@@ -125,5 +126,95 @@ describe("duration calculation", () => {
     expect(second).toEqual(first);
     expect("grossTotalMinorUnits" in first).toBe(false);
     expect(first.appliedRuleIds.every((id) => id.length > 0)).toBe(true);
+  });
+});
+
+describe("ATTELIER staging duration calibration", () => {
+  it("uses the exact setup, inspection, three-seat sofa and completion assumptions", () => {
+    const result = calculateDuration(attelierDurationModel, {
+      ...sofaInput,
+      conditionBandCode: "NORMAL",
+    });
+
+    expect(result).toMatchObject({
+      setupMinutes: 10,
+      inspectionMinutes: 10,
+      baseCleaningMinutes: 45,
+      cleanupMinutes: 10,
+      totalEstimatedMinutes: 75,
+      durationModelCode: "ATTELIER_OPERATIONS_V1",
+    });
+  });
+
+  it("uses 23 m²/hour internally and the heavy/very-heavy factors", () => {
+    const baseInput = {
+      items: [
+        {
+          serviceCode: "CARPET_CARE",
+          itemTypeCode: "CARPET_FIXED",
+          quantity: 1,
+          sides: 1,
+          areaHundredthsM2: 2_300,
+          issueCodes: [],
+          addonCodes: [],
+          riskFlagCodes: [],
+        },
+      ],
+      conditionBandCode: "ENHANCED",
+    } as const satisfies DurationCalculationInput;
+    const heavy = calculateDuration(attelierDurationModel, baseInput);
+    const veryHeavy = calculateDuration(attelierDurationModel, {
+      ...baseInput,
+      conditionBandCode: "INTENSIVE",
+    });
+
+    expect(heavy.baseCleaningMinutes).toBe(60);
+    expect(heavy.modifierMinutes).toBe(12);
+    expect(heavy.totalEstimatedMinutes).toBe(102);
+    expect(veryHeavy.modifierMinutes).toBe(24);
+    expect(veryHeavy.totalEstimatedMinutes).toBe(114);
+  });
+
+  it("adds sixty percent for a second mattress side", () => {
+    const result = calculateDuration(attelierDurationModel, {
+      items: [
+        {
+          serviceCode: "MATTRESS_CARE",
+          itemTypeCode: "MATTRESS_DOUBLE",
+          quantity: 1,
+          sides: 2,
+          issueCodes: [],
+          addonCodes: [],
+          riskFlagCodes: [],
+        },
+      ],
+      conditionBandCode: "NORMAL",
+    });
+
+    expect(result.baseCleaningMinutes).toBe(56);
+    expect(result.totalEstimatedMinutes).toBe(86);
+  });
+
+  it("requires review for from-duration work and declines biological hazards", () => {
+    const corner = calculateDuration(attelierDurationModel, {
+      ...sofaInput,
+      conditionBandCode: "NORMAL",
+      items: [{ ...sofaInput.items[0], itemTypeCode: "SOFA_CORNER" }],
+    });
+    const biological = calculateDuration(attelierDurationModel, {
+      ...sofaInput,
+      conditionBandCode: "NORMAL",
+      items: [
+        {
+          ...sofaInput.items[0],
+          issueCodes: ["BLOOD_OR_BIOLOGICAL"],
+        },
+      ],
+    });
+
+    expect(corner.baseCleaningMinutes).toBe(70);
+    expect(corner.totalEstimatedMinutes).toBeNull();
+    expect(biological.declineOrReferRequired).toBe(true);
+    expect(biological.totalEstimatedMinutes).toBeNull();
   });
 });

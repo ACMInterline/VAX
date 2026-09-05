@@ -28,14 +28,11 @@ export const marketingClaimRegistry = [
   },
   {
     id: "processing-capacity",
-    concept: "Processing may reach approximately 25 m² per hour.",
-    status: "qualified",
-    publicationWording: {
-      bg: "При подходящи условия професионалната обработка може да достигне около 25 m² на час, в зависимост от материята, замърсяването, избраната обработка и достъпа до повърхността.",
-      en: "Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface.",
-    },
+    concept: "A universal public processing-capacity claim.",
+    status: "manufacturer_evidence_required",
+    publicationWording: null,
     evidenceNeeded: "Timed field records across representative surfaces and conditions.",
-    notes: "Never present as guaranteed job duration or throughput.",
+    notes: "The 23 m²/hour staging assumption is internal scheduling data, not customer-facing evidence.",
   },
   {
     id: "residual-moisture",

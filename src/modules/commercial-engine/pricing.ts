@@ -48,6 +48,15 @@ function uniquePush(values: string[], value: string): void {
 }
 
 function validateVatConfiguration(configuration: VatConfiguration): void {
+  if (configuration.mode === "VAT_UNRESOLVED") {
+    if (configuration.rateBasisPoints !== null) {
+      throw new Error("An unresolved VAT configuration must not invent a VAT rate.");
+    }
+    return;
+  }
+  if (configuration.rateBasisPoints === null) {
+    throw new Error("A resolved VAT configuration requires a VAT rate.");
+  }
   assertSafeInteger(configuration.rateBasisPoints, "VAT rate");
   if (
     configuration.rateBasisPoints < 0 ||
@@ -142,10 +151,29 @@ function calculateRuleAmount(
       if (sides === undefined) {
         throw new Error(`Price rule ${rule.id} requires a side count.`);
       }
-      return multiplySafe(
-        rate,
-        multiplySafe(item.quantity, sides, "Billable mattress sides"),
-        "Per-side amount",
+      const additionalSidePercentageBasisPoints =
+        rule.additionalSidePercentageBasisPoints ?? 10_000;
+      assertSafeInteger(
+        additionalSidePercentageBasisPoints,
+        `Price rule ${rule.id} additional-side percentage`,
+      );
+      if (
+        additionalSidePercentageBasisPoints < 0 ||
+        additionalSidePercentageBasisPoints > 100_000
+      ) {
+        throw new Error(
+          `Price rule ${rule.id} has an invalid additional-side percentage.`,
+        );
+      }
+      const sideFactorBasisPoints =
+        sides === 1 ? 10_000 : 10_000 + additionalSidePercentageBasisPoints;
+      return roundRatio(
+        multiplySafe(
+          multiplySafe(rate, item.quantity, "Per-side base amount"),
+          sideFactorBasisPoints,
+          "Per-side adjusted amount",
+        ),
+        10_000,
       );
     }
     case "PER_SEAT": {
@@ -389,7 +417,9 @@ export function calculatePrice(
       );
     }
   }
-  warnings.push("Parking is pass-through until the owner approves another policy.");
+  warnings.push(
+    "Material paid parking is passed through at documented cost without markup; exceptional access cost requires confirmation before booking.",
+  );
 
   const timingRule = findRule(
     priceBook.rules,
@@ -435,7 +465,10 @@ export function calculatePrice(
 
   const minimumRule = findRule(
     priceBook.rules,
-    (rule) => rule.type === "MINIMUM_VISIT",
+    (rule) =>
+      rule.type === "MINIMUM_VISIT" &&
+      (rule.travelZoneCode === undefined ||
+        rule.travelZoneCode === input.travelZoneCode),
   );
 
   if (manualAssessmentRequired) {
@@ -480,15 +513,26 @@ export function calculatePrice(
     minimumVisitAdjustmentMinorUnits,
     "Minimum-adjusted total",
   );
-  let netAmountMinorUnits: number;
-  let vatAmountMinorUnits: number;
+  let netAmountMinorUnits: number | null;
+  let vatAmountMinorUnits: number | null;
   let grossTotalMinorUnits: number;
 
-  if (vatConfiguration.mode === "VAT_NOT_REGISTERED") {
+  if (vatConfiguration.mode === "VAT_UNRESOLVED") {
+    netAmountMinorUnits = null;
+    vatAmountMinorUnits = null;
+    grossTotalMinorUnits = basisTotal;
+    manualAssessmentRequired = true;
+    warnings.push(
+      "VAT status is unresolved; preserve the customer gross total and block statutory tax treatment.",
+    );
+  } else if (vatConfiguration.mode === "VAT_NOT_REGISTERED") {
     netAmountMinorUnits = basisTotal;
     vatAmountMinorUnits = 0;
     grossTotalMinorUnits = basisTotal;
   } else if (priceBook.priceBasis === "GROSS") {
+    if (vatConfiguration.rateBasisPoints === null) {
+      throw new Error("A registered gross calculation requires a VAT rate.");
+    }
     grossTotalMinorUnits = basisTotal;
     netAmountMinorUnits = roundRatio(
       multiplySafe(grossTotalMinorUnits, 10_000, "Gross-to-net product"),
@@ -496,6 +540,9 @@ export function calculatePrice(
     );
     vatAmountMinorUnits = grossTotalMinorUnits - netAmountMinorUnits;
   } else {
+    if (vatConfiguration.rateBasisPoints === null) {
+      throw new Error("A registered net calculation requires a VAT rate.");
+    }
     netAmountMinorUnits = basisTotal;
     vatAmountMinorUnits = roundRatio(
       multiplySafe(

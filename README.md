@@ -1,8 +1,10 @@
-# Service Platform Foundation
+# ATTELIER Textile Care
 
-Production-oriented service-platform foundation with an isolated development
-database, a bilingual public website, a canonical service catalogue,
-versioned development commercial and availability engines, secure
+Production-oriented service platform for **ATTELIER**, a bilingual on-site
+textile-care business serving Sofia and the surrounding area. The internal
+repository and engineering identity remains VAX. The application combines an
+isolated development/staging database topology, a bilingual public website, a
+canonical service catalogue, versioned commercial and availability engines, secure
 identity/RBAC, customer/property CRM records, a persistent request-to-Booking
 workflow, operational Job/Cleaning Passport
 execution and staff scheduling/dispatch for a future carpet and upholstery
@@ -22,8 +24,9 @@ The current repository contains:
   routes and evidence-controlled marketing claims;
 - a server-validated bilingual public request form that persists a safe
   staff-review request without creating an account, quote or booking;
-- deterministic catalogue seeding plus insert-only provisional development
-  price-book and duration versions, with no public prices or product claims;
+- deterministic catalogue seeding plus insert-only development and ATTELIER
+  staging commercial/duration versions, with public gross prices kept separate
+  from unresolved statutory VAT and Invoice authority;
 - non-indexed local-only pricing and availability calculation harnesses;
 - Neon Auth-backed bilingual account flows, application-owned profiles,
   deny-by-default RBAC and a protected `/app` shell;
@@ -55,10 +58,12 @@ The current repository contains:
 
 Production invitations/session administration, paid/live routing, live payment
 processing, external email/SMS or other messaging-provider delivery, binary
-PDF/object storage, offline technician synchronization, final branding and
-deployment are not implemented. Final operational values and professional
-approvals have not been supplied. Phase 3N provides the approval workflow; it
-approves none of those missing facts automatically.
+PDF/object storage, offline technician synchronization and production deployment
+are not implemented. ATTELIER branding and the Owner-approved staging
+calibration are implemented, but legal entity/VAT, Accountant/Legal approvals,
+actual staff/equipment/product evidence and production infrastructure remain
+explicit gates. Phase 3N provides the approval workflow; this closure uses it
+without fabricating any missing authority.
 
 ## Requirements
 
@@ -170,6 +175,7 @@ Neither response exposes connection details or errors.
 | npm run db:verify-security | Run focused static and guarded live database-security checks |
 | npm run db:verify-security:staging | Repeat the live least-privilege/shared-limiter suite on staging |
 | npm run db:verify-state:staging | Verify clean staging schema/RBAC/business/Auth/session state |
+| npm run authority:activate:attelier:staging | Record the reviewed ATTELIER staging authority plan after guarded target verification |
 | npm run auth:bootstrap-owner | Explicitly assign the first owner to an existing active application profile |
 | npm run validate | Run the full local completion gate, including migration and dependency checks |
 
@@ -300,12 +306,24 @@ scheduling-knowledge gate. Phase 3N adds the protected Business Authority
 registry, Owner-controlled review transitions, environment/effective-date/
 supersession rules and a derived printable production-authorization package.
 Migration 0016 adds two application-owned authority tables, taking the current
-nonproduction security contract to 100 public tables and 17 ordered migrations
+Phase 3N security contract to 100 public tables and 17 ordered migrations
 while retaining five roles, 28 permissions and 76 canonical mappings. It also
 makes finance configuration explicitly `STAGING`-aware from the canonical VAX
 environment rather than the hosting build mode. No real operational value is
 seeded or automatically approved. Neon production remains unmigrated and no
-production deployment is authorized. See
+production deployment is authorized.
+
+The ATTELIER closure keeps that architecture and adds migration 0017 for
+nullable unresolved-VAT snapshots and explicit second-side percentages, plus
+0018 to preserve known-rate manual estimates and reject partial amount groups.
+The nonproduction contract becomes 100 public tables and 19 ordered migrations.
+Exact ATTELIER brand, service, duration, hours, windows, zone, access, Job,
+Passport, Auth-provider and monitoring configurations resolve only in
+`STAGING`. Approved customer prices can be displayed and used for a
+staff-reviewed gross estimate while VAT remains unresolved. Quote issue,
+Booking and statutory finance remain fail-closed until the missing commercial,
+legal and operational authority is supplied. See
+[docs/ATTELIER_FINALIZATION.md](docs/ATTELIER_FINALIZATION.md),
 [docs/CRM_AND_PRIVACY.md](docs/CRM_AND_PRIVACY.md),
 [docs/REQUEST_AND_QUOTE.md](docs/REQUEST_AND_QUOTE.md),
 [docs/BOOKING_ENGINE.md](docs/BOOKING_ENGINE.md),

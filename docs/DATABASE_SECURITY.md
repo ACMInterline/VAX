@@ -70,9 +70,10 @@ policies and fails if the expected inventory diverges. Phase 3L adds only the
 `operational_rate_limits` table, bringing the current contract to 98 public
 tables while preserving the 97-table Phase 3K baseline. Phase 3N then adds only
 `business_authority_records` and `business_authority_audit_events`, bringing
-the current nonproduction contract to 100 public tables and 17 ordered
+the Phase 3N contract to 100 public tables and 17 ordered
 migrations. The historical 97-table/98-table and 16-entry checkpoints remain
-unchanged evidence rather than being restated as Phase 3N results.
+unchanged evidence rather than being restated as Phase 3N results. Migration
+0017/0018 preserve 100 tables and advance the current ledger to 19 entries.
 
 ## Ownership and defaults
 
@@ -239,6 +240,16 @@ authority or finance configuration. The migration replaces only four existing
 finance environment checks to add the explicit `STAGING` scope; it does not
 alter any Invoice, seller, numbering or payment row.
 
+ATTELIER finalization adds reviewed migrations 0017/0018 on authorized
+nonproduction targets only. It adds no table, role, permission, mapping or Auth
+object; grants no new privilege; and performs no row update. It only broadens
+closed commercial/estimate constraints for the explicit unresolved-VAT shape
+and adds bounded additional-side percentage columns. The security attestation
+therefore expects 100 public tables and 19 ordered hashes. Migration 0018
+preserves known-rate estimates with withheld totals and rejects partial-null
+amount groups without changing applied migration 0017. Production remains
+outside the migration command and authorization.
+
 Production remains untouched and contains no VAX migration ledger. A later
 production migration, credential/configuration change, Data API change or
 deployment requires separate authorization.
@@ -247,10 +258,10 @@ Migration `0015_phase_3l_readiness_attestation.sql` adds one
 `vax_migrator`-owned security-definer function with a fixed safe search path.
 Only `vax_runtime` can execute it, and it returns only the ordered ledger
 hashes. Runtime, browser/Auth roles and PUBLIC remain denied direct ledger
-access. The readiness query uses the function to compare the exact 16-entry
-Phase 3L history and exact operational table shape without broadening runtime
-authority. After Phase 3N, the repository attestation expects the 17-entry
-history and the two additional authority tables.
+access. The readiness query originally compared the exact 16-entry Phase 3L
+history and exact operational table shape without broadening runtime authority.
+After ATTELIER finalization, the repository attestation expects the 18-entry
+history and the two Phase 3N authority tables.
 
 Migration `0016_phase_3n_business_authority.sql` grants the runtime only
 SELECT/INSERT/UPDATE on the authority record and SELECT/INSERT on its audit

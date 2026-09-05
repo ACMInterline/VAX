@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicLanguageConfig } from "@/config/public-site";
+import { publicBrand, publicLanguageConfig } from "@/config/public-site";
 import { getPublicContent, getService } from ".";
 import {
   forbiddenPublishedClaimPatterns,
@@ -37,6 +37,35 @@ const expectedRoutes = [
 ] as const;
 
 describe("public-site localization architecture", () => {
+  it("uses the final ATTELIER identity without leaking superseded customer brands", () => {
+    const publishedCopy = JSON.stringify({
+      bg: getPublicContent("bg"),
+      en: getPublicContent("en"),
+    });
+
+    expect(publicBrand).toMatchObject({
+      status: "final",
+      name: "ATTELIER",
+      shortName: "ATTELIER",
+    });
+    expect(getPublicContent("bg").common.brand.descriptor).toBe(
+      "Професионална грижа за текстила",
+    );
+    expect(getPublicContent("en").common.brand.descriptor).toBe("Textile Care");
+    expect(publishedCopy).not.toMatch(/FabricCare|VAX portal|VAX портал/);
+    expect(publishedCopy).not.toMatch(/[™®]/u);
+  });
+
+  it("keeps the internal planning rate out of all customer-visible copy", () => {
+    const publishedCopy = JSON.stringify({
+      bg: getPublicContent("bg"),
+      en: getPublicContent("en"),
+    });
+
+    expect(publishedCopy).not.toMatch(/(?:23|25)\s*m²/iu);
+    expect(publishedCopy).not.toMatch(/(?:23|25)\s*м²/iu);
+  });
+
   it("makes Bulgarian primary and retains English as the secondary locale", () => {
     expect(publicLanguageConfig.primaryLocale).toBe("bg");
     expect(publicLanguageConfig.secondaryLocale).toBe("en");
@@ -106,11 +135,11 @@ describe("public-site localization architecture", () => {
     const content = getPublicContent("bg");
 
     expect(content.treatmentLevels.map((level) => level.name)).toEqual([
-      "Щадяща грижа",
+      "Деликатна грижа",
       "Освежаване",
-      "Дълбоко почистване",
+      "Стандартно дълбоко почистване",
       "Интензивна обработка",
-      "Специализирана оценка",
+      "Възстановителна / специализирана грижа",
     ]);
     expect(content.faqs).toHaveLength(12);
     expect(content.faqs.map((faq) => faq.question)).toContain(

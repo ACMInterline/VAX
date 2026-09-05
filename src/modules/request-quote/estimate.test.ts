@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import type { EstimateEngineInput } from "./estimate";
-import { calculateStaffEstimate } from "./estimate";
+import {
+  attelierStagingEstimateConfiguration,
+  calculateStaffEstimate,
+  resolveEstimateConfiguration,
+} from "./estimate";
 
 const normalInput: EstimateEngineInput = {
   customerSegment: "RESIDENTIAL",
@@ -133,6 +137,45 @@ describe("persistent estimate orchestration", () => {
   it("rejects invalid snapshot instants", () => {
     expect(() => calculateStaffEstimate(normalInput, "not-a-date")).toThrow(
       "Estimate timestamp",
+    );
+  });
+
+  it("selects ATTELIER only for staging and rejects unapproved production use", () => {
+    expect(
+      resolveEstimateConfiguration({ VAX_ENVIRONMENT: "staging" }),
+    ).toBe(attelierStagingEstimateConfiguration);
+    expect(() =>
+      resolveEstimateConfiguration({
+        VAX_ENVIRONMENT: "production",
+        NODE_ENV: "production",
+      }),
+    ).toThrow("Production commercial authority is unavailable");
+  });
+
+  it("calculates the approved staging gross price while VAT and scheduling stay fail-closed", () => {
+    const result = calculateStaffEstimate(
+      normalInput,
+      "2026-09-05T12:00:00.000Z",
+      attelierStagingEstimateConfiguration,
+    );
+
+    expect(result.priceSnapshot.priceBook.code).toBe(
+      "ATTELIER_RESIDENTIAL_EUR_V1",
+    );
+    expect(result.durationSnapshot.durationModel.code).toBe(
+      "ATTELIER_OPERATIONS_V1",
+    );
+    expect(result.grossTotalMinorUnits).toBe(4_500);
+    expect(result.netAmountMinorUnits).toBeNull();
+    expect(result.vatRateBasisPoints).toBeNull();
+    expect(result.vatAmountMinorUnits).toBeNull();
+    expect(result.disposition).toBe("MANUAL_REVIEW_REQUIRED");
+    expect(result.reviewReasonCodes).toEqual(
+      expect.arrayContaining([
+        "PRICE_BOOK_NOT_ACTIVE",
+        "VAT_STATUS_UNRESOLVED",
+        "SCHEDULING_POLICY_NOT_ACTIVE",
+      ]),
     );
   });
 });

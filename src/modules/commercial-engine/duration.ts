@@ -67,7 +67,26 @@ function calculateItemMinutes(
       if (item.sides !== 1 && item.sides !== 2) {
         throw new Error(`Duration rule ${rule.id} requires one or two sides.`);
       }
-      return minutes * item.quantity * item.sides;
+      {
+        const additionalSidePercentageBasisPoints =
+          rule.additionalSidePercentageBasisPoints ?? 10_000;
+        if (
+          !Number.isSafeInteger(additionalSidePercentageBasisPoints) ||
+          additionalSidePercentageBasisPoints < 0 ||
+          additionalSidePercentageBasisPoints > 100_000
+        ) {
+          throw new Error(
+            `Duration rule ${rule.id} has an invalid additional-side percentage.`,
+          );
+        }
+        const sideFactorBasisPoints =
+          item.sides === 1
+            ? 10_000
+            : 10_000 + additionalSidePercentageBasisPoints;
+        return Math.ceil(
+          (minutes * item.quantity * sideFactorBasisPoints) / 10_000,
+        );
+      }
     case "PER_SEAT":
       if (item.seatCount === undefined) {
         throw new Error(`Duration rule ${rule.id} requires a seat count.`);

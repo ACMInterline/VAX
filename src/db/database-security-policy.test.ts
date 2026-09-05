@@ -295,6 +295,8 @@ describe("Phase 3K database security policy", () => {
       "0014_phase_3l_shared_rate_limiting.sql",
       "0015_phase_3l_readiness_attestation.sql",
       "0016_phase_3n_business_authority.sql",
+      "0017_attelier_staging_calibration.sql",
+      "0018_attelier_estimate_amount_compatibility.sql",
     ];
     const hashes = await Promise.all(
       migrationFiles.map(async (fileName) =>
@@ -307,11 +309,11 @@ describe("Phase 3K database security policy", () => {
     expect(hashes).toEqual(vaxMigrationHashes);
   });
 
-  it("registers Phase 3N directly after Phase 3L", async () => {
+  it("registers ATTELIER calibration directly after frozen Phase 3N", async () => {
     const journal = JSON.parse(
       await readFile(path.join(root, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: Array<{ idx: number; tag: string }> };
-    expect(journal.entries.slice(-6)).toEqual([
+    expect(journal.entries.slice(-8)).toEqual([
       {
         idx: 11,
         version: "7",
@@ -352,6 +354,20 @@ describe("Phase 3K database security policy", () => {
         version: "7",
         when: 1788147573740,
         tag: "0016_phase_3n_business_authority",
+        breakpoints: true,
+      },
+      {
+        idx: 17,
+        version: "7",
+        when: 1788615873344,
+        tag: "0017_attelier_staging_calibration",
+        breakpoints: true,
+      },
+      {
+        idx: 18,
+        version: "7",
+        when: 1788629452175,
+        tag: "0018_attelier_estimate_amount_compatibility",
         breakpoints: true,
       },
     ]);
