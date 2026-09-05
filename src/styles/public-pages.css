@@ -3,20 +3,22 @@
   overflow: hidden;
   padding: clamp(4rem, 8vw, 7rem) 0 clamp(5rem, 10vw, 9rem);
   background:
-    linear-gradient(90deg, transparent 0 72%, rgba(255, 213, 42, 0.32) 72% 100%),
+    radial-gradient(circle at 90% 35%, color-mix(in srgb, var(--attelier-blue) 26%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--canvas), color-mix(in srgb, var(--canvas-warm) 60%, transparent) 78%),
     var(--canvas);
 }
 
 .home-hero::after {
   position: absolute;
-  width: 36rem;
-  height: 36rem;
-  right: -20rem;
-  bottom: -22rem;
-  border: 3px solid var(--ink);
-  border-radius: 0;
-  background: var(--attelier-coral);
-  transform: rotate(18deg);
+  width: 28rem;
+  height: 28rem;
+  right: -16rem;
+  bottom: -18rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--attelier-pink) 46%, transparent);
+  transform: none;
+  filter: blur(0.5rem);
   content: "";
 }
 
@@ -34,18 +36,18 @@
   margin-bottom: 1.5rem;
   color: var(--accent-strong);
   font-size: 0.7rem;
-  font-weight: 750;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  font-weight: 620;
+  letter-spacing: 0.05em;
+  text-transform: none;
 }
 
 .hero-kicker > span {
   width: 0.55rem;
   height: 0.55rem;
-  border: 2px solid var(--ink);
-  border-radius: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: var(--attelier-yellow);
-  box-shadow: 3px 3px 0 var(--ink);
+  box-shadow: none;
 }
 
 .home-hero h1 {
@@ -88,10 +90,10 @@
 .hero-facts dt {
   margin-bottom: 0.4rem;
   color: var(--ink-faint);
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 0.66rem;
+  font-weight: 620;
+  letter-spacing: 0.03em;
+  text-transform: none;
 }
 
 .hero-facts dd {
@@ -114,11 +116,11 @@
   display: grid;
   width: 12.5rem;
   padding: 1.25rem;
-  border: 3px solid var(--ink);
-  border-radius: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-medium);
   color: var(--ink-inverse);
-  background: var(--surface-deep);
-  box-shadow: 10px 10px 0 var(--attelier-coral);
+  background: color-mix(in srgb, var(--surface-deep) 78%, transparent);
+  box-shadow: var(--shadow-small);
 }
 
 .capacity-card__value {
@@ -132,8 +134,8 @@
   margin-top: 0.4rem;
   color: var(--attelier-yellow);
   font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: 600;
+  text-transform: none;
 }
 
 .capacity-card p {
@@ -386,7 +388,7 @@
   font-size: 0.66rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .hygiene-note p {
@@ -418,7 +420,7 @@
   font-size: 0.64rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .audience-grid h3 {
@@ -630,7 +632,7 @@
   font-size: 0.68rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .service-process {
@@ -892,7 +894,7 @@
   font-size: 0.66rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .coverage-card--deferred > span {
@@ -1096,7 +1098,7 @@
   font-size: 0.66rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .contact-next-step h3 {
@@ -1113,7 +1115,7 @@
   font-size: 0.66rem;
   font-weight: 750;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .request-hero-card ul {

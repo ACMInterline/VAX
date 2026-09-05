@@ -2,7 +2,8 @@
   min-height: 70vh;
   padding-block: clamp(3rem, 8vw, 7rem);
   background:
-    radial-gradient(circle at 12% 18%, rgba(198, 221, 209, 0.72), transparent 32rem),
+    radial-gradient(circle at 12% 18%, rgba(199, 172, 127, 0.32), transparent 32rem),
+    radial-gradient(circle at 84% 68%, rgba(198, 221, 209, 0.18), transparent 38rem),
     var(--canvas);
 }
 
@@ -17,7 +18,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-large);
   background: var(--surface);
-  box-shadow: var(--shadow-large);
+  box-shadow: var(--shadow-small);
 }
 
 .auth-card__header,
@@ -47,11 +48,11 @@
   width: 2.6rem;
   height: 2.6rem;
   place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  color: var(--accent-strong);
+  border: 1px solid var(--line);
+  border-radius: 0.82rem;
+  color: var(--accent);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 620;
 }
 
 .auth-card__header h1 {
@@ -135,8 +136,8 @@
   color: var(--ink-inverse);
   background: var(--accent-strong);
   cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 750;
+  font-size: 0.76rem;
+  font-weight: 560;
   letter-spacing: 0.02em;
 }
 
@@ -151,7 +152,7 @@
   padding-block: 1.4rem 2rem;
   border-top: 1px solid var(--line);
   color: var(--ink-soft);
-  background: rgba(232, 238, 230, 0.5);
+  background: color-mix(in srgb, var(--surface-soft) 72%, transparent);
   font-size: 0.78rem;
 }
 

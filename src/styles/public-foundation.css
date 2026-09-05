@@ -1,40 +1,44 @@
+@import url("https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap");
+
 :root {
-  --canvas: #fff8e8;
-  --canvas-warm: #ffd52a;
-  --surface: #fffdf7;
-  --surface-soft: #d8eaff;
+  --canvas: #f6f1e8;
+  --canvas-warm: #f2e9d9;
+  --surface: #fdfbf6;
+  --surface-soft: #ece4d3;
   /* Legacy light-surface consumers keep dark text; use a light brand field. */
-  --surface-sage: #ffd52a;
-  --surface-deep: #091d3e;
-  --surface-deeper: #04122a;
-  --ink: #091d3e;
-  --ink-soft: #344361;
-  --ink-faint: #4c5870;
-  --ink-inverse: #fffdf7;
-  --accent: #1645e8;
-  --accent-strong: #0b2ca8;
-  --accent-soft: #b9caff;
-  --warm: #b93622;
-  --warm-soft: #ffb9a6;
-  --attelier-yellow: #ffd52a;
-  --attelier-coral: #f15439;
-  --attelier-green: #08744f;
-  --attelier-pink: #f5a7c7;
-  --attelier-blue: #b9d9ff;
-  --line: rgba(9, 29, 62, 0.18);
-  --line-strong: rgba(9, 29, 62, 0.42);
-  --line-inverse: rgba(255, 253, 247, 0.28);
-  --shadow-small: 8px 8px 0 rgba(9, 29, 62, 0.12);
-  --shadow-large: 18px 18px 0 rgba(9, 29, 62, 0.15);
+  --surface-sage: #d9d3c4;
+  --surface-deep: #2d231d;
+  --surface-deeper: #201814;
+  --ink: #2f2620;
+  --ink-soft: #4e443c;
+  --ink-faint: #5a5149;
+  --ink-inverse: #fbf8f2;
+  --accent: #315b98;
+  --accent-strong: #355b85;
+  --accent-soft: #d8e4f2;
+  --warm: #8d4f33;
+  --warm-soft: #eec7b3;
+  --attelier-yellow: #d7b98d;
+  --attelier-coral: #cd8f75;
+  --attelier-green: #758873;
+  --attelier-pink: #dcb3c2;
+  --attelier-blue: #a6bfd8;
+  --line: rgba(39, 29, 18, 0.17);
+  --line-strong: rgba(39, 29, 18, 0.35);
+  --line-inverse: rgba(251, 248, 242, 0.35);
+  --shadow-small: 0 10px 28px rgba(47, 38, 32, 0.09);
+  --shadow-large: 0 24px 50px rgba(47, 38, 32, 0.17);
   --radius-small: 0.25rem;
   --radius-medium: 0.5rem;
   --radius-large: 0.8rem;
-  --radius-xlarge: 1.1rem;
+  --radius-xlarge: 1.3rem;
   --container: 78rem;
   --reading: 46rem;
   --section-space: clamp(5rem, 9vw, 8.5rem);
-  --font-sans: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-display: Didot, "Bodoni 72", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Onest", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+  --font-display: "Onest", "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial,
+    sans-serif;
 }
 
 * {
@@ -55,8 +59,9 @@ body {
   color: var(--ink);
   background: var(--canvas);
   font-family: var(--font-sans);
+  font-weight: 400;
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.65;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -110,6 +115,7 @@ blockquote {
 h1,
 h2,
 h3 {
+  font-weight: 600;
   text-wrap: balance;
 }
 
@@ -123,7 +129,7 @@ p {
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--warm);
   outline-offset: 4px;
 }
 
@@ -148,8 +154,8 @@ p {
   border-radius: 0.7rem;
   color: var(--ink-inverse);
   background: var(--surface-deeper);
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 600;
   transform: translateY(-160%);
   transition: transform 160ms ease;
 }
@@ -184,10 +190,10 @@ p {
   margin-bottom: 1rem;
   color: var(--accent);
   font-size: 0.72rem;
-  font-weight: 750;
-  letter-spacing: 0.16em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   line-height: 1.35;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .eyebrow--light {

@@ -14,36 +14,15 @@ export function createPublicOpenGraphImage(locale: PublicLocale) {
           width: "100%",
           height: "100%",
           display: "flex",
-          position: "relative",
           overflow: "hidden",
-          background: "#fff8e8",
-          color: "#091d3e",
+          position: "relative",
+          background:
+            "radial-gradient(220px 220px at 72px 88px, #d7b98d 20%, transparent 64%), radial-gradient(250px 250px at 1028px 582px, #ecdac4 10%, transparent 65%), #f6f1e8",
+          color: "#2f2620",
           padding: "72px",
           fontFamily: "Arial, sans-serif",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            width: "430px",
-            height: "720px",
-            right: "-70px",
-            top: "-70px",
-            background: "#1645e8",
-            transform: "rotate(14deg)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            width: "420px",
-            height: "250px",
-            right: "210px",
-            bottom: "-80px",
-            background: "#f15439",
-            transform: "rotate(-11deg)",
-          }}
-        />
         <div
           style={{
             display: "flex",
@@ -52,51 +31,91 @@ export function createPublicOpenGraphImage(locale: PublicLocale) {
             width: "100%",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                display: "flex",
-                border: "4px solid #091d3e",
-                background: "#ffd52a",
-              }}
-            />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              width: "100%",
+              gap: "22px",
+            }}
+          >
             <div
               style={{
                 display: "flex",
-                fontSize: "30px",
-                fontWeight: 800,
-                letterSpacing: "7px",
+                alignItems: "center",
+                gap: "16px",
               }}
             >
-              {publicBrand.name}
+              <div
+                style={{
+                  width: "58px",
+                  height: "58px",
+                  borderRadius: "22px",
+                  border: "1px solid rgba(47, 38, 32, 0.44)",
+                  background: "#d7b98d",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  color: "#355b85",
+                  fontSize: "31px",
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
+                  lineHeight: 1,
+                }}
+              >
+                {publicBrand.name}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "780px",
+                gap: "10px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: "20px",
+                  letterSpacing: "0.02em",
+                  color: "#4e443c",
+                  opacity: 0.95,
+                }}
+              >
+                {content.common.brand.descriptor} · {content.common.brand.location}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  fontSize: "62px",
+                  lineHeight: 1.02,
+                  letterSpacing: "-2px",
+                  fontWeight: 650,
+                  width: "780px",
+                }}
+              >
+                {content.pages.home.hero.title}
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", width: "850px" }}>
-            <div
-              style={{
-                display: "flex",
-                fontSize: "20px",
-                letterSpacing: "4px",
-                textTransform: "uppercase",
-                color: "#0b2ca8",
-                marginBottom: "22px",
-              }}
-            >
-              {content.common.brand.descriptor} · Sofia
-            </div>
-            <div
-              style={{
-                display: "flex",
-                fontSize: "64px",
-                lineHeight: 1.03,
-                letterSpacing: "-3px",
-                fontWeight: 800,
-              }}
-            >
-              {content.pages.home.hero.title}
-            </div>
+
+          <div
+            style={{
+              display: "flex",
+              width: "100%",
+              justifyContent: "space-between",
+              color: "#4e443c",
+              fontSize: "19px",
+              letterSpacing: "0.01em",
+              marginTop: "28px",
+            }}
+          >
+            <div style={{ display: "flex" }}>{publicBrand.location.city}</div>
+            <div style={{ display: "flex" }}>{content.pages.home.hero.primaryAction}</div>
           </div>
         </div>
       </div>
