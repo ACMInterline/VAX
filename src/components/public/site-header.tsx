@@ -32,7 +32,7 @@ export function SiteHeader({ locale }: { locale: PublicLocale }) {
           </span>
           <span className="wordmark__text">
             <strong>{publicBrand.shortName}</strong>
-            <small>Sofia</small>
+            <small>{common.brand.descriptor}</small>
           </span>
         </Link>
 

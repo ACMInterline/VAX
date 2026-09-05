@@ -128,7 +128,7 @@ const labels = {
     jobItem: "Изпълнена услуга",
     passportItem: "Запис в паспорта",
     paymentNotice:
-      "Записът удостоверява състояние във VAX, а не външна доставка или автоматично движение на средства.",
+      "Записът удостоверява състояние в ATTELIER, а не външна доставка или автоматично движение на средства.",
   },
   en: {
     reference: "Reference",
@@ -147,7 +147,7 @@ const labels = {
     jobItem: "Completed service",
     passportItem: "Passport entry",
     paymentNotice:
-      "This records a VAX state, not external delivery or an automatic movement of funds.",
+      "This records an ATTELIER state, not external delivery or an automatic movement of funds.",
   },
 } as const;
 

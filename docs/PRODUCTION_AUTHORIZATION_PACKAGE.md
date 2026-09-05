@@ -39,9 +39,11 @@ to an exact environment-matched `subjectType`, `subjectCode`, positive
 well-formed reference is insufficient. A missing resolver, missing referenced
 snapshot, provisional or unresolved snapshot, inactive effective window or
 any type/code/version/digest mismatch is a technical blocker.
-The Phase 3N PostgreSQL repository provides no universal resolver, so these
-references remain blocked until a separately reviewed exact resolver is
-available; the report must not infer resolution from the authority row.
+The repository provides no universal resolver. Its only concrete business
+resolver is an allowlist of exact code-owned ATTELIER subjects and returns them
+only for `STAGING`. It returns no production snapshot. Production references
+therefore remain blocked until a separately reviewed production resolver and
+evidence exist; the report must never infer resolution from the authority row.
 
 The printable view is a review artifact only. Printing, exporting or signing a
 copy does not mutate approval state. The report cannot accept a client-supplied

@@ -120,6 +120,20 @@
       "when": 1788147573740,
       "tag": "0016_phase_3n_business_authority",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788615873344,
+      "tag": "0017_attelier_staging_calibration",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788629452175,
+      "tag": "0018_attelier_estimate_amount_compatibility",
+      "breakpoints": true
     }
   ]
 }

@@ -21,6 +21,8 @@ export const vaxMigrationHashes = Object.freeze([
   "d89eb981700427987f5e812ee7ff33ae7d30223776c0a617313520de5db9ccfc",
   "502a03b6d2b20954f601feb244c90e75b40cf46f0033e8cfaf9f87786080c4b1",
   "b68fd05476b5d32567f2f8838df4943e2a2beaa5db28ae9098b6aeb719ccb244",
+  "bae8003f894522ec2af46a589a664bd2a40e66b7233e716c0187375fdcd1a4b9",
+  "ba11ad019442989b45c1b6d2c7cf29df1b803cc1c15d01b2610e442240c00f0a",
 ] as const);
 
 export type DatabaseSecurityCategory =

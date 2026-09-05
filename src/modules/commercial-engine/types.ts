@@ -19,7 +19,11 @@ export type PriceBookStatus = (typeof priceBookStatuses)[number];
 export const customerSegments = ["RESIDENTIAL", "B2B"] as const;
 export type CustomerSegment = (typeof customerSegments)[number];
 
-export const vatModes = ["VAT_REGISTERED", "VAT_NOT_REGISTERED"] as const;
+export const vatModes = [
+  "VAT_REGISTERED",
+  "VAT_NOT_REGISTERED",
+  "VAT_UNRESOLVED",
+] as const;
 export type VatMode = (typeof vatModes)[number];
 
 export const priceBases = ["GROSS", "NET"] as const;
@@ -96,7 +100,7 @@ export type BillingUnit = (typeof billingUnits)[number];
 
 export type VatConfiguration = Readonly<{
   mode: VatMode;
-  rateBasisPoints: number;
+  rateBasisPoints: number | null;
 }>;
 
 export type PriceRuleDefinition = Readonly<{
@@ -118,6 +122,7 @@ export type PriceRuleDefinition = Readonly<{
   billingUnit?: BillingUnit;
   amountMinorUnits?: number;
   percentageBasisPoints?: number;
+  additionalSidePercentageBasisPoints?: number;
   measurementMinHundredths?: number;
   measurementMaxHundredths?: number | null;
   manualAssessmentRequired?: boolean;
@@ -184,7 +189,7 @@ export type PriceCalculationResult = Readonly<{
   subtotalMinorUnits: number;
   minimumVisitAdjustmentMinorUnits: number | null;
   netAmountMinorUnits: number | null;
-  vatRateBasisPoints: number;
+  vatRateBasisPoints: number | null;
   vatAmountMinorUnits: number | null;
   grossTotalMinorUnits: number | null;
   warnings: readonly string[];
@@ -201,7 +206,7 @@ export type FuturePriceSnapshot = Readonly<{
   inputs: PriceCalculationInput;
   calculationLines: readonly PriceCalculationLine[];
   netAmountMinorUnits: number | null;
-  vatRateBasisPoints: number;
+  vatRateBasisPoints: number | null;
   vatAmountMinorUnits: number | null;
   grossTotalMinorUnits: number | null;
   currency: "EUR";
@@ -241,6 +246,7 @@ export type DurationRuleDefinition = Readonly<{
   billingUnit?: BillingUnit;
   minutes?: number;
   multiplierBasisPoints?: number;
+  additionalSidePercentageBasisPoints?: number;
   productivityHundredthsM2PerHour?: number;
   manualAssessmentRequired?: boolean;
   declineOrReferRequired?: boolean;

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   copyFile,
   mkdir,
@@ -16,6 +15,7 @@ import {
   safePostgresErrorCode,
 } from "./atomic-migration";
 import { createDatabaseConnection } from "./client";
+import { expectedStagingRebuildMigrationHashes } from "./staging-rebuild-inventory";
 import { rehearseBusinessAuthorityApprovalRace } from "./rehearse-business-authority-concurrency";
 import {
   vaxDatabaseRoles,
@@ -106,26 +106,6 @@ async function assertIdentity(
   }
 }
 
-async function expectedMigrationHashes(): Promise<readonly string[]> {
-  const migrationsDirectory = path.resolve(process.cwd(), "drizzle");
-  const files = (await readdir(migrationsDirectory))
-    .filter((file) => /^\d{4}_[a-z0-9_]+\.sql$/.test(file))
-    .sort();
-  if (
-    files.length !== 17 ||
-    files[16] !== "0016_phase_3n_business_authority.sql"
-  ) {
-    throw new Error("Staging rebuild migration inventory has diverged.");
-  }
-  return Promise.all(
-    files.map(async (file) =>
-      createHash("sha256")
-        .update(await readFile(path.join(migrationsDirectory, file)))
-        .digest("hex"),
-    ),
-  );
-}
-
 async function verifyRebuiltDatabase(
   client: Client,
   expectedHashes: readonly string[],
@@ -174,13 +154,17 @@ async function createPriorMigrationFolder(): Promise<string> {
     entries: readonly Readonly<Record<string, unknown>>[];
   }>;
   if (
-    migrationFiles.length !== 17 ||
+    migrationFiles.length !== 19 ||
     migrationFiles[16] !== "0016_phase_3n_business_authority.sql" ||
+    migrationFiles[17] !== "0017_attelier_staging_calibration.sql" ||
+    migrationFiles[18] !== "0018_attelier_estimate_amount_compatibility.sql" ||
     !Array.isArray(journal.entries) ||
-    journal.entries.length !== 17 ||
-    journal.entries[16]?.tag !== "0016_phase_3n_business_authority"
+    journal.entries.length !== 19 ||
+    journal.entries[16]?.tag !== "0016_phase_3n_business_authority" ||
+    journal.entries[17]?.tag !== "0017_attelier_staging_calibration" ||
+    journal.entries[18]?.tag !== "0018_attelier_estimate_amount_compatibility"
   ) {
-    throw new Error("Phase 3N migration inventory has diverged.");
+    throw new Error("ATTELIER migration inventory has diverged.");
   }
 
   const folder = await mkdtemp(
@@ -390,6 +374,9 @@ async function main(): Promise<void> {
     stagingAuthorization,
   );
 
+  stagingRebuildPhase = "verify-migration-inventory";
+  const expectedHashes = await expectedStagingRebuildMigrationHashes();
+
   const adminUrl = process.env.DATABASE_ADMIN_URL!;
   const migrationUrl = process.env.MIGRATION_DATABASE_URL!;
   const admin = new Client({ connectionString: adminUrl });
@@ -438,8 +425,6 @@ async function main(): Promise<void> {
       stagingAuthorization,
     );
 
-    stagingRebuildPhase = "verify-migration-inventory";
-    const expectedHashes = await expectedMigrationHashes();
     await rehearsePhase3NMigrationFailureAndRetry(
       migrator,
       rehearsalUrl,

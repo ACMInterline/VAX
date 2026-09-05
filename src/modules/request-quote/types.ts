@@ -102,7 +102,7 @@ export type StoredPriceSnapshot = Readonly<{
     subtotalMinorUnits: number;
     minimumVisitAdjustmentMinorUnits: number | null;
     netAmountMinorUnits: number | null;
-    vatRateBasisPoints: number;
+    vatRateBasisPoints: number | null;
     vatAmountMinorUnits: number | null;
     grossTotalMinorUnits: number | null;
     currency: "EUR";

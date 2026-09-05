@@ -143,6 +143,23 @@ versions remain historical authority. A later correction must use a new
 template/document version and explicit supersession rather than edit a final
 document.
 
+ATTELIER finalization adds distinct `attelier_payment_confirmed` and
+`attelier_payment_reversed` template keys, each at version 1 in BG/EN. New
+payment materialization selects these identities and ATTELIER projection
+notices. The existing 18 canonical templates, including the four legacy VAX
+payment variants, remain byte-identical under their historical keys. The
+insert-only canonical seed adds four rows; it does not supersede or update an
+existing row. Until those new keys are seeded through the reviewed staging
+operator path, materialization fails closed rather than selecting a legacy
+template. No stored document is re-rendered or automatically republished.
+
+The document checksum already binds template key/version, locale and the full
+projected content. The new keys therefore identify the prospective copy without
+changing source-event provenance or the stored content schema. Historical
+customer reads return the persisted snapshot and checksum unchanged. Payment
+acknowledgements still disclaim external-provider delivery and automatic funds
+movement/refunds.
+
 The current renderer produces server-owned `HTML_PRINT` snapshots and an
 accessible print view. It stores structured content, not executable HTML. The
 SHA-256 checksum binds canonicalized content to template key/version, locale

@@ -36,6 +36,7 @@ import type {
 import type { ConfigurationReferenceSnapshot } from "./readiness";
 import type { BusinessAuthorityRepository } from "./service";
 import { signBusinessAuthorityActorContext } from "./actor-context";
+import { resolveAttelierStagingConfigurationReferences } from "./attelier-staging-config";
 
 export type BusinessAuthorityMutationResult =
   | Readonly<{ status: "CHANGED"; recordId: string }>
@@ -300,11 +301,11 @@ export async function listBusinessAuthorityState(
       safeMetadata: safeObject(event.safeMetadata),
       occurredAt: event.occurredAt,
     })),
-    // A CONFIG_REFERENCE is never trusted merely because an authority row
-    // names it. Future resolvers must populate this from exact, immutable,
-    // environment-matched configuration state. The current repository has no
-    // such universal resolver, so readiness remains fail closed.
-    configurationReferences: [],
+    // Only exact code-owned ATTELIER staging configurations are resolved.
+    // An arbitrary authority-row reference is never echoed back as trusted,
+    // and production intentionally has no resolver under this change.
+    configurationReferences:
+      resolveAttelierStagingConfigurationReferences(process.env),
   };
 }
 

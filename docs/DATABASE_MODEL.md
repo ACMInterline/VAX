@@ -724,3 +724,13 @@ The current nonproduction contract is therefore 100 public tables and 17
 ordered migrations. Canonical identity data remains five roles, 28 permissions
 and 76 role-permission mappings; Phase 3N reuses the protected system-settings
 permissions and creates no role or permission.
+
+ATTELIER migration `0017_attelier_staging_calibration.sql` adds no table. It
+extends commercial and request-estimate constraints with explicit
+`VAT_UNRESOLVED` semantics, nullable statutory net/VAT fields only in the
+guarded unresolved-gross shape, and separate additional-side percentage fields
+for price and duration rules. Existing issued commercial rows are not updated.
+Follow-up migration 0018 preserves legacy known-rate manual estimates with
+withheld monetary totals and closes partial-null amount groups. Applied 0017
+is unchanged. The current nonproduction contract becomes 100 public tables and 19 ordered
+migrations with the same five roles, 28 permissions and 76 mappings.

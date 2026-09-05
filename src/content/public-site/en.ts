@@ -106,7 +106,7 @@ export const englishPublicContent = {
         "Moisture managed for the material and conditions",
       ],
       expectations: [
-        "Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface.",
+        "The working time is confirmed after the material, condition, treatment level and access have been assessed.",
         "Many carpets can be treated where they are installed, reducing unnecessary transport and disruption.",
       ],
       limitations: [
@@ -258,7 +258,7 @@ export const englishPublicContent = {
         "Clear expectations for access and reuse",
       ],
       expectations: [
-        "Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface.",
+        "Commercial work is planned in practical sections, with timing confirmed after inspection and access review.",
         "Early or later appointments may reduce operational disruption when building and local requirements allow.",
       ],
       limitations: [
@@ -311,7 +311,7 @@ export const englishPublicContent = {
     {
       catalogueCode: "GENTLE_CARE",
       number: "01",
-      name: "Gentle Care",
+      name: "Delicate Care",
       description:
         "A restrained approach where fibre sensitivity, light maintenance needs or preservation priorities call for minimal intensity.",
       intendedFor: "Sensitive materials and lighter maintenance",
@@ -327,7 +327,7 @@ export const englishPublicContent = {
     {
       catalogueCode: "DEEP_CLEAN",
       number: "03",
-      name: "Deep Clean",
+      name: "Standard Deep Clean",
       description:
         "A more thorough treatment for established soil, traffic lanes and residues, balanced against the material and construction.",
       intendedFor: "Established use and more visible soiling",
@@ -343,9 +343,9 @@ export const englishPublicContent = {
     {
       catalogueCode: "SPECIALIST_ASSESSMENT",
       number: "05",
-      name: "Specialist Assessment",
+      name: "Restorative / Advanced Care",
       description:
-        "A decision-first route when value, age, material uncertainty, unstable colour, prior damage or unusual contamination changes the risk.",
+        "Advanced care or a referral decision when value, age, material uncertainty, unstable colour, prior damage or unusual contamination changes the risk.",
       intendedFor: "Delicate, valuable or uncertain items",
     },
   ],
@@ -363,7 +363,7 @@ export const englishPublicContent = {
     {
       question: "How long does cleaning take?",
       answer:
-        "Time depends on area, material, access, condition and treatment level. Under suitable conditions, professional treatment may reach approximately 25 m² per hour, depending on the material, soiling, selected treatment and access to the surface. This is not a guaranteed completion time.",
+        "Time depends on area, material, access, condition and treatment level. ATTELIER confirms a practical duration after inspection rather than publishing a universal completion rate.",
     },
     {
       question: "How quickly can the surface be used again?",

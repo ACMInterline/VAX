@@ -90,6 +90,14 @@
   font-size: clamp(1rem, 1.4vw, 1.14rem);
 }
 
+.section--deep .section-heading .eyebrow {
+  color: var(--attelier-yellow);
+}
+
+.section--deep .section-heading p:not(.eyebrow) {
+  color: var(--ink-inverse);
+}
+
 .section-heading--center {
   grid-template-columns: 1fr;
   text-align: center;
@@ -361,6 +369,151 @@
   margin: 1rem 0 0;
   color: rgba(247, 245, 239, 0.65);
   font-size: 0.8rem;
+}
+
+/* ATTELIER's illustrations are original, non-identifiable geometric scenes. */
+.fabric-visual,
+.photo-placeholder {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius-large);
+  background: var(--canvas);
+  box-shadow: var(--shadow-large);
+}
+
+.fabric-visual__scene,
+.photo-placeholder__scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.attelier-shape--cream {
+  fill: #fff8e8;
+}
+
+.attelier-shape--cobalt {
+  fill: #1645e8;
+}
+
+.attelier-shape--yellow {
+  fill: #ffd52a;
+}
+
+.attelier-shape--coral {
+  fill: #f15439;
+}
+
+.attelier-shape--green {
+  fill: #08744f;
+}
+
+.attelier-shape--pink {
+  fill: #f5a7c7;
+}
+
+.attelier-shape--blue {
+  fill: #b9d9ff;
+}
+
+.attelier-shape--navy {
+  fill: #091d3e;
+}
+
+.attelier-sofa {
+  fill: #fff8e8;
+  stroke: #091d3e;
+  stroke-linejoin: bevel;
+  stroke-width: 10;
+}
+
+.attelier-sofa__line {
+  fill: none;
+}
+
+.attelier-person {
+  fill: #091d3e;
+}
+
+.attelier-person--relaxed {
+  fill: #fff8e8;
+  stroke: #091d3e;
+  stroke-width: 6;
+}
+
+.attelier-plant {
+  fill: #f15439;
+  stroke: #091d3e;
+  stroke-linecap: square;
+  stroke-linejoin: bevel;
+  stroke-width: 8;
+}
+
+.attelier-plant__leaf {
+  fill: #08744f;
+}
+
+.attelier-rug {
+  fill: #f5a7c7;
+  stroke: #091d3e;
+  stroke-linejoin: bevel;
+  stroke-width: 8;
+}
+
+.attelier-weave-line {
+  fill: none;
+  stroke: #091d3e;
+  stroke-width: 5;
+}
+
+.fabric-visual__card {
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: 8px 8px 0 var(--ink);
+  backdrop-filter: none;
+}
+
+.fabric-visual__card i {
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--warm) 64%, var(--attelier-yellow) 64%);
+}
+
+.fabric-visual__caption {
+  right: 4%;
+  bottom: 3%;
+  left: 4%;
+  padding: 0.55rem 0.75rem;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: var(--attelier-yellow);
+}
+
+.fabric-visual__caption span,
+.photo-placeholder__label > span {
+  color: inherit;
+}
+
+.photo-placeholder::before,
+.photo-placeholder::after {
+  display: none;
+}
+
+.photo-placeholder__label {
+  max-width: 32rem;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  background: var(--attelier-yellow);
+  box-shadow: 10px 10px 0 var(--ink);
+}
+
+.photo-placeholder__label strong {
+  font-weight: 650;
+}
+
+.photo-placeholder__label p {
+  color: var(--ink-soft);
 }
 
 .trust-strip {

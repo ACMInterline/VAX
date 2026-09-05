@@ -9,9 +9,10 @@ The product is broader than a marketing website. It should eventually support
 the complete customer and service lifecycle while remaining usable by a small
 team and maintainable as one application.
 
-No final company name or logo is selected. Phase 1 uses the explicitly temporary
-and replaceable public identity FabricCare Sofia while commercial identity work
-continues.
+The final customer-facing brand is **ATTELIER**, with **Textile Care** in
+English and **Професионална грижа за текстила** in Bulgarian. VAX remains the
+internal repository/project identity. Legal seller identity, public contact
+channels and trademark registration are not inferred from the brand decision.
 
 ## Product surfaces
 

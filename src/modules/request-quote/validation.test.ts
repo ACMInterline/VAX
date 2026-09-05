@@ -6,6 +6,7 @@ import {
   normalizeRequestItemInputSchema,
   quoteReferenceSchema,
   requestReferenceSchema,
+  storedPriceSnapshotSchema,
 } from "./validation";
 
 const requestId = "10000000-0000-4000-8000-000000000001";
@@ -50,7 +51,9 @@ const priceSnapshot = {
     provisional: true,
     approvedForPublication: false,
   },
-  configuration: { vatMode: "VAT_REGISTERED" },
+  configuration: {
+    vatConfiguration: { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 },
+  },
   input: { items: [{ quantity: 1 }] },
   result: {
     lines: [
@@ -191,6 +194,52 @@ function quoteDraft() {
 }
 
 describe("request and quote validation", () => {
+  it("retains known VAT rates when manual assessment withholds every monetary total", () => {
+    const manualPriceSnapshot = {
+      ...priceSnapshot,
+      result: {
+        ...priceSnapshot.result,
+        minimumVisitAdjustmentMinorUnits: null,
+        netAmountMinorUnits: null,
+        vatAmountMinorUnits: null,
+        grossTotalMinorUnits: null,
+      },
+    };
+    expect(storedPriceSnapshotSchema.safeParse(manualPriceSnapshot).success).toBe(true);
+    expect(createRequestEstimateInputSchema.safeParse({
+      ...estimate(),
+      priceSnapshot: manualPriceSnapshot,
+      netAmountMinorUnits: null,
+      vatAmountMinorUnits: null,
+      grossTotalMinorUnits: null,
+    }).success).toBe(true);
+  });
+
+  it("preserves gross-only unresolved estimates without allowing mixed known-rate totals", () => {
+    const unresolvedSnapshot = {
+      ...priceSnapshot,
+      configuration: {
+        priceBasis: "GROSS",
+        vatConfiguration: { mode: "VAT_UNRESOLVED", rateBasisPoints: null },
+      },
+      result: {
+        ...priceSnapshot.result,
+        netAmountMinorUnits: null,
+        vatRateBasisPoints: null,
+        vatAmountMinorUnits: null,
+      },
+    };
+    expect(storedPriceSnapshotSchema.safeParse(unresolvedSnapshot).success).toBe(true);
+    expect(storedPriceSnapshotSchema.safeParse({
+      ...unresolvedSnapshot,
+      result: { ...unresolvedSnapshot.result, manualAssessmentRequired: false },
+    }).success).toBe(false);
+    expect(storedPriceSnapshotSchema.safeParse({
+      ...priceSnapshot,
+      result: { ...priceSnapshot.result, netAmountMinorUnits: null },
+    }).success).toBe(false);
+  });
+
   it("accepts only the collision-resistant customer-safe reference formats", () => {
     expect(
       requestReferenceSchema.safeParse("REQ-000102030405060708090A0B").success,

@@ -78,7 +78,10 @@ const storedPriceSnapshot = {
     provisional: true,
     approvedForPublication: false,
   },
-  configuration: { priceBasis: "NET" },
+  configuration: {
+    priceBasis: "NET",
+    vatConfiguration: { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 },
+  },
   input: { items: [{ quantity: 1 }] },
   result: {
     lines: [
@@ -168,6 +171,22 @@ function quoteForm(extra: readonly (readonly [string, string])[] = []) {
   ]);
 }
 
+async function useEstimatePriceSnapshot(
+  priceSnapshot: unknown,
+  relationalVatRate: unknown,
+) {
+  const request = await doubles.service.getRequest();
+  doubles.service.getRequest.mockClear();
+  doubles.service.getRequest.mockResolvedValueOnce({
+    ...request,
+    estimates: request.estimates.map((estimate: Record<string, unknown>) => ({
+      ...estimate,
+      price_snapshot: priceSnapshot,
+      vat_rate_basis_points: relationalVatRate,
+    })),
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   doubles.requireUserPermission.mockResolvedValue(principal);
@@ -214,6 +233,7 @@ beforeEach(() => {
         decline_or_refer_required: false,
         price_book_code: "SOFIA-DEV-V1",
         price_book_version: 1,
+        vat_rate_basis_points: 2_000,
         price_snapshot: storedPriceSnapshot,
         price_snapshot_sha256: databasePriceSnapshotSha256,
       },
@@ -224,6 +244,7 @@ beforeEach(() => {
         decline_or_refer_required: false,
         price_book_code: "SOFIA-DEV-V1",
         price_book_version: 1,
+        vat_rate_basis_points: 2_000,
         price_snapshot: storedPriceSnapshot,
         price_snapshot_sha256: databasePriceSnapshotSha256,
       },
@@ -487,6 +508,169 @@ describe("request and quote Server Action boundaries", () => {
       message: requestQuoteContent.en.common.invalid,
     });
     expect(doubles.service.createQuoteDraft).not.toHaveBeenCalled();
+  });
+
+  describe.each([
+    ["create", createQuoteDraftAction],
+    ["update", updateQuoteDraftAction],
+  ] as const)("%s quote VAT authority", (_operation, action) => {
+    function draftForm() {
+      return quoteForm([
+        ["quoteId", quoteId],
+        ["expectedRecordVersion", "3"],
+      ]);
+    }
+
+    it("rejects gross-only unresolved VAT instead of accepting a staff-supplied tax rate", async () => {
+      await useEstimatePriceSnapshot({
+        ...storedPriceSnapshot,
+        configuration: {
+          priceBasis: "GROSS",
+          vatConfiguration: { mode: "VAT_UNRESOLVED", rateBasisPoints: null },
+        },
+        result: {
+          ...storedPriceSnapshot.result,
+          netAmountMinorUnits: null,
+          vatRateBasisPoints: null,
+          vatAmountMinorUnits: null,
+        },
+      }, null);
+
+      await expect(action(idle, draftForm())).resolves.toMatchObject({
+        status: "ERROR",
+        message: requestQuoteContent.en.common.invalid,
+      });
+      expect(doubles.service.createQuoteDraft).not.toHaveBeenCalled();
+      expect(doubles.service.updateQuoteDraft).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["missing configuration", undefined, 2_000],
+      ["missing mode", { rateBasisPoints: 2_000 }, 2_000],
+      ["unknown mode", { mode: "UNKNOWN", rateBasisPoints: 2_000 }, 2_000],
+      ["unresolved mode", { mode: "VAT_UNRESOLVED", rateBasisPoints: 2_000 }, 2_000],
+      ["missing configured rate", { mode: "VAT_REGISTERED" }, 2_000],
+      ["null configured rate", { mode: "VAT_REGISTERED", rateBasisPoints: null }, 2_000],
+      ["string configured rate", { mode: "VAT_REGISTERED", rateBasisPoints: "2000" }, 2_000],
+      ["fractional configured rate", { mode: "VAT_REGISTERED", rateBasisPoints: 2_000.5 }, 2_000],
+      ["out-of-range configured rate", { mode: "VAT_REGISTERED", rateBasisPoints: 10_001 }, 2_000],
+      ["configured/result mismatch", { mode: "VAT_REGISTERED", rateBasisPoints: 1_000 }, 2_000],
+      ["nonzero non-registered rate", { mode: "VAT_NOT_REGISTERED", rateBasisPoints: 2_000 }, 2_000],
+      ["missing relational rate", { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 }, undefined],
+      ["null relational rate", { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 }, null],
+      ["string relational rate", { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 }, "2000"],
+      ["relational/result mismatch", { mode: "VAT_REGISTERED", rateBasisPoints: 2_000 }, 1_000],
+    ])("fails closed for %s", async (_label, vatConfiguration, relationalRate) => {
+      await useEstimatePriceSnapshot({
+        ...storedPriceSnapshot,
+        configuration: {
+          priceBasis: "NET",
+          ...(vatConfiguration === undefined ? {} : { vatConfiguration }),
+        },
+      }, relationalRate);
+
+      await expect(action(idle, draftForm())).resolves.toMatchObject({
+        status: "ERROR",
+        message: requestQuoteContent.en.common.invalid,
+      });
+      expect(doubles.service.createQuoteDraft).not.toHaveBeenCalled();
+      expect(doubles.service.updateQuoteDraft).not.toHaveBeenCalled();
+    });
+
+    it("rejects a null result rate even when all monetary totals are withheld", async () => {
+      await useEstimatePriceSnapshot({
+        ...storedPriceSnapshot,
+        result: {
+          ...storedPriceSnapshot.result,
+          netAmountMinorUnits: null,
+          vatRateBasisPoints: null,
+          vatAmountMinorUnits: null,
+          grossTotalMinorUnits: null,
+        },
+      }, 2_000);
+
+      await expect(action(idle, draftForm())).resolves.toMatchObject({
+        status: "ERROR",
+      });
+      expect(doubles.service.createQuoteDraft).not.toHaveBeenCalled();
+      expect(doubles.service.updateQuoteDraft).not.toHaveBeenCalled();
+    });
+
+    it("preserves a known-rate manual estimate with all calculated monetary totals withheld", async () => {
+      const manualSnapshot = {
+        ...storedPriceSnapshot,
+        result: {
+          ...storedPriceSnapshot.result,
+          minimumVisitAdjustmentMinorUnits: null,
+          netAmountMinorUnits: null,
+          vatAmountMinorUnits: null,
+          grossTotalMinorUnits: null,
+        },
+      };
+      await useEstimatePriceSnapshot(manualSnapshot, 2_000);
+
+      await expect(action(idle, draftForm())).resolves.toMatchObject({
+        status: "SUCCESS",
+      });
+      const command = (doubles.service.createQuoteDraft.mock.calls[0] ??
+        doubles.service.updateQuoteDraft.mock.calls[0])![1];
+      expect(command).toMatchObject({
+        netAmountMinorUnits: 10_000,
+        vatRateBasisPoints: 2_000,
+        vatAmountMinorUnits: 2_000,
+        grossTotalMinorUnits: 12_000,
+      });
+      expect(manualSnapshot.result.netAmountMinorUnits).toBeNull();
+      expect(manualSnapshot.result.grossTotalMinorUnits).toBeNull();
+      expect(command.commercialSnapshot.sourceEstimate.aggregateEvidence).toMatchObject({
+        minimumVisitAdjustmentMinorUnits: null,
+        netAmountMinorUnits: null,
+        vatRateBasisPoints: 2_000,
+        vatAmountMinorUnits: null,
+        grossTotalMinorUnits: null,
+      });
+    });
+
+    it("accepts explicitly non-registered VAT when all three source rates are zero", async () => {
+      await useEstimatePriceSnapshot({
+        ...storedPriceSnapshot,
+        configuration: {
+          priceBasis: "NET",
+          vatConfiguration: { mode: "VAT_NOT_REGISTERED", rateBasisPoints: 0 },
+        },
+        result: {
+          ...storedPriceSnapshot.result,
+          vatRateBasisPoints: 0,
+          vatAmountMinorUnits: 0,
+          grossTotalMinorUnits: 10_000,
+        },
+      }, 0);
+      const data = draftForm();
+      data.set("vatRateBasisPoints", "0");
+
+      await expect(action(idle, data)).resolves.toMatchObject({ status: "SUCCESS" });
+      const command = (doubles.service.createQuoteDraft.mock.calls[0] ??
+        doubles.service.updateQuoteDraft.mock.calls[0])![1];
+      expect(command).toMatchObject({
+        vatRateBasisPoints: 0,
+        vatAmountMinorUnits: 0,
+        grossTotalMinorUnits: 10_000,
+      });
+    });
+
+    it("retains the explicit staff quote-rate override when source VAT is resolved", async () => {
+      const data = draftForm();
+      data.set("vatRateBasisPoints", "1000");
+
+      await expect(action(idle, data)).resolves.toMatchObject({ status: "SUCCESS" });
+      const command = (doubles.service.createQuoteDraft.mock.calls[0] ??
+        doubles.service.updateQuoteDraft.mock.calls[0])![1];
+      expect(command).toMatchObject({
+        vatRateBasisPoints: 1_000,
+        vatAmountMinorUnits: 1_000,
+        grossTotalMinorUnits: 11_000,
+      });
+    });
   });
 
   it("requires an explicit reason for every manually reviewed line amount", async () => {

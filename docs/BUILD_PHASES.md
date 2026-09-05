@@ -556,6 +556,30 @@ and proof that Neon production remains untouched. Missing real operational,
 Owner, Accountant, Legal or provider decisions stay visible blockers; they are
 not fabricated to pass staging.
 
+### ATTELIER finalization — business calibration and product closure
+
+This is a closure task, not another numbered architecture phase. It replaces
+the temporary customer brand with ATTELIER, adds the original geometric visual
+system and bilingual public gross prices, then applies the Owner's exact
+staging-only scope, duration, hours, windows, zones, access, Job/Passport,
+provider-risk and monitoring facts through the Phase 3N governance boundary.
+
+Migration 0017 adds explicit unresolved-VAT estimate semantics and second-side
+price/duration percentages without adding a table or rewriting history. The
+follow-up 0018 preserves manual-estimate compatibility without changing 0017.
+The contract becomes 100 public tables and 19 ordered migrations. The exact
+staging resolver is allowlisted and returns nothing in production. Sixteen
+authority records can reach staging approval; thirteen remain under review.
+The usable lifecycle ends honestly at a real gross estimate until VAT,
+Accountant/Legal and actual staff/equipment/route/product evidence are supplied.
+
+Gate: exact public-price/duration/zone tests, claim-boundary and bilingual UI
+tests, authority type/code/version/digest and environment tests, unresolved-VAT
+provenance/Quote fail-closed tests, migration/security-history checks, guarded
+development/staging evidence, browser accessibility/responsiveness, full
+validation, exact-snapshot security review, protected-main CI and proof that
+production remains untouched.
+
 ## Phase 8 — Technician workspace
 
 Expand Phase 3F's mobile-first assigned-work views, arrival/progress states,

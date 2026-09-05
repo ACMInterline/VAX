@@ -22,7 +22,10 @@ import {
   type QuoteLineInput,
   type RequestItemInput,
 } from "@/modules/request-quote/types";
-import { storedPriceSnapshotSchema } from "@/modules/request-quote/validation";
+import {
+  hasResolvedQuoteSourceVat,
+  storedPriceSnapshotSchema,
+} from "@/modules/request-quote/validation";
 
 type Locale = "bg" | "en";
 type SubmittedValues = NonNullable<RequestQuoteActionState["values"]>;
@@ -792,6 +795,7 @@ function selectAuthoritativeEstimate(
   if (
     !id.success ||
     !snapshot.success ||
+    !hasResolvedQuoteSourceVat(snapshot.data, selected.vat_rate_basis_points) ||
     !priceSnapshotSha256.success ||
     selected.decline_or_refer_required !== false ||
     selected.price_book_code !== snapshot.data.priceBook.code ||

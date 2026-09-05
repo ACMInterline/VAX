@@ -17,11 +17,17 @@ transactional confirmation around this calculator. It does not make the pure
 engine a persistence authority: previews remain advisory, exact confirmation
 revalidates current inputs, and PostgreSQL remains the final capacity guard.
 
-All initial values are inactive, provisional development assumptions. They are
-not owner-approved operating policy, legal working-hour guidance, real map
-results or customer promises. The availability module's Neon persistence is
-limited to reference and configuration records on the `development` branch;
-Phase 3D request and quote transactions do not make those assumptions approved.
+The original Phase 2B values remain inactive development assumptions. ATTELIER
+finalization adds an exact staging-only 06:00–22:00 daily policy, five request
+windows and the approved approximate Zone A/B/C/D semantics. No district,
+postcode, coordinate polygon or live route result is invented. The separate
+two-team/four-staff/two-equipment-set values remain targets: actual resources
+and capabilities are not asserted, so automatic scheduling remains closed.
+
+The code-owned ATTELIER working-hour/window/zone snapshots can satisfy their
+exact staging `CONFIG_REFERENCE` records. The staff-confirmation availability
+policy is approved directly. This still does not turn a preview into a hold,
+make the provisional travel matrix real, or authorize production.
 
 ## Separation of concerns
 
@@ -80,6 +86,12 @@ window for every weekday in `Europe/Sofia`. Rules support enabled state and an
 optional team override. The profile is versioned, inactive and not a legal
 guarantee. Exceptions and future occupancy are inputs to the calculator rather
 than persisted HR leave.
+
+`ATTELIER_WORKING_HOURS_V1` separately records the Owner-approved active
+staging operating hours, and `ATTELIER_APPOINTMENT_WINDOWS_V1` records
+06:00–09:00, 09:00–12:00, 12:00–15:00, 15:00–18:00 and 18:00–22:00. These are
+operating choices, not legal/noise claims or promises that an actual staffed
+team is available.
 
 The draft request windows are:
 

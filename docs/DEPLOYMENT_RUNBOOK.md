@@ -35,16 +35,31 @@ dependency fingerprint still require separate explicit authorization. See
 
 ## Staging database sequence
 
-Run in this order:
+This sequence verifies the retained Phase 3M/ATTELIER acceptance checkpoint; it
+is not a fresh-database bootstrap. Independently confirm the retained fixtures
+and explicit authorization for the Owner-approved ATTELIER staging plan before
+activation. The command requires a unique active Owner with an active `OWNER`
+assignment, `SYSTEM_SETTINGS_MANAGE` and a nonblank provider binding, plus the
+matching staging actor-context verifier provisioned by migration. A fresh or
+divergent target must stop for review; do not manufacture fixtures, bootstrap an
+Owner or fabricate approvals to make retained-count verification pass.
+
+Run in this order only after those prerequisites and the staging preflight pass:
 
 ```text
 npm ci
 npm run db:check
 npm run db:migrate:staging
 npm run db:verify-security:staging
+npm run authority:activate:attelier:staging
 npm run db:verify-state:staging
-npm run db:rehearse-staging-rebuild
 ```
+
+Authority activation is explicit, not part of migration or application startup.
+The state verifier expects the activated 29-record/107-audit authority plan and
+the retained synthetic Auth/CRM/Quote/Booking checkpoint, not an empty database.
+`npm run db:rehearse-staging-rebuild` requires separate authorization for its
+disposable resources and cleanup; it is not an automatic follow-on step.
 
 The rotation command is an operator-only rehearsal. It accepts only the
 explicit local-rehearsal acknowledgement and requires the exact live staging

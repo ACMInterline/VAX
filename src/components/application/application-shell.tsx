@@ -21,8 +21,8 @@ export function ApplicationShell({
     <div className="application-shell">
       <header className="application-header">
         <Link href={isEnglish ? "/en" : "/"} className="application-brand">
-          <span>VAX</span>
-          <small>{isEnglish ? "Protected application" : "Защитено приложение"}</small>
+          <span>ATTELIER</span>
+          <small>{isEnglish ? "Textile Care" : "Професионална грижа за текстила"}</small>
         </Link>
         <form action={logoutAction}>
           <button className="application-logout" type="submit">

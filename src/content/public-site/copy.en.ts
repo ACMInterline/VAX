@@ -3,16 +3,16 @@ import type { PublicSiteCopy } from "./types";
 export const englishPublicSiteCopy = {
   common: {
     brand: {
-      descriptor: "On-site carpet and upholstery care",
-      tagline: "Professional fabric care, where your furniture already lives.",
+      descriptor: "Textile Care",
+      tagline: "More life for the spaces you love.",
       location: "Sofia, Bulgaria",
-      serviceArea: "Sofia city, with surrounding areas subject to availability",
+      serviceArea: "Sofia and up to approximately 50 km, subject to route confirmation",
       phonePlaceholder: "Phone to be confirmed",
       emailPlaceholder: "Email to be confirmed",
       appointmentShort: "Appointments intended from 06:00 to 22:00",
       appointmentDetail:
         "Early and evening appointments are offered according to the service, address, building rules and team availability.",
-      primaryCta: "Describe what needs care",
+      primaryCta: "Request a quote",
     },
     accessibility: {
       skipToContent: "Skip to main content",
@@ -24,7 +24,7 @@ export const englishPublicSiteCopy = {
       languageSelector: "Choose language",
       servicePrinciples: "Service principles",
     },
-    headerRequest: "Request care",
+    headerRequest: "Request a quote",
     languageNames: { bg: "Bulgarian", en: "English" },
     footer: {
       eyebrow: "Care, considered",
@@ -54,7 +54,7 @@ export const englishPublicSiteCopy = {
         description:
           "You provide useful context before the visit. The final method and intensity remain professional decisions made after seeing the item.",
       },
-      futureImage: "Future image: actual technician, equipment and material detail, used with permission.",
+      futureImage: "An original ATTELIER study of material, movement and considered care.",
       materialEyebrow: "Material before muscle",
       materialTitle: "Care decisions that respect the surface.",
       materialDescription:
@@ -69,31 +69,31 @@ export const englishPublicSiteCopy = {
     treatmentNote:
       "You describe the condition. The appropriate treatment is confirmed after professional inspection.",
     visuals: {
-      abstractFabric: "Abstract woven-fabric study reserved for future original photography",
+      abstractFabric: "ATTELIER geometric scene of a refreshed textile interior",
       surface: "Surface",
       assessedFirst: "Assessed first",
       onSite: "On site",
-      originalPhotography: "Original photography planned",
+      originalPhotography: "ATTELIER textile study",
     },
   },
   pages: {
     home: {
       hero: {
-        kicker: "Professional fabric care · Sofia",
-        eyebrow: "Professional care on site",
-        title: "Professional fabric care, where your furniture already lives.",
+        kicker: "ATTELIER · Textile Care",
+        eyebrow: "This is not ordinary carpet cleaning",
+        title: "More life for the spaces you love.",
         description:
           "On-site carpet, rug, upholstery and mattress cleaning for homes, offices and hospitality spaces — planned for less disruption, careful material decisions and a practical return to use.",
-        primaryAction: "Describe what needs care",
+        primaryAction: "Request a quote",
         secondaryAction: "Explore services",
         facts: [
           { label: "Where", value: "Homes, offices & hospitality" },
           { label: "Approach", value: "Assessment-led, on site" },
           { label: "Area", value: "Sofia city" },
         ],
-        capacityValue: "≈25 m²",
-        capacityLabel: "per hour may be possible",
-        capacityNote: "Depending on material, soiling, treatment and access.",
+        capacityValue: "01—05",
+        capacityLabel: "five treatment levels",
+        capacityNote: "The technician confirms the safest appropriate level after inspection.",
       },
       trustPoints: [
         "Assessment before treatment",
@@ -120,9 +120,9 @@ export const englishPublicSiteCopy = {
         ],
         note:
           "Some rugs and delicate items may need a specialist route. No promise is made that furniture never needs to move.",
-        photoTitle: "Technician working on site",
+        photoTitle: "Care in the room where life happens",
         photoNote:
-          "Future image: real equipment in an occupied Sofia interior, without staged before-and-after claims.",
+          "An abstract on-site scene: material first, less disruption and a practical return to use.",
       },
       reuse: {
         eyebrow: "Faster reuse, responsibly framed",
@@ -227,10 +227,10 @@ export const englishPublicSiteCopy = {
         ],
       },
       area: {
-        eyebrow: "Initially serving Sofia",
-        title: "Professional fabric care across the city.",
+        eyebrow: "Sofia + approximately 50 km",
+        title: "Four transparent service zones.",
         description:
-          "The initial service area is Sofia city. Surrounding areas may be considered subject to availability; district zones and travel pricing belong to a later pricing phase.",
+          "ATTELIER determines the zone from the supplied address. Zone minimums start at €45 in Sofia Core; uncertain or more distant addresses receive staff review before confirmation.",
         action: "View service area",
       },
       faq: {
@@ -256,11 +256,38 @@ export const englishPublicSiteCopy = {
         description:
           "These pages explain intended use, care decisions and limitations without turning estimates into guarantees.",
       },
+      pricing: {
+        eyebrow: "Residential price guide · EUR",
+        title: "Clear starting prices. Final scope follows assessment.",
+        description:
+          "Fixed and ‘from’ prices can be combined in one reviewed quote. Business work and specialist textiles are quoted individually.",
+        items: [
+          { label: "Carpet / fitted carpet", price: "€4.00 / m²" },
+          { label: "Rug / runner on site", price: "€5.00 / m²" },
+          { label: "Upholstered dining chair", price: "€7" },
+          { label: "Larger / office chair", price: "from €9" },
+          { label: "Armchair", price: "€18" },
+          { label: "Ottoman / pouf", price: "€12" },
+          { label: "2-seat sofa", price: "€35" },
+          { label: "3-seat sofa", price: "€45" },
+          { label: "4-seat sofa", price: "€55" },
+          { label: "Corner sofa", price: "from €60" },
+          { label: "Large / modular sofa", price: "from €80" },
+          { label: "Single mattress · one side", price: "€22" },
+          { label: "Double mattress · one side", price: "€30" },
+          { label: "King mattress · one side", price: "€35" },
+          { label: "Second mattress side", price: "+50%" },
+        ],
+        conditionNote:
+          "Standard condition uses the listed price; heavy and very heavy conditions use 1.15 and 1.30 factors after staff review.",
+        boundaryNote:
+          "These B2C amounts are final customer prices. A request is not a quote or booking, and no statutory VAT status is claimed.",
+      },
       capacity: {
-        eyebrow: "Professional processing",
-        title: "Approximately 25 m² per hour may be possible under suitable conditions",
+        eyebrow: "Assessment-led planning",
+        title: "Timing follows the material, condition, treatment and access",
         text:
-          "This is not a guaranteed rate or job duration. Material, soiling, selected treatment and access to the surface all affect the pace.",
+          "ATTELIER confirms a practical duration after inspection. Internal planning assumptions are never presented as a customer completion guarantee.",
       },
       treatments: {
         eyebrow: "Treatment vocabulary",
@@ -367,7 +394,7 @@ export const englishPublicSiteCopy = {
         ],
         photoTitle: "Close material assessment",
         photoNote:
-          "Future image: real fibre, seam and colour-response inspection, without fabricated results.",
+          "An abstract close study of fibre, seam and colour response, without fabricated results.",
       },
       hygiene: {
         eyebrow: "Responsible hygiene language",
@@ -381,31 +408,31 @@ export const englishPublicSiteCopy = {
     },
     serviceArea: {
       hero: {
-        eyebrow: "Sofia service area",
-        title: "On-site fabric care planned around the city.",
+        eyebrow: "Sofia + approximately 50 km",
+        title: "On-site care with clear route boundaries.",
         description:
-          "The initial service area is Sofia city. Surrounding areas may be considered subject to availability, with exact zones and travel pricing deferred to the pricing phase.",
-        primaryAction: "Share your Sofia area",
+          "Supply the service address and ATTELIER will determine the zone. No geographic polygon or automatic route promise is inferred from a district name.",
+        primaryAction: "Share your address",
         visualLabel: "Abstract Sofia service-area visual",
       },
       breadcrumbs: { home: "Home", current: "Service area" },
       coverage: [
         {
-          label: "Current intended coverage",
-          title: "Sofia city",
-          text: "Residential and business customers can submit service needs for staff review across Sofia districts.",
+          label: "Zones A and B",
+          title: "Sofia Core · Outer Sofia",
+          text: "Minimum visit €45 in Zone A or €60 in Zone B. Travel is included under the approved conditions.",
           tone: "primary",
         },
         {
-          label: "By discussion",
-          title: "Surrounding areas",
-          text: "Requests outside the city may be considered subject to route, availability and future pricing rules.",
+          label: "Zone C",
+          title: "Up to approximately 30 km",
+          text: "Minimum visit €80 with travel included under the approved conditions. The route remains subject to staff confirmation.",
           tone: "standard",
         },
         {
-          label: "Not published yet",
-          title: "Zones & travel charges",
-          text: "No district supplements or travel fees are published yet. They will follow a reviewed catalogue and pricing model.",
+          label: "Zone D and exceptions",
+          title: "Approximately 30–50 km",
+          text: "From €100 minimum and staff confirmation. Beyond 50 km is exceptional and individually quoted.",
           tone: "deferred",
         },
       ],
@@ -443,7 +470,7 @@ export const englishPublicSiteCopy = {
         eyebrow: "A considered service philosophy",
         title: "Calm expertise for the fabrics people live and work with.",
         description:
-          "FabricCare Sofia is designed around professional judgement, useful explanations and the convenience of caring for suitable fabrics on site.",
+          "ATTELIER is built around professional judgement, useful explanations and the convenience of caring for suitable fabrics on site.",
         primaryAction: "Why professional care",
       },
       breadcrumbs: { home: "Home", current: "About" },
@@ -464,12 +491,12 @@ export const englishPublicSiteCopy = {
         title: "Real people, real equipment and permission-based examples.",
         description: "",
         text:
-          "Public photography should show actual technicians, genuine on-site work and fabric details. Deliberate placeholders remain until that material is available.",
+          "Our original geometric illustration system expresses material, movement and home life without inventing customer proof or identifiable people.",
         note:
           "No years in business, customer counts, awards, certifications, reviews or ratings are claimed at this stage.",
-        photoTitle: "The future service team",
+        photoTitle: "Pride in a refreshed space",
         photoNote:
-          "Real technicians and equipment, photographed in authentic Sofia settings with permission.",
+          "An abstract, non-identifiable human figure and textile interior composed in ATTELIER colour fields.",
       },
     },
     faq: {
@@ -525,7 +552,7 @@ export const englishPublicSiteCopy = {
         eyebrow: "Service request · Staff review required",
         title: "Describe what needs professional care.",
         description:
-          "This form sends your information to VAX for staff review. It does not create an automatic quote, appointment, booking or payment.",
+          "This form sends your information to ATTELIER for staff review. It does not create an automatic quote, appointment, booking or payment.",
         checklistTitle: "Before you start",
         checklist: [
           "Know the Sofia area",

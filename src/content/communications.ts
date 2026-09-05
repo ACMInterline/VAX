@@ -35,7 +35,7 @@ const labels = {
       CANCELLED: "Отменено",
     },
     channels: {
-      PORTAL: "VAX портал",
+      PORTAL: "ATTELIER портал",
       EMAIL_FUTURE: "Имейл — бъдещ адаптер",
       SMS_FUTURE: "SMS — бъдещ адаптер",
       MANUAL: "Ръчно доказателство",
@@ -70,7 +70,7 @@ const labels = {
       CANCELLED: "Cancelled",
     },
     channels: {
-      PORTAL: "VAX portal",
+      PORTAL: "ATTELIER portal",
       EMAIL_FUTURE: "Email — future adapter",
       SMS_FUTURE: "SMS — future adapter",
       MANUAL: "Manual evidence",
@@ -113,7 +113,7 @@ export const communicationsContent = {
       documentType: "Тип документ",
       sourceReference: "Референция на източника",
       portalOnly:
-        "Тази форма публикува само във VAX портала. Не изпраща имейл, SMS или друго външно съобщение.",
+        "Тази форма публикува само в ATTELIER портала. Не изпраща имейл, SMS или друго външно съобщение.",
       empty: "Няма създадени комуникации.",
       created: "Документът е финализиран и публикуван в портала.",
       existing: "За това събитие вече има същия публикуван документ.",
@@ -178,7 +178,7 @@ export const communicationsContent = {
       documentType: "Document type",
       sourceReference: "Source reference",
       portalOnly:
-        "This form publishes only in the VAX portal. It does not send email, SMS, or any other external message.",
+        "This form publishes only in the ATTELIER portal. It does not send email, SMS, or any other external message.",
       empty: "No communications have been created.",
       created: "The document was finalized and published in the portal.",
       existing: "The same published document already exists for this event.",

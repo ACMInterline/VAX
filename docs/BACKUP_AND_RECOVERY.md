@@ -52,11 +52,13 @@ an empty schema so foreign keys replay in native order, and install the managed
 Those 98-table/16-entry figures are the historical Phase 3M portable-restore
 snapshot. Phase 3N migration 0016 extends the current development/staging
 contract to 100 public tables and 17 ordered migrations without seeding an
-authority value. Current security/state verification must include both new
-authority tables, their graph triggers/RLS/grants and the unchanged canonical
+authority value. ATTELIER migrations 0017/0018 keep 100 tables and advance the
+current ledger to 19 entries. Current security/state verification must include
+both authority tables, their graph triggers/RLS/grants, the unresolved-VAT and
+second-side constraint delta, and the unchanged canonical
 five-role/28-permission/76-mapping state. The Phase 3M artifact must not be
-misreported as a portable restore rehearsal of the later 100-table contract;
-the next approved export/restore exercise must verify the 0016 delta explicitly.
+misreported as a portable restore rehearsal of the final 100-table contract;
+the next approved export/restore exercise must verify the 0016–0018 delta.
 
 ## Recovery procedure
 

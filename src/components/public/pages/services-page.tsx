@@ -45,6 +45,24 @@ export function ServicesPage({ locale }: { locale: PublicLocale }) {
         </div>
       </section>
 
+      <section className="section section--deep">
+        <div className="site-container">
+          <SectionHeading {...copy.pricing} />
+          <dl className="price-guide">
+            {copy.pricing.items.map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.price}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="price-guide__notes">
+            <p>{copy.pricing.conditionNote}</p>
+            <p>{copy.pricing.boundaryNote}</p>
+          </div>
+        </div>
+      </section>
+
       <section className="section section--soft">
         <div className="site-container capacity-feature">
           <div>

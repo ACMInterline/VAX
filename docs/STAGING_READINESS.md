@@ -1,10 +1,54 @@
 # Staging Readiness
 
+## ATTELIER finalization checkpoint
+
+The finalization adds migrations `0017_attelier_staging_calibration.sql` and
+`0018_attelier_estimate_amount_compatibility.sql`, taking the nonproduction
+contract to 100 public tables and 19 ordered migrations while
+leaving the five roles, 28 permissions and 76 mappings unchanged. It adds no
+table and rewrites no historical business row. The schema can preserve an
+approved customer gross estimate with explicitly unresolved VAT and separate
+second-side price/duration percentages without fabricating tax treatment.
+
+The exact ATTELIER authority plan contains 29 prospective staging records: 16
+can become `APPROVED_FOR_STAGING` and 13 remain `UNDER_REVIEW`. The narrow
+configuration resolver is staging-only and code-allowlisted; production gets no
+resolver result. Owner-approved brand, scope, duration, hours, windows, service
+zones, access/Job/Passport, Auth-provider and monitoring facts therefore close
+the earlier blanket operational-authority gap without misrepresenting the
+remaining Accountant, Legal, product, resource, provider/session or recovery
+gates.
+
+The rollback-only staging rehearsal verified request → CRM resolution →
+normalization → persisted ATTELIER gross estimate (€45 for a standard
+three-seat sofa in Sofia Core), preserved customer-reported provenance,
+and left zero synthetic residue with all 44 retained table fingerprints
+unchanged. VAT remains unresolved, so the
+estimate requires staff review. The current Quote representation requires
+numeric tax fields and does not support a gross-only issued Quote; draft and
+issue are therefore blocked rather than inventing VAT. This is an implementation
+limitation, not a claim that every commercial quote legally requires VAT.
+No downstream Booking, schedule, Job, Passport, Invoice,
+document or communication may be fabricated. Even after legal/commercial
+review, automatic scheduling remains closed until actual staff, equipment and
+usable route/zone evidence exist. See `docs/ATTELIER_FINALIZATION.md`.
+
+The latest full validation passed 1,602 tests (17 expected skips), lint,
+TypeScript, production build, migration-history validation, dependency audit
+(zero findings) and whitespace checks. Staging's exact 19-entry ledger,
+22 read-only amount-constraint cases and 23 separate live database/security/
+shared-rate-limit tests passed. The hosted Preview health gates are green;
+the final contrast-only repair passed rebuilt hosted accessibility verification
+(20 route/language/viewport checks, zero reported violations; manual gradient/
+overlap checks are not a complete WCAG certification). The completed final
+security review accounted for all 69 changed source paths with no reportable
+findings. Auth user/session fingerprints and configuration remain unchanged.
+
 ## Phase 3N authority checkpoint
 
 Phase 3N adds the reviewed `0016_phase_3n_business_authority.sql` migration to
-the authorized development and staging targets only. The current
-nonproduction contract is 100 VAX public tables and 17 ordered migration
+the authorized development and staging targets only. That checkpoint's
+nonproduction contract was 100 VAX public tables and 17 ordered migration
 entries. The two new tables hold immutable versioned authority proposals and
 append-only transition/approval evidence; no business-authority, seller, VAT,
 price, Invoice-numbering, provider-risk or deployment decision is seeded.
@@ -407,31 +451,34 @@ freshly verified provider inventory.
 
 ## Decision
 
-**NOT READY** for complete product acceptance or production promotion.
+**ATTELIER STAGING CALIBRATION READY; FULL LIFECYCLE AND PRODUCTION NOT READY.**
 
 Exact blockers:
 
-1. the Phase 3N evaluator has no genuine staging-approved duration, price,
-   availability, team/equipment, travel or related operational authority, so
-   Job, Passport, finance and final communication/document acceptance cannot
-   proceed;
-2. Neon Auth remains Beta and lacks the required session revoke-all,
+1. VAT/tax status, seller identity and Accountant/Legal approval are absent, so
+   the real gross estimate cannot become a statutory-complete issued Quote and
+   downstream acceptance/Booking must not be fabricated;
+2. actual teams, equipment/capabilities, treatment products and usable route/
+   address classification evidence are absent, so scheduling and field
+   operation remain review-only targets rather than available capacity;
+3. Neon Auth remains Beta and lacks the required session revoke-all,
    provider-attested recent-authentication and complete privileged-ADMIN proof;
-3. exact small-viewport hosted-browser and cookie-store inspection remain
+4. exact small-viewport hosted-browser and cookie-store inspection remain
    unavailable through the current safe browser-control boundary;
-4. the credential-rotation rehearsal still cannot invalidate a previously
+5. the credential-rotation rehearsal still cannot invalidate a previously
    authenticated Neon pooled frontend, even though fresh old credentials fail;
-5. alert ownership is the repository's GitHub staging environment/issue
+6. alert ownership is the repository's GitHub staging environment/issue
    receiver, not a staffed production on-call service;
-6. production seller/VAT/fiscal/accounting/payment/privacy configuration,
+7. production seller/VAT/fiscal/accounting/payment/privacy configuration,
    production topology, provider acceptance, migration, deployment and explicit
    authorization all remain absent; and
-7. the Phase 3M portable restore proves the historical 98-table/16-entry
-   snapshot, not the Phase 3N 100-table/17-entry delta, which needs a later
+8. the Phase 3M portable restore proves the historical 98-table/16-entry
+   snapshot, not the final 100-table/19-entry delta, which needs a later
    approved portable-restore rerun before production recovery authority.
 
-No operational knowledge, provider, rule, staging email path, production
-configuration or production migration was automatically approved.
+Only the exact Owner-directed staging plan is activated through Phase 3N
+governance. No pending item, production configuration, production authority,
+production migration or deployment is automatically approved.
 
 See [BUSINESS_AUTHORITY.md](BUSINESS_AUTHORITY.md) for the approval model and
 [PRODUCTION_AUTHORIZATION_PACKAGE.md](PRODUCTION_AUTHORIZATION_PACKAGE.md) for

@@ -7,9 +7,11 @@ foundation to persist staff-only estimate versions and staff-reviewed quote
 versions. Phase 3E records acceptance of one immutable issued quote and copies
 its commercial evidence into a Booking without invoking this engine. Phase 3H
 copies that accepted evidence into an Invoice without invoking this engine or
-creating a second rounding calculation. All seeded commercial values remain
-development-only assumptions and are not approved for automatic public
-pricing, legal invoicing or production use.
+creating a second rounding calculation. The original Phase 2A values remain
+development assumptions. ATTELIER finalization adds separate exact staging
+calibration: Owner-approved gross customer prices are publication-ready, but
+the price books remain inactive `DRAFT` governance records until Accountant
+review and are never legal Invoice authority. Production use is unauthorized.
 
 The provider-neutral pure engine lives in `src/modules/commercial-engine`.
 Drizzle tables persist versioned commercial configuration, and
@@ -17,6 +19,22 @@ Drizzle tables persist versioned commercial configuration, and
 The engine accepts plain data and imports neither Next.js, Drizzle nor Neon.
 The Phase 3D orchestration and persistence contract is documented in
 `docs/REQUEST_AND_QUOTE.md`.
+
+## ATTELIER staging calibration
+
+`ATTELIER_RESIDENTIAL_EUR_V1` supplies €4.00/m² fitted-carpet, €5.00/m²
+on-site rug, €7 dining-chair, from €9 office-chair, €18 armchair, €12 ottoman,
+€35/€45/€55 two-/three-/four-seat sofa, from €60 corner-sofa, from €80
+large/modular-sofa and €22/€30/€35 one-side mattress prices. A second mattress
+side adds 50%. Standard/heavy/very-heavy price factors are 1.00/1.15/1.30.
+Zone minimums are €45/€60/€80/from €100; material paid parking is passed
+through at documented cost without markup. B2B and specialist work remain
+quotation-led.
+
+The staging runtime selects this configuration only when
+`VAX_ENVIRONMENT=staging`; development retains its original fixture and
+production fails closed. Exact resolver authority, missing approvals and the
+lifecycle stopping point are documented in `docs/ATTELIER_FINALIZATION.md`.
 
 ## Hard invariants
 
@@ -54,6 +72,8 @@ books are intentionally inactive drafts:
 | --- | --- | --- | --- | --- |
 | `SOFIA_RESIDENTIAL_V1_DRAFT` | Residential | Gross | Draft | Provisional test rules |
 | `SOFIA_B2B_V1_DRAFT` | B2B | Net | Draft | No populated commercial rates |
+| `ATTELIER_RESIDENTIAL_EUR_V1` | Residential | Gross, VAT unresolved | Draft | Exact public gross prices; Accountant gate |
+| `ATTELIER_B2B_EUR_V1` | B2B | Gross, VAT unresolved | Draft | Quotation-only; Accountant gate |
 
 The B2B book proves segment and basis separation without fabricating contract,
 volume or recurring-service values.
@@ -65,13 +85,15 @@ an explicit version-creation workflow with audit logs and approval controls.
 
 ## VAT semantics
 
-The calculation context supports `VAT_REGISTERED` and
-`VAT_NOT_REGISTERED`. A VAT-registered book may use gross or net rule values:
+The calculation context supports `VAT_REGISTERED`, `VAT_NOT_REGISTERED` and
+`VAT_UNRESOLVED`. A VAT-registered book may use gross or net rule values:
 
 - gross basis: the customer-facing total remains fixed; net and VAT are
   derived from gross;
 - net basis: VAT is calculated from net and added to produce gross; and
-- not registered: VAT is zero and net equals gross.
+- not registered: VAT is zero and net equals gross; and
+- unresolved: preserve the approved customer gross amount, set rate/net/VAT to
+  null, require staff review and prohibit statutory tax or Invoice treatment.
 
 The residential development book uses a gross basis and a provisional 20%
 reference VAT rate. This is a development assumption, not a statement about

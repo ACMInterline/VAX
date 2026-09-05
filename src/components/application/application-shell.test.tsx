@@ -20,8 +20,8 @@ function authorization(
 
 describe("protected application shell", () => {
   it.each([
-    ["bg", "/", "Защитено приложение", "Изход", "Навигация според правата"],
-    ["en", "/en", "Protected application", "Sign out", "Permission-aware navigation"],
+    ["bg", "/", "Професионална грижа за текстила", "Изход", "Навигация според правата"],
+    ["en", "/en", "Textile Care", "Sign out", "Permission-aware navigation"],
   ] as const)(
     "renders shared %s application chrome around nested content",
     (locale, homeHref, applicationLabel, logoutLabel, navigationLabel) => {

@@ -10,9 +10,11 @@ does not create an Auth identity, CRM customer, quote, booking, property, file,
 payment or external message. Bulgarian remains the primary commercial language
 and English a complete secondary locale.
 
-The repository remains internally named VAX. The public identity is the neutral
-temporary name **FabricCare Sofia** and does not use the identity, assets or
-claims of the VAX appliance manufacturer.
+The repository remains internally named VAX. The final customer-facing identity
+is **ATTELIER**, with **Textile Care** in English and **Професионална грижа за
+текстила** in Bulgarian. ATTELIER is not presented as a registered trademark.
+References to VAX products remain evidence-gated product intent, never the
+customer-facing brand or an unsupported manufacturer claim.
 
 ## Route map
 
@@ -28,8 +30,8 @@ claims of the VAX appliance manufacturer.
 | `/services/delicate-fabric-care` | `/en/services/delicate-fabric-care` | Assessment-first sensitive-material route |
 | `/how-it-works` | `/en/how-it-works` | Description, assessment, treatment and aftercare sequence |
 | `/why-professional-cleaning` | `/en/why-professional-cleaning` | Material judgement and preservation rationale |
-| `/service-area` | `/en/service-area` | Sofia coverage without invented zone pricing |
-| `/about` | `/en/about` | Service principles and temporary identity context |
+| `/service-area` | `/en/service-area` | Approved approximate Sofia coverage and minimums without invented polygons |
+| `/about` | `/en/about` | ATTELIER service and material-care principles |
 | `/faq` | `/en/faq` | Carefully qualified practical answers |
 | `/contact` | `/en/contact` | Configured placeholders and intended operating context |
 | `/request` | `/en/request` | Anonymous persistent request for staff review; no quote or booking |
@@ -40,7 +42,7 @@ and discourages thin SEO pages.
 
 ## Application boundaries
 
-- `src/config/public-site.ts` owns the temporary name, tagline, Sofia area,
+- `src/config/public-site.ts` owns the final name, descriptor, Sofia area,
   contact placeholders, intended hours and primary call to action.
 - `src/content/public-site/` owns typed Bulgarian and English content, service
   records, FAQs, treatment levels, locale routing and claim controls.
@@ -60,17 +62,20 @@ request form are Client Components. The form receives a Server Action through
 its route adapter and keeps database, Auth and environment imports outside the
 public-request module.
 
-## Temporary brand configuration
+## Final brand and staging-publication boundary
 
-`publicBrand.status` remains `temporary` and
-`publicBrand.publicIdentityVerified` remains `false`. Phone and email are honest
-placeholders with no links; no physical walk-in address is invented. Replace
-the central configuration only after the name, trademark position, channels
-and public facts are approved.
+`publicBrand.status` is `final`, while `publicBrand.publicIdentityVerified`
+remains `false`. The distinction is intentional: the commercial brand is final,
+but the legal seller identity, phone, email and physical/public address are not.
+Those fields remain honest placeholders with no invented links or walk-in
+location. Staging therefore remains no-index and LocalBusiness structured data
+is withheld.
 
-Original photography is intentionally deferred. Current visual containers
-describe future images of real technicians, equipment, fabric detail and
-permission-based examples. They are not before-and-after evidence.
+The ATTELIER visual system uses original geometric compositions, restrained
+wordmark typography and accessible cobalt/yellow/coral/green/cream color tokens.
+Abstract human forms are non-identifiable and communicate comfort and pride
+without demographic stereotyping. No illustration is a before-and-after or
+real-service evidence claim.
 
 ## Claim-control policy
 
@@ -89,7 +94,7 @@ particular:
 
 - do not promise personal medical outcomes;
 - do not promise complete stain removal;
-- do not convert an approximate 25 m²-per-hour capacity into a job-time
+- do not convert the internal 23 m²-per-hour planning assumption into a job-time
   guarantee;
 - do not publish measured acoustic performance without evidence;
 - do not publish named antibacterial, anti-allergen, manufacturer or
@@ -111,9 +116,10 @@ redirects. Separate locale root layouts ensure that the document has an
 accurate `lang="bg"` or `lang="en"` attribute. Moving between the two root
 layouts performs a full document navigation by design.
 
-The Bulgarian copy is launch-preparation copy, not owner approval. It still
-requires final review by a Bulgarian-speaking business owner together with the
-facts listed in `docs/CONTENT_AUTHORITY.md`.
+The Bulgarian and English ATTELIER brand/service copy reflects the Owner's
+staging directive. Legal identity, tax, product-efficacy and statutory wording
+remain separately evidence-gated as listed in `docs/CONTENT_AUTHORITY.md` and
+`docs/ATTELIER_FINALIZATION.md`.
 
 ## SEO architecture
 

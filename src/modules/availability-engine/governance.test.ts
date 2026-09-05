@@ -9,6 +9,11 @@ import {
   developmentTravelTimeProfile,
   developmentWorkingHourPolicy,
 } from "./development-config";
+import {
+  attelierAppointmentWindows,
+  attelierServiceAreas,
+  attelierWorkingHourPolicy,
+} from "./attelier-config";
 
 describe("availability configuration governance", () => {
   it("seeds two neutral two-worker teams without specialist claims", () => {
@@ -99,5 +104,44 @@ describe("availability configuration governance", () => {
       /insert\(availabilityTables\.travelTimeProfiles\)[\s\S]*?onConflictDoNothing/,
     );
     expect(seedSource).not.toMatch(/customers|bookings|quotes|payments|invoices/i);
+  });
+
+  it("defines exact ATTELIER hours, windows and non-fabricated service bands", () => {
+    expect(attelierWorkingHourPolicy).toMatchObject({
+      status: "ACTIVE",
+      active: true,
+      provisional: false,
+    });
+    expect(
+      attelierWorkingHourPolicy.rules.every(
+        (rule) => rule.startMinute === 360 && rule.endMinute === 1_320,
+      ),
+    ).toBe(true);
+    expect(
+      attelierAppointmentWindows.map((window) => [
+        window.startMinute,
+        window.endMinute,
+      ]),
+    ).toEqual([
+      [360, 540],
+      [540, 720],
+      [720, 900],
+      [900, 1_080],
+      [1_080, 1_320],
+    ]);
+    expect(
+      attelierServiceAreas.map((area) => [
+        area.code,
+        area.minimumOrderOverrideMinorUnits,
+        area.manualConfirmationRequired,
+      ]),
+    ).toEqual([
+      ["SOFIA_CORE", 4_500, false],
+      ["SOFIA_EXTENDED", 6_000, false],
+      ["SOFIA_OUTSKIRTS", 8_000, false],
+      ["OUTSIDE_SOFIA", 10_000, true],
+    ]);
+    expect(attelierServiceAreas[0]?.geographicMetadata).toBeNull();
+    expect(attelierServiceAreas[1]?.geographicMetadata).toBeNull();
   });
 });

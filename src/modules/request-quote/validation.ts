@@ -12,6 +12,7 @@ const positiveReferenceId = z.number().int().positive();
 const positiveVersion = z.number().int().positive();
 const minorUnits = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const vatRateBasisPoints = z.number().int().min(0).max(10_000);
+const nullableVatRateBasisPoints = vatRateBasisPoints.nullable();
 const nonBlank = (maximum: number) => z.string().trim().min(1).max(maximum);
 const optionalText = (maximum: number) =>
   z
@@ -60,6 +61,10 @@ function boundedJsonObject(maximumBytes: number) {
         maximumBytes,
       { message: `Snapshot must not exceed ${maximumBytes} UTF-8 bytes.` },
     ) as z.ZodType<JsonObject>;
+}
+
+function isJsonObject(value: JsonValue | undefined): value is JsonObject {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 const dateOnlySchema = z
@@ -263,7 +268,7 @@ export const storedPriceSnapshotSchema = z
         subtotalMinorUnits: minorUnits,
         minimumVisitAdjustmentMinorUnits: minorUnits.nullable(),
         netAmountMinorUnits: minorUnits.nullable(),
-        vatRateBasisPoints,
+        vatRateBasisPoints: nullableVatRateBasisPoints,
         vatAmountMinorUnits: minorUnits.nullable(),
         grossTotalMinorUnits: minorUnits.nullable(),
         currency: z.literal("EUR"),
@@ -276,21 +281,35 @@ export const storedPriceSnapshotSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    const { netAmountMinorUnits, vatAmountMinorUnits, grossTotalMinorUnits } =
-      value.result;
+    const {
+      netAmountMinorUnits,
+      vatRateBasisPoints: resultVatRateBasisPoints,
+      vatAmountMinorUnits,
+      grossTotalMinorUnits,
+    } = value.result;
     const allNull =
       netAmountMinorUnits === null &&
       vatAmountMinorUnits === null &&
       grossTotalMinorUnits === null;
     const allPresent =
       netAmountMinorUnits !== null &&
+      resultVatRateBasisPoints !== null &&
       vatAmountMinorUnits !== null &&
       grossTotalMinorUnits !== null;
+    const unresolvedGross =
+      netAmountMinorUnits === null &&
+      resultVatRateBasisPoints === null &&
+      vatAmountMinorUnits === null &&
+      grossTotalMinorUnits !== null &&
+      value.result.manualAssessmentRequired &&
+      isJsonObject(value.configuration.vatConfiguration) &&
+      value.configuration.vatConfiguration.mode === "VAT_UNRESOLVED";
 
-    if (!allNull && !allPresent) {
+    if (!allNull && !allPresent && !unresolvedGross) {
       context.addIssue({
         code: "custom",
-        message: "Price totals must be all present or all withheld for review.",
+        message:
+          "Price totals must be complete, withheld, or preserve only a gross customer price while VAT is unresolved.",
         path: ["result", "grossTotalMinorUnits"],
       });
     }
@@ -316,6 +335,26 @@ export const storedPriceSnapshotSchema = z
       });
     }
   });
+
+/** A manual quote may override amounts, but must not invent unresolved source VAT. */
+export function hasResolvedQuoteSourceVat(
+  snapshot: z.infer<typeof storedPriceSnapshotSchema>,
+  relationalVatRate: unknown,
+): boolean {
+  const vat = snapshot.configuration.vatConfiguration;
+  if (!isJsonObject(vat)) return false;
+  const rate = vat.rateBasisPoints;
+  return (
+    (vat.mode === "VAT_REGISTERED" || vat.mode === "VAT_NOT_REGISTERED") &&
+    typeof rate === "number" &&
+    Number.isInteger(rate) &&
+    rate >= 0 &&
+    rate <= 10_000 &&
+    rate === snapshot.result.vatRateBasisPoints &&
+    rate === relationalVatRate &&
+    (vat.mode === "VAT_REGISTERED" || rate === 0)
+  );
+}
 
 const storedDurationLineSchema = z
   .object({
@@ -406,7 +445,7 @@ export const createRequestEstimateInputSchema = z
     durationSnapshot: storedDurationSnapshotSchema,
     availabilitySnapshot: storedAvailabilitySnapshotSchema,
     netAmountMinorUnits: minorUnits.nullable(),
-    vatRateBasisPoints,
+    vatRateBasisPoints: nullableVatRateBasisPoints,
     vatAmountMinorUnits: minorUnits.nullable(),
     grossTotalMinorUnits: minorUnits.nullable(),
     currency: z.literal("EUR"),
@@ -458,6 +497,13 @@ export const createRequestEstimateInputSchema = z
         code: "custom",
         message: "Price-book scalar provenance must match the stored snapshot.",
         path: ["priceBookCode"],
+      });
+    }
+    if (value.vatRateBasisPoints !== value.priceSnapshot.result.vatRateBasisPoints) {
+      context.addIssue({
+        code: "custom",
+        message: "Searchable estimate VAT must match the immutable price snapshot.",
+        path: ["vatRateBasisPoints"],
       });
     }
     if (

@@ -8,6 +8,10 @@ import {
   timingCategories,
   travelZones,
 } from "@/modules/commercial-engine/development-config";
+import {
+  attelierDurationModels,
+  attelierPriceBooks,
+} from "@/modules/commercial-engine/attelier-config";
 import type {
   BillingUnit,
   DurationRuleDefinition,
@@ -16,6 +20,12 @@ import type {
 import type { LocalizedReference } from "@/modules/service-catalogue/catalogue";
 import * as commercialTables from "./schema/commercial-engine";
 import * as catalogueTables from "./schema/service-catalogue";
+
+const seededPriceBooks = [...developmentPriceBooks, ...attelierPriceBooks];
+const seededDurationModels = [
+  ...developmentDurationModels,
+  ...attelierDurationModels,
+];
 
 function referenceRows(entries: readonly LocalizedReference[]) {
   return entries.map((entry) => ({
@@ -139,7 +149,7 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
   await database
     .insert(commercialTables.priceBooks)
     .values(
-      developmentPriceBooks.map((book) => ({
+      seededPriceBooks.map((book) => ({
         code: book.code,
         name: book.name,
         currency: book.currency,
@@ -162,7 +172,7 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
   await database
     .insert(commercialTables.durationModels)
     .values(
-      developmentDurationModels.map((model) => ({
+      seededDurationModels.map((model) => ({
         code: model.code,
         name: model.name,
         market: model.market,
@@ -212,7 +222,7 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
     database.select({ id: catalogueTables.treatmentLevels.id, code: catalogueTables.treatmentLevels.code }).from(catalogueTables.treatmentLevels).then(idMap),
   ]);
 
-  const priceRuleRows = developmentPriceBooks.flatMap((book) =>
+  const priceRuleRows = seededPriceBooks.flatMap((book) =>
     book.rules.map((rule: PriceRuleDefinition) => {
       const modeCode = measurementModeCode(rule.billingUnit);
       return {
@@ -240,6 +250,8 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
         billingUnit: rule.billingUnit ?? null,
         amountMinorUnits: rule.amountMinorUnits ?? null,
         percentageBasisPoints: rule.percentageBasisPoints ?? null,
+        additionalSidePercentageBasisPoints:
+          rule.additionalSidePercentageBasisPoints ?? null,
         measurementMinHundredths: rule.measurementMinHundredths ?? null,
         measurementMaxHundredths:
           rule.measurementMaxHundredths === undefined
@@ -264,7 +276,7 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
       .onConflictDoNothing({ target: commercialTables.priceRules.code });
   }
 
-  const durationRuleRows = developmentDurationModels.flatMap((model) =>
+  const durationRuleRows = seededDurationModels.flatMap((model) =>
     model.rules.map((rule: DurationRuleDefinition) => ({
       durationModelId: requiredId(durationModelIds, model.code),
       code: rule.id,
@@ -284,6 +296,8 @@ export async function seedCommercialEngine(database: Database): Promise<void> {
       billingUnit: rule.billingUnit ?? null,
       minutes: rule.minutes ?? null,
       multiplierBasisPoints: rule.multiplierBasisPoints ?? null,
+      additionalSidePercentageBasisPoints:
+        rule.additionalSidePercentageBasisPoints ?? null,
       productivityHundredthsM2PerHour:
         rule.productivityHundredthsM2PerHour ?? null,
       manualAssessmentRequired: rule.manualAssessmentRequired ?? false,

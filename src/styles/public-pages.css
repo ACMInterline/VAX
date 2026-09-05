@@ -3,8 +3,8 @@
   overflow: hidden;
   padding: clamp(4rem, 8vw, 7rem) 0 clamp(5rem, 10vw, 9rem);
   background:
-    radial-gradient(circle at 8% 15%, rgba(255, 255, 255, 0.9), transparent 30rem),
-    linear-gradient(135deg, #f5f2e9, #e7ece2);
+    linear-gradient(90deg, transparent 0 72%, rgba(255, 213, 42, 0.32) 72% 100%),
+    var(--canvas);
 }
 
 .home-hero::after {
@@ -13,8 +13,10 @@
   height: 36rem;
   right: -20rem;
   bottom: -22rem;
-  border: 1px solid var(--line);
-  border-radius: 50%;
+  border: 3px solid var(--ink);
+  border-radius: 0;
+  background: var(--attelier-coral);
+  transform: rotate(18deg);
   content: "";
 }
 
@@ -30,7 +32,7 @@
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
-  color: var(--accent);
+  color: var(--accent-strong);
   font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.13em;
@@ -40,18 +42,18 @@
 .hero-kicker > span {
   width: 0.55rem;
   height: 0.55rem;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--warm);
-  box-shadow: 0 0 0 3px var(--warm-soft);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--attelier-yellow);
+  box-shadow: 3px 3px 0 var(--ink);
 }
 
 .home-hero h1 {
-  max-width: 12ch;
+  max-width: 10ch;
   margin-bottom: 0;
   font-family: var(--font-display);
   font-size: clamp(3.7rem, 7.7vw, 7.4rem);
-  font-weight: 500;
+  font-weight: 650;
   letter-spacing: -0.063em;
   line-height: 0.91;
 }
@@ -112,11 +114,11 @@
   display: grid;
   width: 12.5rem;
   padding: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: var(--radius-medium);
+  border: 3px solid var(--ink);
+  border-radius: 0;
   color: var(--ink-inverse);
-  background: rgba(24, 59, 51, 0.94);
-  box-shadow: var(--shadow-large);
+  background: var(--surface-deep);
+  box-shadow: 10px 10px 0 var(--attelier-coral);
 }
 
 .capacity-card__value {
@@ -128,7 +130,7 @@
 
 .capacity-card > span:nth-child(2) {
   margin-top: 0.4rem;
-  color: #a9cdbf;
+  color: var(--attelier-yellow);
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -139,6 +141,72 @@
   color: rgba(247, 245, 239, 0.62);
   font-size: 0.65rem;
   line-height: 1.45;
+}
+
+.price-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+  margin: 3rem 0 0;
+  background: var(--ink-inverse);
+}
+
+.price-guide > div {
+  display: grid;
+  min-height: 8.5rem;
+  align-content: space-between;
+  padding: 1.25rem;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.price-guide > div:nth-child(3n + 1) {
+  background: var(--attelier-yellow);
+}
+
+.price-guide > div:nth-child(3n + 2) {
+  background: var(--attelier-blue);
+}
+
+.price-guide > div:nth-child(3n) {
+  background: var(--warm-soft);
+}
+
+.price-guide dt {
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.price-guide dd {
+  margin: 1.2rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.price-guide__notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+  color: rgba(255, 253, 247, 0.74);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 760px) {
+  .price-guide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .price-guide > div:nth-child(n) {
+    min-height: 6.5rem;
+  }
+
+  .price-guide__notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .on-site-grid,
@@ -1175,8 +1243,9 @@
 
 @media (max-width: 680px) {
   .home-hero h1 {
+    max-width: 100%;
     overflow-wrap: break-word;
-    font-size: clamp(2.65rem, 13vw, 5rem);
+    font-size: clamp(2.25rem, 11.5vw, 4.5rem);
   }
 
   .hero-facts,

@@ -527,7 +527,7 @@ type TreatmentLevelDefinition = LocalizedReference &
 
 export const treatmentLevels = [
   {
-    ...reference("GENTLE_CARE", 10, "Щадяща грижа", "Gentle Care", "Ограничена интензивност при чувствителност, лека поддръжка или приоритет за съхраняване.", "Restrained intensity for sensitivity, light maintenance or preservation priorities."),
+    ...reference("GENTLE_CARE", 10, "Деликатна грижа", "Delicate Care", "Ограничена интензивност при чувствителност, лека поддръжка или приоритет за съхраняване.", "Restrained intensity for sensitivity, light maintenance or preservation priorities."),
     customerSelectable: false,
   },
   {
@@ -535,7 +535,7 @@ export const treatmentLevels = [
     customerSelectable: false,
   },
   {
-    ...reference("DEEP_CLEAN", 30, "Дълбоко почистване", "Deep Clean", "По-задълбочена обработка, съобразена с материята и конструкцията.", "More thorough treatment balanced against material and construction."),
+    ...reference("DEEP_CLEAN", 30, "Стандартно дълбоко почистване", "Standard Deep Clean", "Стандартната по-задълбочена обработка, съобразена с материята и конструкцията.", "The default thorough treatment, balanced against material and construction."),
     customerSelectable: false,
   },
   {
@@ -543,7 +543,7 @@ export const treatmentLevels = [
     customerSelectable: false,
   },
   {
-    ...reference("SPECIALIST_ASSESSMENT", 50, "Специализирана оценка", "Specialist Assessment", "Решение дали и как да се работи при повишена неизвестност или риск.", "Decision on whether and how to proceed where uncertainty or risk is elevated."),
+    ...reference("SPECIALIST_ASSESSMENT", 50, "Възстановителна / специализирана грижа", "Restorative / Advanced Care", "Разширена грижа или решение за насочване при повишена неизвестност, риск или възстановителна цел.", "Advanced care or a referral decision where uncertainty, risk or a restorative goal is elevated."),
     customerSelectable: false,
   },
 ] as const satisfies readonly TreatmentLevelDefinition[];

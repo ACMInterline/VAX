@@ -40,17 +40,16 @@ wording change must update both sources in the same reviewed pull request.
   a booking. Any stronger wording requires a new reviewed claim. See
   `docs/REQUEST_AND_QUOTE.md`.
 
-### Processing capacity around 25 m² per hour
+### Internal processing-capacity assumption
 
-- **Claim:** under suitable conditions, professional treatment may reach
-  approximately 25 m² per hour.
-- **Publication wording:** “При подходящи условия професионалната обработка може
-  да достигне около 25 m² на час, в зависимост от материята, замърсяването,
-  избраната обработка и достъпа до повърхността.”
-- **Status:** `qualified`.
+- **Claim:** a universal public processing-capacity rate.
+- **Publication wording:** none.
+- **Status:** `manufacturer_evidence_required`.
 - **Evidence needed:** timed field records across representative materials,
   contamination levels, treatment depths and access conditions.
-- **Notes:** this is never a guaranteed rate, job duration or quotation basis.
+- **Notes:** the Owner-approved 23 m²/hour staging value is internal two-person-
+  team scheduling data. It is never a public guarantee, job duration or
+  quotation claim.
 
 ### Residual moisture, drying and return to use
 
@@ -187,21 +186,26 @@ wording change must update both sources in the same reviewed pull request.
 - **Evidence needed:** not publishable as an absolute general service claim.
 - **Notes:** the service must not imply specialist healthcare disinfection.
 
-## Business facts awaiting owner verification
+## Resolved staging facts and remaining evidence
 
-The following remain placeholders or intended operating facts rather than
-launch-approved public facts:
+The Owner has finalized the ATTELIER name/descriptors, visual direction,
+service scope, public gross prices, approximate zone/minimum policy, operating
+hours/windows and qualified claim boundaries for staging. These decisions do
+not establish a legal seller, tax treatment or real operational capacity.
 
-- final commercial name, trademark position and logo;
+The following remain placeholders, external evidence or professional-review
+items rather than launch-approved production facts:
+
 - legal business name and any public registration details;
 - approved telephone number and service mailbox;
 - any customer-facing physical or correspondence address;
-- confirmed service districts, surrounding-area policy and travel charges;
-- final appointment availability and operational capacity;
+- exact address-to-zone mapping and live/verified travel data;
+- actual staffed teams, equipment inventory and operational capacity;
 - exact equipment, products and approved usage methods;
 - specialist referral criteria and technician operating procedures;
 - original photography, permission records and any case-study evidence; and
-- prices, reviews, ratings, certifications, awards and business-history facts.
+- VAT/statutory price presentation, reviews, ratings, certifications, awards
+  and business-history facts.
 
 No item above may be fabricated to complete SEO, structured data or marketing
 copy.

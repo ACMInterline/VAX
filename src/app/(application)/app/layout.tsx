@@ -7,7 +7,7 @@ import "./app.css";
 import { requireApplicationPrincipal } from "./application-principal";
 
 export const metadata: Metadata = {
-  title: "VAX Application",
+  title: "ATTELIER Textile Care",
   robots: { index: false, follow: false, noarchive: true, nocache: true },
 };
 
