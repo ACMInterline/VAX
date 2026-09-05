@@ -12,7 +12,7 @@ type SeedTemplateRow = Readonly<{
 }>;
 
 describe("communications and documents canonical seed", () => {
-  it("seeds exactly one active Bulgarian and English version of all nine templates", async () => {
+  it("seeds the nine historical pairs plus two distinct ATTELIER payment pairs", async () => {
     const onConflictDoNothing = vi.fn(async () => undefined);
     const values = vi.fn((rows: readonly SeedTemplateRow[]) => {
       void rows;
@@ -26,7 +26,7 @@ describe("communications and documents canonical seed", () => {
     expect(insert).toHaveBeenCalledWith(communicationTemplates);
     expect(values).toHaveBeenCalledTimes(1);
     const rows = values.mock.calls[0]![0];
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(22);
     expect(new Set(rows.map((row) => row.templateKey))).toEqual(
       new Set([
         "quote_issued",
@@ -38,6 +38,8 @@ describe("communications and documents canonical seed", () => {
         "invoice_issued",
         "payment_confirmed",
         "payment_reversed",
+        "attelier_payment_confirmed",
+        "attelier_payment_reversed",
       ]),
     );
     for (const templateKey of new Set(rows.map((row) => row.templateKey))) {
@@ -58,10 +60,21 @@ describe("communications and documents canonical seed", () => {
       return { onConflictDoNothing };
     });
     const insert = vi.fn(() => ({ values }));
+    const update = vi.fn();
+    const deleteRows = vi.fn();
+    const execute = vi.fn();
 
-    await seedCommunicationsDocuments({ insert } as unknown as Database);
+    await seedCommunicationsDocuments({
+      insert,
+      update,
+      delete: deleteRows,
+      execute,
+    } as unknown as Database);
 
     expect(onConflictDoNothing).toHaveBeenCalledTimes(1);
     expect(onConflictDoNothing).toHaveBeenCalledWith();
+    expect(update).not.toHaveBeenCalled();
+    expect(deleteRows).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
   });
 });

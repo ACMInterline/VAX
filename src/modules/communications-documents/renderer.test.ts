@@ -74,15 +74,15 @@ function alteredTemplate(
 }
 
 describe("communication template rendering", () => {
-  it("keeps one unique plain-text Bulgarian and English template for every canonical event variant", () => {
-    expect(canonicalCommunicationTemplates).toHaveLength(18);
+  it("keeps unique bilingual templates including prospective ATTELIER payment identities", () => {
+    expect(canonicalCommunicationTemplates).toHaveLength(22);
     expect(
       new Set(
         canonicalCommunicationTemplates.map(
           (template) => `${template.templateKey}:${template.locale}`,
         ),
       ).size,
-    ).toBe(18);
+    ).toBe(22);
 
     for (const template of canonicalCommunicationTemplates) {
       const text = `${template.titleTemplate}\n${template.bodyTemplate}`;

@@ -91,15 +91,32 @@ mutation assertions live in the separately reviewed owner-only
 `.env.staging.target.local` manifest.
 Neither file is loaded by normal development commands or credential-free CI.
 
-The reviewed sequence is:
+The following sequence is for the retained Phase 3M/ATTELIER staging acceptance
+checkpoint, not a fresh-database bootstrap. Before activation, independently
+confirm the exact staging target, the retained acceptance fixtures and the
+Owner-approved ATTELIER staging plan. Activation requires a unique active Owner
+with an active `OWNER` assignment, `SYSTEM_SETTINGS_MANAGE` and a nonblank
+provider binding, plus the matching staging actor-context verifier provisioned
+by migration. It is an explicit authorized operation, never a migration or
+application-startup side effect. Stop on a fresh or divergent target; do not
+manufacture fixtures, bootstrap an Owner or fabricate approvals to satisfy the
+retained-count verifier.
+
+The reviewed sequence, after those prerequisites are confirmed, is:
 
 ```text
 npm run db:migrate:staging
 npm run db:verify-security:staging
+npm run authority:activate:attelier:staging
 npm run db:verify-state:staging
-npm run db:rehearse-staging-rebuild
 npm run dev:staging
 ```
+
+`db:verify-state:staging` expects the activated 29-record/107-audit authority
+plan and the existing synthetic Auth/CRM/Quote/Booking checkpoint. It does not
+define a generic empty-database baseline. `npm run db:rehearse-staging-rebuild`
+requires separate authorization for its disposable resources and cleanup; it
+is not an automatic follow-on step.
 
 The local app launcher additionally requires the explicit localhost rehearsal
 flag, clears omitted managed values, independently binds its runtime database
